@@ -27,17 +27,17 @@ Currently in paper trading phase with walk-forward validated backtesting results
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.10+ |
-| Data & Execution | Zerodha Kite Connect API |
-| Data Fallback | yfinance (backtesting only) |
-| Core Libraries | pandas, numpy, kiteconnect, pyotp, requests |
-| Auth Automation | HTTP-based TOTP login (no browser required) |
-| Cloud Deployment | AWS Lightsail Ubuntu 22.04 (ap-south-1, Mumbai) |
-| Scheduling | Linux cron, two jobs per trading day |
-| Corporate Actions | NSE India unofficial API (`nse` library) |
-| Backtesting | Custom bar-by-bar simulation engine |
+| Layer             | Technology                                      |
+| ----------------- | ----------------------------------------------- |
+| Language          | Python 3.10+                                    |
+| Data & Execution  | Zerodha Kite Connect API                        |
+| Data Fallback     | yfinance (backtesting only)                     |
+| Core Libraries    | pandas, numpy, kiteconnect, pyotp, requests     |
+| Auth Automation   | HTTP-based TOTP login (no browser required)     |
+| Cloud Deployment  | AWS Lightsail Ubuntu 22.04 (ap-south-1, Mumbai) |
+| Scheduling        | Linux cron, two jobs per trading day            |
+| Corporate Actions | NSE India unofficial API (`nse` library)        |
+| Backtesting       | Custom bar-by-bar simulation engine             |
 
 ---
 
@@ -113,11 +113,11 @@ Auth
 
 Every open position is evaluated bar-by-bar through four independent exit layers, checked in order before the strategy signal is ever evaluated. If any layer fires, the position closes at today's close and a 15-bar cooldown gate prevents immediate re-entry.
 
-| Layer | Mechanism | Rationale |
-|---|---|---|
-| **L1 — Hard Stop** | −20% from slippage-adjusted entry. Never overridden. | Catastrophic loss prevention. Fires even during ATR warm-up. |
-| **L2 — ATR Chandelier** | `highest_high − 3 × Wilder_ATR(22)`. Stop ratchets up only, never down. | Trend-following trailing stop. Locks in profit as trade moves in favour. |
-| **L3 — Time Stop** | Exit after 60 bars regardless of P&L. | Frees capital from stalled positions. Prevents dead-money tie-up. |
+| Layer                        | Mechanism                                                                              | Rationale                                                                                                       |
+| ---------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **L1 — Hard Stop**           | −20% from slippage-adjusted entry. Never overridden.                                   | Catastrophic loss prevention. Fires even during ATR warm-up.                                                    |
+| **L2 — ATR Chandelier**      | `highest_high − 3 × Wilder_ATR(22)`. Stop ratchets up only, never down.                | Trend-following trailing stop. Locks in profit as trade moves in favour.                                        |
+| **L3 — Time Stop**           | Exit after 60 bars regardless of P&L.                                                  | Frees capital from stalled positions. Prevents dead-money tie-up.                                               |
 | **L4 — Round Number Offset** | Shifts L2 stop 1% below the nearest NSE psychological level (₹50/₹100/₹500 intervals). | HFT and algorithmic traders probe round numbers for stop clusters. This avoids the most common stop-hunt zones. |
 
 **Position Sizing** uses fixed-fractional Kelly-inspired sizing: each trade risks exactly 1.5% of current portfolio value. Stop distance is computed from the L2 Chandelier level at entry. After a loss, position size shrinks; after a gain, it grows — built-in anti-martingale compounding.
@@ -132,21 +132,21 @@ Every open position is evaluated bar-by-bar through four independent exit layers
 
 The most important test: run identical parameters on a completely independent out-of-sample dataset. No parameter re-fitting between windows.
 
-| Window | Period | Purpose |
-|---|---|---|
-| In-sample | 2018-01-01 → 2022-12-31 | Strategy "training" (only common sense used, no optimisation) |
-| Out-of-sample | 2023-01-01 → 2025-12-31 | Genuine unseen data |
+| Window        | Period                  | Purpose                                                       |
+| ------------- | ----------------------- | ------------------------------------------------------------- |
+| In-sample     | 2018-01-01 → 2022-12-31 | Strategy "training" (only common sense used, no optimisation) |
+| Out-of-sample | 2023-01-01 → 2025-12-31 | Genuine unseen data                                           |
 
 **Overall result: 15/20 metrics PASS (75%) — System Validated**
 
 > Threshold: ≥14/20 = Validated · 10–13/20 = Partial · <10/20 = Overfit
 
-| Stock | IS Return | OOS Return | IS Max DD | OOS Max DD | Score |
-|---|---|---|---|---|---|
-| TMPV.NS | +9.1% | +8.3% | −7.8% | −5.1% | **4/5** |
-| WHIRLPOOL.NS | +1.8% | +4.3% | −4.3% | −3.0% | **4/5** |
-| SIEMENS.NS | +7.0% | +2.0% | −6.1% | −7.9% | **3/5** |
-| BAJAJ-AUTO.NS | +1.6% | +14.4% | −4.9% | −3.1% | **4/5** |
+| Stock         | IS Return | OOS Return | IS Max DD | OOS Max DD | Score   |
+| ------------- | --------- | ---------- | --------- | ---------- | ------- |
+| TMPV.NS       | +9.1%     | +8.3%      | −7.8%     | −5.1%      | **4/5** |
+| WHIRLPOOL.NS  | +1.8%     | +4.3%      | −4.3%     | −3.0%      | **4/5** |
+| SIEMENS.NS    | +7.0%     | +2.0%      | −6.1%     | −7.9%      | **3/5** |
+| BAJAJ-AUTO.NS | +1.6%     | +14.4%     | −4.9%     | −3.1%      | **4/5** |
 
 - OOS returns are **positive on all 4 stocks** — no strategy collapse on unseen data
 - OOS drawdowns are **equal to or better than** in-sample on 3/4 stocks
@@ -154,9 +154,9 @@ The most important test: run identical parameters on a completely independent ou
 
 ### Stress Tests
 
-| Scenario | Result |
-|---|---|
-| COVID crash (Feb–Apr 2020) | Max portfolio drawdown: 1.8–3.1% while NIFTY fell 35–40% |
+| Scenario                                              | Result                                                      |
+| ----------------------------------------------------- | ----------------------------------------------------------- |
+| COVID crash (Feb–Apr 2020)                            | Max portfolio drawdown: 1.8–3.1% while NIFTY fell 35–40%    |
 | AMO-realistic fills (next-day open vs same-day close) | Score unchanged at 15/20; returns differ by < 1pp per stock |
 
 ### Transaction Cost Model
@@ -266,7 +266,7 @@ No manual intervention required. The token is refreshed automatically before eac
 ### Local Setup
 
 ```bash
-git clone https://github.com/yourusername/algo-trading.git
+git clone https://github.com/Aarav2307/algo-trading.git
 cd algo-trading
 python3 -m venv venv
 source venv/bin/activate
@@ -322,4 +322,4 @@ This is a personal research and educational project built to learn quantitative 
 
 ---
 
-*Built by Aarav Agarwal · [aaravpagarwal07@gmail.com](mailto:aaravpagarwal07@gmail.com)*
+_Built by Aarav Agarwal · [aaravpagarwal07@gmail.com](mailto:aaravpagarwal07@gmail.com)_
