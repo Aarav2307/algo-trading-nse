@@ -1,0 +1,24 @@
+# Credentials — NEVER commit these
+.env
+auth/access_token.txt
+auth/nse_instruments.json
+
+# Paper trading state — contains live portfolio data
+paper_trading/portfolio_state.json
+paper_trading/signal_log.csv
+paper_trading/amo_orders.csv
+paper_trading/logs/
+
+# Backtest charts — large image files
+*.png
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Test files with sensitive output
+test_kite.py
+test_kite_fetcher.py

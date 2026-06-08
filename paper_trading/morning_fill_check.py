@@ -1,0 +1,383 @@
+"""
+paper_trading/morning_fill_check.py — Morning AMO fill checker.
+
+Runs at 9:30 AM IST every trading day (via run_morning_check.sh / cron).
+
+What it does:
+  1. Loads rows from amo_orders.csv where status = "DRY_RUN" and date = yesterday
+  2. For each pending order, fetches today's opening price from Kite
+  3. Checks the fill condition:
+       BUY  filled if open_price <= limit_price
+       SELL filled if open_price >= limit_price
+  4. If filled   → updates portfolio_state.json with the actual open fill price
+  5. If not filled → logs "MISSED" with the open price that was too far
+  6. Prints the morning fill report
+
+Dry-run mode (the default): portfolio state is NOT modified — just shows what
+would have happened. Set DRY_RUN_PORTFOLIO = False only after confirming the
+logic is correct on a few real sessions.
+
+Usage:
+    python paper_trading/morning_fill_check.py
+    python paper_trading/morning_fill_check.py --date 2026-06-05   # check a past date
+    python paper_trading/morning_fill_check.py --apply             # update portfolio state
+"""
+
+import argparse
+import csv
+import os
+import sys
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import List, Optional
+
+_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(_ROOT))
+
+from data.kite_fetcher import get_ohlcv
+from utils.market_calendar import is_trading_day
+
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+AMO_CSV         = Path("paper_trading/amo_orders.csv")
+STATE_FILE      = Path("paper_trading/portfolio_state.json")
+TOKEN_FILE      = Path("auth/access_token.txt")
+
+# ── IST offset ────────────────────────────────────────────────────────────────
+_IST = timedelta(hours=5, minutes=30)
+
+
+def _get_ist_now() -> datetime:
+    from datetime import timezone
+    return (datetime.now(timezone.utc) + _IST).replace(tzinfo=None)
+
+
+def _check_auth() -> None:
+    if not TOKEN_FILE.exists():
+        print("ERROR: auth/access_token.txt not found. Run auth/kite_login.py first.")
+        sys.exit(1)
+
+
+def _load_pending_orders() -> List[dict]:
+    """
+    Return ALL rows in amo_orders.csv that are still awaiting a fill check:
+      - status == "DRY_RUN"   (not yet resolved)
+      - fill_date == ""        (no fill recorded yet)
+
+    Date-agnostic: a Friday order that was never checked on Saturday/Sunday
+    will still appear here on Monday, so weekend carry-forward works correctly.
+    """
+    if not AMO_CSV.exists():
+        return []
+
+    pending = []
+    with open(AMO_CSV, newline="") as fh:
+        for row in csv.DictReader(fh):
+            if row["status"] == "DRY_RUN" and row.get("fill_date", "") == "":
+                pending.append(row)
+    return pending
+
+
+def _fetch_open_price(ticker: str, today: date) -> Optional[float]:
+    """
+    Fetch today's opening price for ticker from Kite.
+    Returns None if data is unavailable.
+    """
+    try:
+        # Fetch today's bar only (start = today, end = tomorrow exclusive)
+        start = today.isoformat()
+        end   = (today + timedelta(days=1)).isoformat()
+        df    = get_ohlcv(ticker, start, end)
+        if df.empty:
+            return None
+        # Use the first bar's open (should be today's only bar for daily data)
+        return float(df["open"].iloc[0])
+    except Exception as exc:
+        print(f"  WARN: Could not fetch {ticker} open — {exc}")
+        return None
+
+
+def _update_csv_row(target_date: str, ticker: str, order_type: str,
+                    new_status: str, fill_price: str, fill_date: str) -> None:
+    """
+    Rewrite amo_orders.csv updating the matching row's status/fill fields.
+    target_date is the ISO date string from order["date"] (e.g. "2026-06-06").
+    Uses a full rewrite of the file (safe for small files up to ~1000 rows).
+    """
+    if not AMO_CSV.exists():
+        return
+
+    rows = []
+    with open(AMO_CSV, newline="") as fh:
+        reader = csv.DictReader(fh)
+        fieldnames = reader.fieldnames
+        for row in reader:
+            if (row["date"] == target_date
+                    and row["ticker"] == ticker
+                    and row["order_type"] == order_type
+                    and row["status"] == "DRY_RUN"):
+                row["status"]     = new_status
+                row["fill_price"] = fill_price
+                row["fill_date"]  = fill_date
+            rows.append(row)
+
+    tmp = str(AMO_CSV) + ".tmp"
+    with open(tmp, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    os.replace(tmp, str(AMO_CSV))
+
+
+def _update_portfolio_fill(ticker: str, order_type: str, shares: int,
+                           fill_price: float, fill_date: date) -> None:
+    """
+    Update portfolio_state.json to reflect the actual next-day fill price.
+
+    For a BUY: recalculate entry_price with the actual open fill price
+               (slippage has already been accounted for in the limit price,
+               so we use the raw open as the fill here — the portfolio sizer
+               uses apply_slippage internally).
+    For a SELL: update cash and clear the position.
+
+    This is a targeted JSON patch — only the affected position is changed.
+    Uses atomic write to prevent state corruption on crash.
+    """
+    import json
+    import math
+    from utils.costs import apply_slippage, transaction_costs
+
+    if not STATE_FILE.exists():
+        print(f"  WARN: {STATE_FILE} not found — cannot update portfolio state.")
+        return
+
+    with open(STATE_FILE) as fh:
+        state = json.load(fh)
+
+    pos = state["positions"].get(ticker)
+    if pos is None:
+        print(f"  WARN: {ticker} not in portfolio state — skipping update.")
+        return
+
+    if order_type == "BUY":
+        # Entry price = slippage-adjusted open (mirrors portfolio.buy() internals)
+        exec_price  = apply_slippage(fill_price, "buy")
+        cost        = transaction_costs(exec_price, shares, "buy")
+        total_spent = shares * exec_price + cost
+
+        state["cash"]              -= total_spent
+        pos["shares"]               = shares
+        pos["entry_price"]          = exec_price
+        pos["entry_date"]           = fill_date.isoformat()
+        pos["highest_high_since_entry"] = fill_price   # seeded at open
+        pos["bars_held"]            = 0
+        # chandelier_stop will be set by RM on first check_exit call
+        pos["chandelier_stop"]      = None
+
+    elif order_type == "SELL":
+        if pos["shares"] <= 0:
+            print(f"  WARN: {ticker} has no shares to sell — skipping update.")
+            return
+        exec_price = apply_slippage(fill_price, "sell")
+        cost       = transaction_costs(exec_price, shares, "sell")
+        proceeds   = shares * exec_price - cost
+
+        state["cash"] += proceeds
+
+        # Record in trade log
+        entry_px  = pos["entry_price"]
+        gross_pnl = (exec_price - entry_px) * shares
+        net_pnl   = gross_pnl - cost
+        state["trade_log"].append({
+            "ticker":      ticker,
+            "entry_date":  pos["entry_date"],
+            "exit_date":   fill_date.isoformat(),
+            "entry_price": round(entry_px, 4),
+            "exit_price":  round(exec_price, 4),
+            "shares":      shares,
+            "gross_pnl":   round(gross_pnl, 2),
+            "net_pnl":     round(net_pnl, 2),
+            "return_pct":  round((exec_price / entry_px - 1) * 100, 4),
+            "exit_reason": "STRATEGY_SIGNAL",
+        })
+        state["total_trades"] += 1
+
+        # Reset position
+        state["positions"][ticker] = {
+            "shares": 0, "entry_price": 0.0, "entry_date": None,
+            "highest_high_since_entry": 0.0, "bars_held": 0, "chandelier_stop": None,
+        }
+
+    # Atomic write
+    tmp = str(STATE_FILE) + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(state, fh, indent=2, default=str)
+    os.replace(tmp, str(STATE_FILE))
+    print(f"  [portfolio] {STATE_FILE} updated.")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = False) -> None:
+    """
+    Execute the morning fill check.
+
+    Args:
+        check_date:   Override today's date (used for testing past dates).
+        apply_fills:  If True, update portfolio_state.json with actual fills.
+                      If False (default / dry-run), only print the report.
+    """
+    _check_auth()
+
+    today = check_date or date.today()
+
+    # ── Trading day guard ──────────────────────────────────────────────────────
+    # AMO orders only fill on trading days. If today is a weekend or NSE holiday,
+    # there is no open price to check against — exit cleanly.
+    if not is_trading_day(today):
+        print(f"Market closed today — {today}. No fill check needed.")
+        return
+
+    W = 62
+    print("\n" + "=" * W)
+    print(f"  MORNING FILL REPORT — {today.strftime('%A %d %b %Y')}")
+    print(f"  Fill date: {today}  |  Checking all unfilled DRY_RUN orders")
+    if not apply_fills:
+        print("  MODE: DRY RUN — portfolio state will NOT be modified")
+    else:
+        print("  MODE: APPLY — portfolio state will be updated with fills")
+    print("=" * W)
+    print()
+
+    pending = _load_pending_orders()
+
+    if not pending:
+        print("  No pending DRY_RUN orders found (amo_orders.csv is empty or all filled).")
+        print("=" * W)
+        return
+
+    print(f"  Pending unfilled orders: {len(pending)}")
+
+    # ── Corporate actions check (ex-date = TODAY) ─────────────────────────────
+    # If a stock has its ex-date TODAY, the open price includes the price-gap
+    # adjustment (e.g. a split halves the price). Filling the AMO at that
+    # adjusted open would buy/sell at a price that doesn't match our limit price
+    # (which was set against the pre-adjustment price). Cancel those fills.
+    pending_tickers = list({o["ticker"] for o in pending})
+    try:
+        from utils.corporate_actions import get_corporate_action_warning
+        # We check only for ex-date == TODAY (not the 2-day window used at signal time)
+        ex_today: dict[str, bool] = {}
+        for t in pending_tickers:
+            w = get_corporate_action_warning(t, check_date=today)
+            # skip=True AND ex_date == today means the action happens TODAY
+            ex_today[t] = w["skip"] and w.get("ex_date") == today
+            if ex_today[t]:
+                print(
+                    f"\n  [CORP_ACTION] {t} — ex-date is TODAY ({today}). "
+                    f"AMO fill CANCELLED: {w['reason']}"
+                )
+    except Exception as exc:
+        print(f"\n  [CORP_ACTION] WARNING: check failed — {exc}. Proceeding with fills.")
+        ex_today = {t: False for t in pending_tickers}
+
+    print()
+    filled_count = 0
+    missed_count = 0
+    cancelled_count = 0
+
+    for order in pending:
+        ticker      = order["ticker"]
+        order_type  = order["order_type"]
+        shares      = int(order["shares"])
+        signal_px   = float(order["signal_price"])
+        limit_px    = float(order["limit_price"])
+        order_date  = order["date"]   # the day the signal fired (may be Friday)
+
+        # Skip fill if this stock has a corporate action ex-date today
+        if ex_today.get(ticker, False):
+            cancelled_count += 1
+            print(
+                f"  ✗ CANCELLED  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                f"| ex-date today — fill skipped"
+            )
+            _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
+            continue
+
+        open_px = _fetch_open_price(ticker, today)
+
+        if open_px is None:
+            print(f"  ? UNKNOWN  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                  f"| limit ₹{limit_px:,.2f} | open price unavailable")
+            continue
+
+        # Fill logic
+        if order_type == "BUY":
+            filled = open_px <= limit_px
+        else:   # SELL
+            filled = open_px >= limit_px
+
+        gap_pct = (open_px - limit_px) / limit_px * 100
+
+        if filled:
+            filled_count += 1
+            status_tag = "✓ FILLED "
+            detail = (
+                f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                f"| FILLED at ₹{open_px:,.2f}"
+            )
+            print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+
+            _update_csv_row(order_date, ticker, order_type,
+                            "FILLED", str(round(open_px, 4)), today.isoformat())
+            if apply_fills:
+                _update_portfolio_fill(ticker, order_type, shares, open_px, today)
+
+        else:
+            missed_count += 1
+            status_tag = "✗ MISSED "
+            detail = (
+                f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%"
+            )
+            print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+
+            _update_csv_row(order_date, ticker, order_type,
+                            "MISSED", "", "")
+
+    print()
+    parts = [f"{filled_count} FILLED", f"{missed_count} MISSED"]
+    if cancelled_count:
+        parts.append(f"{cancelled_count} CANCELLED (corp action ex-date today)")
+    print(f"  Summary: {' | '.join(parts)}")
+    if apply_fills and filled_count > 0:
+        print(f"  Portfolio updated with {filled_count} actual fill price(s).")
+    elif not apply_fills and filled_count > 0:
+        print(f"  To update portfolio with these fills, re-run with --apply flag.")
+    print("=" * W)
+    print()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Morning AMO fill checker",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python paper_trading/morning_fill_check.py                   # dry run, yesterday's orders
+  python paper_trading/morning_fill_check.py --apply           # update portfolio state
+  python paper_trading/morning_fill_check.py --date 2026-06-05 # check a specific date
+        """,
+    )
+    parser.add_argument(
+        "--date", metavar="YYYY-MM-DD",
+        help="Signal date to check (default: last trading day)",
+    )
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="Apply fills to portfolio_state.json (default: dry run only)",
+    )
+    args = parser.parse_args()
+
+    check_date = date.fromisoformat(args.date) if args.date else None
+    run_morning_check(check_date=check_date, apply_fills=args.apply)

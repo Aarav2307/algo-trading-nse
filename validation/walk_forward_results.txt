@@ -1,0 +1,1911 @@
+Walk-Forward Validation — generated 2026-06-06 01:50:31
+
+
+================================================================================
+  WALK-FORWARD VALIDATION
+  PARAMETERS FROZEN — no optimization performed between windows.
+  These results represent genuine out-of-sample performance.
+================================================================================
+  Stocks:      TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS
+  In-sample:   2018-01-01 → 2023-01-01 (excl)
+  OOS:         2023-01-01 → 2026-01-01 (excl)
+  Strategy:    SMA 20/50 crossover
+  Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum
+  Cooldown:    15-bar after RM exits
+  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position
+  Capital:     ₹100,000 per window (independent runs)
+
+
+================================================================================
+  TMPV.NS
+================================================================================
+  Data:  1238 bars in-sample  |  744 bars out-of-sample
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -1.8%. Risk system protected capital well.
+
+  Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Total return                      +9.1%                      +8.3%                  [PASS]
+  vs Buy & Hold              +17.7pp  (B&H -8.6%)      -26.9pp  (B&H +35.2%)          [FAIL]
+  Max drawdown                      -7.8%                      -5.1%                  [PASS]
+  Payoff ratio                      2.00:1                     3.10:1                 [PASS]
+  Expectancy/trade                  ₹+497                      ₹+770                  [PASS]
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Trades                              19                         11             
+  Win rate                          47.4%                      45.5%            
+  Ret/DD score                       1.16                       1.61            
+
+  Score: 4/5 PASS
+
+
+================================================================================
+  WHIRLPOOL.NS
+================================================================================
+  Data:  1238 bars in-sample  |  744 bars out-of-sample
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.5%. Risk system protected capital well.
+
+  Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Total return                      +1.8%                      +4.3%                  [PASS]
+  vs Buy & Hold              +9.7pp  (B&H -7.9%)       +44.2pp  (B&H -39.9%)          [PASS]
+  Max drawdown                      -4.3%                      -3.0%                  [PASS]
+  Payoff ratio                      1.64:1                     1.11:1                 [FAIL]
+  Expectancy/trade                  ₹+131                      ₹+375                  [PASS]
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Trades                              16                         12             
+  Win rate                          43.8%                      66.7%            
+  Ret/DD score                       0.41                       1.40            
+
+  Score: 4/5 PASS
+
+
+================================================================================
+  SIEMENS.NS
+================================================================================
+  Data:  1238 bars in-sample  |  744 bars out-of-sample
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.7%. Risk system protected capital well.
+
+  Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Total return                      +7.0%                      +2.0%                  [FAIL]
+  vs Buy & Hold            -121.3pp  (B&H +128.3%)     -40.2pp  (B&H +42.2%)          [FAIL]
+  Max drawdown                      -6.1%                      -7.9%                  [PASS]
+  Payoff ratio                      2.80:1                     1.71:1                 [PASS]
+  Expectancy/trade                  ₹+352                      ₹+161                  [PASS]
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Trades                              21                         14             
+  Win rate                          38.1%                      42.9%            
+  Ret/DD score                       1.14                       0.25            
+
+  Score: 3/5 PASS
+
+
+================================================================================
+  BAJAJ-AUTO.NS
+================================================================================
+  Data:  1238 bars in-sample  |  744 bars out-of-sample
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -3.1%. Risk system protected capital well.
+
+  Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Total return                      +1.6%                      +14.4%                 [PASS]
+  vs Buy & Hold              -8.3pp  (B&H +9.9%)      -153.7pp  (B&H +168.1%)         [FAIL]
+  Max drawdown                      -4.9%                      -3.1%                  [PASS]
+  Payoff ratio                      2.58:1                     2.13:1                 [PASS]
+  Expectancy/trade                   ₹+95                      ₹+999                  [PASS]
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Trades                              22                         14             
+  Win rate                          31.8%                      71.4%            
+  Ret/DD score                       0.33                       4.61            
+
+  Score: 4/5 PASS
+
+
+================================================================================
+  OVERALL SYSTEM VERDICT
+================================================================================
+  Total score: 15/20 PASS  (75%)
+  (Max possible: 20 = 4 stocks × 5 metrics; stocks with data errors are excluded)
+
+  Verdict:     SYSTEM VALIDATED
+  Implication: Parameters are robust across both windows. Safe to proceed to paper trading.
+
+  Thresholds: ≥14/20 → VALIDATED | 10-13 → PARTIAL | <10 → NOT VALIDATED
+
+================================================================================
+  DEGRADATION ANALYSIS
+  (stocks where OOS underperformed IS significantly)
+================================================================================
+
+  TMPV.NS:
+  → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
+
+  WHIRLPOOL.NS:
+  → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
+
+  SIEMENS.NS:
+  → Partial regime change: strategy returned +7.0% in-sample vs +2.0% out-of-sample. The stock trended more consistently in the earlier period.
+
+  BAJAJ-AUTO.NS:
+  → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
+
+
+
+================================================================================
+FULL BACKTESTER OUTPUT (trade-by-trade, all 8 runs)
+================================================================================
+
+────────────────────────────────────────────────────────────
+  TMPV.NS  —  in_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2018-09-11 | BUY deferred → fill at 2018-09-12 open | chan=₹174.29
+  [SIZING] 2018-09-12 (AMO open)| entry=₹184.74 | chan=₹174.29 (chandelier) | dist=₹10.45 | risk=₹1500 → 108 shr [position_cap]
+  BUY  2018-09-12 | 108 shares @ ₹184.74 (close ₹184.65) | cost ₹20.00 | cash left ₹80027.83
+  SELL 2018-09-24 | 108 shares @ ₹165.32 (close ₹165.40) | P&L ₹-2122.37 (-10.51%) [CHANDELIER]
+  [COOLDOWN] 2018-09-25 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-09-26 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-09-27 | buy suppressed (13 bars remaining)
+  [AMO] 2019-01-17 | BUY deferred → fill at 2019-01-18 open | chan=₹116.11
+  [SIZING] 2019-01-18 (AMO open)| entry=₹127.86 | chan=₹116.11 (chandelier) | dist=₹11.75 | risk=₹1468 → 124 shr [risk_budget]
+  BUY  2019-01-18 | 124 shares @ ₹127.86 (close ₹127.80) | cost ₹20.00 | cash left ₹81982.51
+  SELL 2019-02-08 | 124 shares @ ₹103.70 (close ₹103.75) | P&L ₹-3019.77 (-18.90%) [CHANDELIER]
+  [COOLDOWN] 2019-02-11 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-02-12 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-02-13 | buy suppressed (13 bars remaining)
+  [AMO] 2019-03-14 | BUY deferred → fill at 2019-03-15 open | chan=₹110.78
+  [SIZING] 2019-03-15 (AMO open)| entry=₹124.11 | chan=₹110.78 (chandelier) | dist=₹13.33 | risk=₹1422 → 106 shr [risk_budget]
+  BUY  2019-03-15 | 106 shares @ ₹124.11 (close ₹124.05) | cost ₹20.00 | cash left ₹81641.99
+  SELL 2019-04-26 | 106 shares @ ₹148.38 (close ₹148.45) | P&L ₹+2548.03 (+19.55%) [CHANDELIER]
+  [COOLDOWN] 2019-04-30 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-05-02 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-05-03 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-05-06 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-05-07 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-05-08 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-05-09 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-05-10 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-05-13 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-05-14 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-05-15 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-05-16 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-05-17 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-05-20 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-05-21 | buy suppressed (1 bars remaining)
+  [AMO] 2019-05-22 | BUY deferred → fill at 2019-05-23 open | chan=₹105.34
+  [SIZING] 2019-05-23 (AMO open)| entry=₹125.96 | chan=₹105.34 (chandelier) | dist=₹20.62 | risk=₹1460 → 70 shr [risk_budget]
+  BUY  2019-05-23 | 70 shares @ ₹125.96 (close ₹125.90) | cost ₹20.00 | cash left ₹88508.48
+  [AMO] 2019-05-23 | SELL deferred → fill at 2019-05-24 open
+  SELL 2019-05-24 | 70 shares @ ₹121.79 (close ₹121.85) | P&L ₹-314.30 (-3.31%)
+  [AMO] 2019-10-09 | BUY deferred → fill at 2019-10-10 open | chan=₹69.26
+  [SIZING] 2019-10-10 (AMO open)| entry=₹82.19 | chan=₹69.26 (chandelier) | dist=₹12.93 | risk=₹1455 → 112 shr [risk_budget]
+  BUY  2019-10-10 | 112 shares @ ₹82.19 (close ₹82.15) | cost ₹20.00 | cash left ₹87786.19
+  SELL 2019-12-03 | 112 shares @ ₹108.85 (close ₹108.90) | P&L ₹+2962.25 (+32.43%) [CHANDELIER]
+  [COOLDOWN] 2019-12-04 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-12-05 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-12-06 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-12-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-12-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-12-11 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-12-12 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-12-13 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-12-16 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-12-17 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-12-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-12-19 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-12-20 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-12-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-12-24 | buy suppressed (1 bars remaining)
+  [AMO] 2019-12-26 | BUY deferred → fill at 2019-12-27 open | chan=₹107.27
+  [SIZING] 2019-12-27 (AMO open)| entry=₹121.26 | chan=₹107.27 (chandelier) | dist=₹13.99 | risk=₹1499 → 107 shr [risk_budget]
+  BUY  2019-12-27 | 107 shares @ ₹121.26 (close ₹121.20) | cost ₹20.00 | cash left ₹86958.96
+  SELL 2020-01-28 | 107 shares @ ₹121.19 (close ₹121.25) | P&L ₹-30.86 (-0.06%) [CHANDELIER]
+  [COOLDOWN] 2020-01-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-01-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-01-31 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-02-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-02-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-02-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-02-05 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-02-06 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-02-07 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-02-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-02-11 | buy suppressed (5 bars remaining)
+  [AMO] 2020-05-20 | BUY deferred → fill at 2020-05-21 open | chan=₹46.06
+  [SIZING] 2020-05-21 (AMO open)| entry=₹57.23 | chan=₹46.06 (chandelier) | dist=₹11.17 | risk=₹1499 → 134 shr [risk_budget]
+  BUY  2020-05-21 | 134 shares @ ₹57.23 (close ₹57.20) | cost ₹20.00 | cash left ₹92214.34
+  SELL 2020-06-15 | 134 shares @ ₹69.17 (close ₹69.20) | P&L ₹+1577.21 (+20.86%) [CHANDELIER]
+  [COOLDOWN] 2020-06-16 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-06-17 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-06-18 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-06-19 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-06-22 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-06-23 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-06-24 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-06-25 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-06-26 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-06-29 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-06-30 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-07-01 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-07-02 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2020-07-03 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2020-07-06 | buy suppressed (1 bars remaining)
+  [AMO] 2020-07-07 | BUY deferred → fill at 2020-07-08 open | chan=₹66.43
+  [SIZING] 2020-07-08 (AMO open)| entry=₹75.44 | chan=₹66.43 (chandelier) | dist=₹9.01 | risk=₹1522 → 168 shr [risk_budget]
+  BUY  2020-07-08 | 168 shares @ ₹75.44 (close ₹75.40) | cost ₹20.00 | cash left ₹88766.66
+  SELL 2020-09-21 | 168 shares @ ₹94.60 (close ₹94.65) | P&L ₹+3195.74 (+25.41%) [CHANDELIER]
+  [COOLDOWN] 2020-09-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-09-23 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-09-24 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-09-25 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-09-28 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-09-29 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-09-30 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-10-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-10-05 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-10-06 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-10-07 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-10-08 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-10-09 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2020-10-12 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2020-10-13 | buy suppressed (1 bars remaining)
+  [AMO] 2020-10-14 | BUY deferred → fill at 2020-10-15 open | chan=₹80.22
+  [SIZING] 2020-10-15 (AMO open)| entry=₹90.60 | chan=₹80.22 (chandelier) | dist=₹10.37 | risk=₹1570 → 151 shr [risk_budget]
+  BUY  2020-10-15 | 151 shares @ ₹90.60 (close ₹90.55) | cost ₹20.00 | cash left ₹90936.05
+  [AMO] 2020-10-16 | SELL deferred → fill at 2020-10-19 open
+  SELL 2020-10-19 | 151 shares @ ₹89.31 (close ₹89.35) | P&L ₹-218.15 (-1.42%)
+  [AMO] 2020-11-14 | BUY deferred → fill at 2020-11-17 open | chan=₹92.95
+  [SIZING] 2020-11-17 (AMO open)| entry=₹105.05 | chan=₹92.95 (chandelier) | dist=₹12.10 | risk=₹1566 → 129 shr [risk_budget]
+  BUY  2020-11-17 | 129 shares @ ₹105.05 (close ₹105.00) | cost ₹20.00 | cash left ₹90826.01
+  SELL 2020-12-21 | 129 shares @ ₹113.24 (close ₹113.30) | P&L ₹+1032.97 (+7.80%) [CHANDELIER]
+  [COOLDOWN] 2020-12-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-12-23 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-12-24 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-12-28 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-12-29 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-12-30 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-12-31 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-01-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-01-04 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-01-05 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-01-06 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-01-07 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-01-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-01-11 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-01-12 | buy suppressed (1 bars remaining)
+  [AMO] 2021-01-13 | BUY deferred → fill at 2021-01-14 open | chan=₹153.27
+  [SIZING] 2021-01-14 (AMO open)| entry=₹167.28 | chan=₹153.27 (chandelier) | dist=₹14.02 | risk=₹1581 → 112 shr [risk_budget]
+  BUY  2021-01-14 | 112 shares @ ₹167.28 (close ₹167.20) | cost ₹20.00 | cash left ₹86654.98
+  SELL 2021-01-27 | 112 shares @ ₹184.06 (close ₹184.15) | P&L ₹+1853.57 (+10.03%) [CHANDELIER]
+  [COOLDOWN] 2021-01-28 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-01-29 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-02-01 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-02-02 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-02-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-02-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-02-05 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-02-08 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-02-09 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-02-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-02-11 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-02-12 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-02-15 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-02-16 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-02-17 | buy suppressed (1 bars remaining)
+  [AMO] 2021-02-18 | BUY deferred → fill at 2021-02-19 open | chan=₹198.00
+  [SIZING] 2021-02-19 (AMO open)| entry=₹221.76 | chan=₹198.00 (chandelier) | dist=₹23.76 | risk=₹1609 → 67 shr [risk_budget]
+  BUY  2021-02-19 | 67 shares @ ₹221.76 (close ₹221.65) | cost ₹20.00 | cash left ₹92366.34
+  SELL 2021-03-17 | 67 shares @ ₹210.44 (close ₹210.55) | P&L ₹-781.70 (-5.10%) [CHANDELIER]
+  [COOLDOWN] 2021-03-18 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-03-19 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-03-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-03-23 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-03-24 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-03-25 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-03-26 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-03-30 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-03-31 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-04-01 | buy suppressed (6 bars remaining)
+  [AMO] 2021-05-24 | BUY deferred → fill at 2021-05-25 open | chan=₹191.86
+  [SIZING] 2021-05-25 (AMO open)| entry=₹217.36 | chan=₹191.86 (chandelier) | dist=₹25.50 | risk=₹1597 → 62 shr [risk_budget]
+  BUY  2021-05-25 | 62 shares @ ₹217.36 (close ₹217.25) | cost ₹20.00 | cash left ₹92946.38
+  SELL 2021-07-06 | 62 shares @ ₹218.09 (close ₹218.20) | P&L ₹+22.02 (+0.34%) [CHANDELIER]
+  [COOLDOWN] 2021-07-07 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-07-08 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-07-09 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-07-12 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-07-13 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-07-14 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-07-15 | buy suppressed (9 bars remaining)
+  [AMO] 2021-09-23 | BUY deferred → fill at 2021-09-24 open | chan=₹205.07
+  [SIZING] 2021-09-24 (AMO open)| entry=₹223.96 | chan=₹205.07 (chandelier) | dist=₹18.89 | risk=₹1597 → 84 shr [risk_budget]
+  BUY  2021-09-24 | 84 shares @ ₹223.96 (close ₹223.85) | cost ₹20.00 | cash left ₹87611.83
+  SELL 2021-11-26 | 84 shares @ ₹316.69 (close ₹316.85) | P&L ₹+7762.64 (+41.40%) [CHANDELIER]
+  [COOLDOWN] 2021-11-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-11-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-12-01 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-12-02 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-12-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-12-06 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-12-07 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-12-08 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-12-09 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-12-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-12-13 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-12-14 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-12-15 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-12-16 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-12-17 | buy suppressed (1 bars remaining)
+  [AMO] 2022-01-18 | BUY deferred → fill at 2022-01-19 open | chan=₹332.48
+  [SIZING] 2022-01-19 (AMO open)| entry=₹351.33 | chan=₹332.48 (chandelier) | dist=₹18.85 | risk=₹1713 → 65 shr [position_cap]
+  BUY  2022-01-19 | 65 shares @ ₹351.33 (close ₹351.15) | cost ₹20.00 | cash left ₹91331.11
+  SELL 2022-02-14 | 65 shares @ ₹324.44 (close ₹324.60) | P&L ₹-1772.98 (-7.65%) [CHANDELIER]
+  [COOLDOWN] 2022-02-15 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-02-16 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-02-17 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-02-18 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-02-21 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-02-22 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-02-23 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-02-24 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-02-25 | buy suppressed (7 bars remaining)
+  [AMO] 2022-05-02 | BUY deferred → fill at 2022-05-04 open | chan=₹276.55
+  [SIZING] 2022-05-04 (AMO open)| entry=₹301.70 | chan=₹276.55 (chandelier) | dist=₹25.15 | risk=₹1686 → 67 shr [risk_budget]
+  BUY  2022-05-04 | 67 shares @ ₹301.70 (close ₹301.55) | cost ₹20.00 | cash left ₹92160.34
+  [AMO] 2022-05-09 | SELL deferred → fill at 2022-05-10 open
+  SELL 2022-05-10 | 67 shares @ ₹275.26 (close ₹275.40) | P&L ₹-1795.99 (-8.76%)
+  [AMO] 2022-07-18 | BUY deferred → fill at 2022-07-19 open | chan=₹286.59
+  [SIZING] 2022-07-19 (AMO open)| entry=₹307.75 | chan=₹286.59 (chandelier) | dist=₹21.17 | risk=₹1659 → 71 shr [position_cap]
+  BUY  2022-07-19 | 71 shares @ ₹307.75 (close ₹307.60) | cost ₹20.00 | cash left ₹88707.78
+  SELL 2022-08-22 | 71 shares @ ₹312.84 (close ₹313.00) | P&L ₹+335.82 (+1.65%) [CHANDELIER]
+  [COOLDOWN] 2022-08-23 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-08-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-08-25 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-08-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-08-29 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-08-30 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-09-01 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-09-02 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-09-05 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-09-06 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-09-07 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-09-08 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-09-09 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-09-12 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2022-09-13 | buy suppressed (1 bars remaining)
+  [AMO] 2022-09-14 | BUY deferred → fill at 2022-09-15 open | chan=₹288.74
+  [SIZING] 2022-09-15 (AMO open)| entry=₹311.66 | chan=₹288.74 (chandelier) | dist=₹22.91 | risk=₹1663 → 71 shr [position_cap]
+  BUY  2022-09-15 | 71 shares @ ₹311.66 (close ₹311.50) | cost ₹20.00 | cash left ₹88746.56
+  [AMO] 2022-09-19 | SELL deferred → fill at 2022-09-20 open
+  SELL 2022-09-20 | 71 shares @ ₹296.30 (close ₹296.45) | P&L ₹-1115.39 (-4.93%)
+  [AMO] 2022-11-18 | BUY deferred → fill at 2022-11-21 open | chan=₹271.96
+  [SIZING] 2022-11-21 (AMO open)| entry=₹293.20 | chan=₹271.96 (chandelier) | dist=₹21.24 | risk=₹1646 → 74 shr [position_cap]
+  BUY  2022-11-21 | 74 shares @ ₹293.20 (close ₹293.05) | cost ₹20.00 | cash left ₹88042.18
+  SELL 2022-12-09 | 74 shares @ ₹284.41 (close ₹284.55) | P&L ₹-675.63 (-3.00%) [CHANDELIER]
+  [COOLDOWN] 2022-12-12 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-12-13 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-12-14 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-12-15 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-12-16 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-12-19 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-12-20 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-12-21 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-12-22 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-12-23 | buy suppressed (6 bars remaining)
+
+────────────────────────────────────────────────────────────
+  TMPV.NS  —  out_of_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹270.75
+  [SIZING] 2023-03-15 (AMO open)| entry=₹290.70 | chan=₹270.75 (chandelier) | dist=₹19.95 | risk=₹1500 → 68 shr [position_cap]
+  BUY  2023-03-15 | 68 shares @ ₹290.70 (close ₹290.55) | cost ₹20.00 | cash left ₹80212.72
+  [AMO] 2023-03-20 | SELL deferred → fill at 2023-03-21 open
+  SELL 2023-03-21 | 68 shares @ ₹284.11 (close ₹284.25) | P&L ₹-472.77 (-2.27%)
+  [AMO] 2023-04-19 | BUY deferred → fill at 2023-04-20 open | chan=₹305.18
+  [SIZING] 2023-04-20 (AMO open)| entry=₹326.31 | chan=₹305.18 (chandelier) | dist=₹21.13 | risk=₹1493 → 60 shr [position_cap]
+  BUY  2023-04-20 | 60 shares @ ₹326.31 (close ₹326.15) | cost ₹20.00 | cash left ₹79908.44
+  SELL 2023-07-14 | 60 shares @ ₹430.03 (close ₹430.25) | P&L ₹+6196.86 (+31.79%) [TIME_STOP]
+  [COOLDOWN] 2023-07-17 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-07-18 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-19 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-07-20 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-07-21 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-07-24 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-07-25 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-07-26 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-07-27 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-07-28 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-07-31 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-08-01 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-08-02 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-08-03 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-08-04 | buy suppressed (1 bars remaining)
+  [AMO] 2023-08-07 | BUY deferred → fill at 2023-08-08 open | chan=₹396.00
+  [SIZING] 2023-08-08 (AMO open)| entry=₹421.96 | chan=₹396.00 (chandelier) | dist=₹25.96 | risk=₹1585 → 50 shr [position_cap]
+  BUY  2023-08-08 | 50 shares @ ₹421.96 (close ₹421.75) | cost ₹20.00 | cash left ₹84566.04
+  [AMO] 2023-09-01 | SELL deferred → fill at 2023-09-04 open
+  SELL 2023-09-04 | 50 shares @ ₹423.64 (close ₹423.85) | P&L ₹+58.56 (+0.40%)
+  [AMO] 2023-09-27 | BUY deferred → fill at 2023-09-28 open | chan=₹404.30
+  [SIZING] 2023-09-28 (AMO open)| entry=₹429.06 | chan=₹404.30 (chandelier) | dist=₹24.77 | risk=₹1586 → 49 shr [position_cap]
+  BUY  2023-09-28 | 49 shares @ ₹429.06 (close ₹428.85) | cost ₹20.00 | cash left ₹84678.49
+  SELL 2023-10-25 | 49 shares @ ₹438.93 (close ₹439.15) | P&L ₹+458.06 (+2.30%) [CHANDELIER]
+  [COOLDOWN] 2023-10-26 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-10-27 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-10-30 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-10-31 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-11-01 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-11-02 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-11-03 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-11-06 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-11-07 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-11-08 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-11-09 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-11-10 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-11-12 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-11-13 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-11-15 | buy suppressed (1 bars remaining)
+  [AMO] 2023-11-16 | BUY deferred → fill at 2023-11-17 open | chan=₹445.02
+  [SIZING] 2023-11-17 (AMO open)| entry=₹470.13 | chan=₹445.02 (chandelier) | dist=₹25.12 | risk=₹1592 → 45 shr [position_cap]
+  BUY  2023-11-17 | 45 shares @ ₹470.13 (close ₹469.90) | cost ₹20.00 | cash left ₹84984.63
+  SELL 2024-02-13 | 45 shares @ ₹624.09 (close ₹624.40) | P&L ₹+6900.86 (+32.75%) [TIME_STOP]
+  [COOLDOWN] 2024-02-14 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-02-15 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-02-16 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-02-19 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-02-20 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-02-21 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-02-22 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-02-23 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-02-26 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-02-27 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-02-28 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-02-29 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-03-01 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-03-02 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-03-04 | buy suppressed (1 bars remaining)
+  [AMO] 2024-03-05 | BUY deferred → fill at 2024-03-06 open | chan=₹686.48
+  [SIZING] 2024-03-06 (AMO open)| entry=₹706.05 | chan=₹686.48 (chandelier) | dist=₹19.57 | risk=₹1696 → 32 shr [position_cap]
+  BUY  2024-03-06 | 32 shares @ ₹706.05 (close ₹705.70) | cost ₹20.00 | cash left ₹90427.87
+  SELL 2024-03-13 | 32 shares @ ₹669.71 (close ₹670.05) | P&L ₹-1188.17 (-5.15%) [CHANDELIER]
+  [COOLDOWN] 2024-03-14 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-03-15 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-03-18 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-03-19 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-03-20 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-03-21 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-03-22 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-03-26 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-03-27 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-03-28 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-04-01 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-04-02 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-04-03 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-04-04 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-04-05 | buy suppressed (1 bars remaining)
+  [AMO] 2024-04-08 | BUY deferred → fill at 2024-04-09 open | chan=₹643.50
+  [SIZING] 2024-04-09 (AMO open)| entry=₹703.30 | chan=₹643.50 (chandelier) | dist=₹59.80 | risk=₹1678 → 28 shr [risk_budget]
+  BUY  2024-04-09 | 28 shares @ ₹703.30 (close ₹702.95) | cost ₹20.00 | cash left ₹92120.95
+  SELL 2024-05-13 | 28 shares @ ₹660.47 (close ₹660.80) | P&L ₹-1223.92 (-6.09%) [CHANDELIER]
+  [COOLDOWN] 2024-05-14 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-05-15 | buy suppressed (14 bars remaining)
+  [AMO] 2024-07-04 | BUY deferred → fill at 2024-07-05 open | chan=₹643.14
+  [SIZING] 2024-07-05 (AMO open)| entry=₹692.30 | chan=₹643.14 (chandelier) | dist=₹49.16 | risk=₹1659 → 31 shr [position_cap]
+  BUY  2024-07-05 | 31 shares @ ₹692.30 (close ₹691.95) | cost ₹20.00 | cash left ₹89108.30
+  SELL 2024-08-05 | 31 shares @ ₹699.50 (close ₹699.85) | P&L ₹+197.91 (+1.04%) [CHANDELIER]
+  [COOLDOWN] 2024-08-06 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-08-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-08-08 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-08-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-08-12 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-08-13 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-08-14 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-08-16 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-08-19 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-08-20 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-08-21 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-08-22 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-08-23 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-08-26 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-08-27 | buy suppressed (1 bars remaining)
+  [AMO] 2024-08-28 | BUY deferred → fill at 2024-08-29 open | chan=₹690.68
+  [SIZING] 2024-08-29 (AMO open)| entry=₹743.32 | chan=₹690.68 (chandelier) | dist=₹52.64 | risk=₹1662 → 29 shr [position_cap]
+  BUY  2024-08-29 | 29 shares @ ₹743.32 (close ₹742.95) | cost ₹20.00 | cash left ₹89191.06
+  SELL 2024-09-06 | 29 shares @ ₹722.14 (close ₹722.50) | P&L ₹-639.53 (-2.85%) [CHANDELIER]
+  [COOLDOWN] 2024-09-09 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-09-10 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-09-11 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-09-12 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-09-13 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-09-16 | buy suppressed (10 bars remaining)
+  [AMO] 2025-05-13 | BUY deferred → fill at 2025-05-14 open | chan=₹445.50
+  [SIZING] 2025-05-14 (AMO open)| entry=₹475.29 | chan=₹445.50 (chandelier) | dist=₹29.79 | risk=₹1652 → 46 shr [position_cap]
+  BUY  2025-05-14 | 46 shares @ ₹475.29 (close ₹475.05) | cost ₹20.00 | cash left ₹88224.62
+  SELL 2025-06-16 | 46 shares @ ₹472.51 (close ₹472.75) | P&L ₹-153.03 (-0.58%) [CHANDELIER]
+  [COOLDOWN] 2025-06-17 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-06-18 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-06-19 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-06-20 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-06-23 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-06-24 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-06-25 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-06-26 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-06-27 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-06-30 | buy suppressed (6 bars remaining)
+  [AMO] 2025-09-09 | BUY deferred → fill at 2025-09-10 open | chan=₹465.71
+  [SIZING] 2025-09-10 (AMO open)| entry=₹494.35 | chan=₹465.71 (chandelier) | dist=₹28.64 | risk=₹1649 → 44 shr [position_cap]
+  BUY  2025-09-10 | 44 shares @ ₹494.35 (close ₹494.10) | cost ₹20.00 | cash left ₹88163.55
+  SELL 2025-09-25 | 44 shares @ ₹457.12 (close ₹457.35) | P&L ₹-1662.96 (-7.53%) [CHANDELIER]
+  [COOLDOWN] 2025-09-26 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-09-29 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-09-30 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-10-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-10-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-10-06 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-10-07 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-10-08 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-10-09 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-10-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-10-13 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-10-14 | buy suppressed (4 bars remaining)
+
+────────────────────────────────────────────────────────────
+  WHIRLPOOL.NS  —  in_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2018-03-20 | BUY deferred → fill at 2018-03-21 open | chan=₹1420.14
+  [SIZING] 2018-03-21 (AMO open)| entry=₹1528.86 | chan=₹1420.14 (chandelier) | dist=₹108.73 | risk=₹1500 → 13 shr [risk_budget]
+  BUY  2018-03-21 | 13 shares @ ₹1528.86 (close ₹1528.10) | cost ₹20.00 | cash left ₹80104.77
+  [AMO] 2018-06-05 | SELL deferred → fill at 2018-06-06 open
+  SELL 2018-06-06 | 13 shares @ ₹1537.58 (close ₹1538.35) | P&L ₹+88.32 (+0.57%)
+  [AMO] 2018-07-27 | BUY deferred → fill at 2018-07-30 open | chan=₹1561.02
+  [SIZING] 2018-07-30 (AMO open)| entry=₹1690.79 | chan=₹1561.02 (chandelier) | dist=₹129.78 | risk=₹1501 → 11 shr [risk_budget]
+  BUY  2018-07-30 | 11 shares @ ₹1690.79 (close ₹1689.95) | cost ₹20.00 | cash left ₹81449.58
+  SELL 2018-09-05 | 11 shares @ ₹1667.72 (close ₹1668.55) | P&L ₹-278.46 (-1.36%) [CHANDELIER]
+  [COOLDOWN] 2018-09-06 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-09-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-09-10 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2018-09-11 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2018-09-12 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2018-09-14 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2018-09-17 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2018-09-18 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2018-09-19 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2018-09-21 | buy suppressed (6 bars remaining)
+  [AMO] 2019-01-09 | BUY deferred → fill at 2019-01-10 open | chan=₹1334.65
+  [SIZING] 2019-01-10 (AMO open)| entry=₹1455.58 | chan=₹1334.65 (chandelier) | dist=₹120.93 | risk=₹1497 → 12 shr [risk_budget]
+  BUY  2019-01-10 | 12 shares @ ₹1455.58 (close ₹1454.85) | cost ₹20.00 | cash left ₹82282.93
+  SELL 2019-02-06 | 12 shares @ ₹1428.39 (close ₹1429.10) | P&L ₹-350.59 (-1.87%) [CHANDELIER]
+  [COOLDOWN] 2019-02-07 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-02-08 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-02-11 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-02-12 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-02-13 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-02-14 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-02-15 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-02-18 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-02-19 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-02-20 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-02-21 | buy suppressed (5 bars remaining)
+  [AMO] 2019-03-18 | BUY deferred → fill at 2019-03-19 open | chan=₹1451.95
+  [SIZING] 2019-03-19 (AMO open)| entry=₹1585.74 | chan=₹1451.95 (chandelier) | dist=₹133.79 | risk=₹1491 → 11 shr [risk_budget]
+  BUY  2019-03-19 | 11 shares @ ₹1585.74 (close ₹1584.95) | cost ₹20.00 | cash left ₹81936.11
+  SELL 2019-04-09 | 11 shares @ ₹1442.78 (close ₹1443.50) | P&L ₹-1596.57 (-9.02%) [CHANDELIER]
+  [COOLDOWN] 2019-04-10 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-04-11 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-04-12 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-04-15 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-04-16 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-04-18 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-04-22 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-04-23 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-04-24 | buy suppressed (7 bars remaining)
+  [AMO] 2019-06-10 | BUY deferred → fill at 2019-06-11 open | chan=₹1442.12
+  [SIZING] 2019-06-11 (AMO open)| entry=₹1580.44 | chan=₹1442.12 (chandelier) | dist=₹138.32 | risk=₹1467 → 10 shr [risk_budget]
+  BUY  2019-06-11 | 10 shares @ ₹1580.44 (close ₹1579.65) | cost ₹20.00 | cash left ₹81958.30
+  SELL 2019-07-23 | 10 shares @ ₹1500.45 (close ₹1501.20) | P&L ₹-823.66 (-5.06%) [CHANDELIER]
+  [COOLDOWN] 2019-07-24 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-07-25 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-07-26 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-07-29 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-07-30 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-07-31 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-08-01 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-08-02 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-08-05 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-08-06 | buy suppressed (6 bars remaining)
+  [AMO] 2019-09-09 | BUY deferred → fill at 2019-09-11 open | chan=₹1546.08
+  [SIZING] 2019-09-11 (AMO open)| entry=₹1655.83 | chan=₹1546.08 (chandelier) | dist=₹109.75 | risk=₹1454 → 11 shr [position_cap]
+  BUY  2019-09-11 | 11 shares @ ₹1655.83 (close ₹1655.00) | cost ₹20.00 | cash left ₹78704.94
+  SELL 2019-11-26 | 11 shares @ ₹2029.38 (close ₹2030.40) | P&L ₹+4083.55 (+22.56%) [CHANDELIER]
+  [COOLDOWN] 2019-11-27 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-11-28 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-11-29 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-12-02 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-12-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-12-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-12-05 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-12-06 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-12-09 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-12-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-12-11 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-12-12 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-12-13 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-12-16 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-12-17 | buy suppressed (1 bars remaining)
+  [AMO] 2019-12-18 | BUY deferred → fill at 2019-12-19 open | chan=₹1940.95
+  [SIZING] 2019-12-19 (AMO open)| entry=₹2191.09 | chan=₹1940.95 (chandelier) | dist=₹250.15 | risk=₹1515 → 6 shr [risk_budget]
+  BUY  2019-12-19 | 6 shares @ ₹2191.09 (close ₹2190.00) | cost ₹20.00 | cash left ₹87836.02
+  SELL 2020-02-11 | 6 shares @ ₹2290.35 (close ₹2291.50) | P&L ₹+572.12 (+4.53%) [CHANDELIER]
+  [COOLDOWN] 2020-02-12 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-02-13 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-02-14 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-02-17 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-02-18 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-02-19 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-02-20 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-02-24 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-02-25 | buy suppressed (7 bars remaining)
+  [AMO] 2020-05-21 | BUY deferred → fill at 2020-05-22 open | chan=₹1584.00
+  [SIZING] 2020-05-22 (AMO open)| entry=₹1894.95 | chan=₹1584.00 (chandelier) | dist=₹310.95 | risk=₹1523 → 4 shr [risk_budget]
+  BUY  2020-05-22 | 4 shares @ ₹1894.95 (close ₹1894.00) | cost ₹20.00 | cash left ₹93954.93
+  SELL 2020-07-31 | 4 shares @ ₹2071.96 (close ₹2073.00) | P&L ₹+685.99 (+9.34%) [CHANDELIER]
+  [COOLDOWN] 2020-08-03 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-08-04 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-08-05 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-08-06 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-08-07 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-08-10 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-08-11 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-08-12 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-08-13 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-08-14 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-08-17 | buy suppressed (5 bars remaining)
+  [AMO] 2020-09-15 | BUY deferred → fill at 2020-09-16 open | chan=₹1980.00
+  [SIZING] 2020-09-16 (AMO open)| entry=₹2239.02 | chan=₹1980.00 (chandelier) | dist=₹259.02 | risk=₹1533 → 5 shr [risk_budget]
+  BUY  2020-09-16 | 5 shares @ ₹2239.02 (close ₹2237.90) | cost ₹20.00 | cash left ₹91005.61
+  [AMO] 2020-10-16 | SELL deferred → fill at 2020-10-19 open
+  SELL 2020-10-19 | 5 shares @ ₹2076.96 (close ₹2078.00) | P&L ₹-832.89 (-7.24%)
+  [AMO] 2020-11-26 | BUY deferred → fill at 2020-11-27 open | chan=₹1980.00
+  [SIZING] 2020-11-27 (AMO open)| entry=₹2135.47 | chan=₹1980.00 (chandelier) | dist=₹155.47 | risk=₹1521 → 9 shr [risk_budget]
+  BUY  2020-11-27 | 9 shares @ ₹2135.47 (close ₹2134.40) | cost ₹20.00 | cash left ₹82128.62
+  SELL 2021-02-04 | 9 shares @ ₹2444.03 (close ₹2445.25) | P&L ₹+2751.54 (+14.45%) [CHANDELIER]
+  [COOLDOWN] 2021-02-05 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-02-08 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-02-09 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-02-10 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-02-11 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-02-12 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-02-15 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-02-16 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-02-17 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-02-18 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-02-19 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-02-22 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-02-23 | buy suppressed (3 bars remaining)
+  [AMO] 2021-06-15 | BUY deferred → fill at 2021-06-16 open | chan=₹2178.00
+  [SIZING] 2021-06-16 (AMO open)| entry=₹2399.05 | chan=₹2178.00 (chandelier) | dist=₹221.05 | risk=₹1561 → 7 shr [risk_budget]
+  BUY  2021-06-16 | 7 shares @ ₹2399.05 (close ₹2397.85) | cost ₹20.00 | cash left ₹87286.02
+  SELL 2021-06-18 | 7 shares @ ₹2198.00 (close ₹2199.10) | P&L ₹-1431.19 (-8.38%) [CHANDELIER]
+  [COOLDOWN] 2021-06-21 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-06-22 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-06-23 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-06-24 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-06-25 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-06-28 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-06-29 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-06-30 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-07-01 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-07-02 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-07-05 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-07-06 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-07-07 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-07-08 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-07-09 | buy suppressed (1 bars remaining)
+  [AMO] 2021-07-12 | BUY deferred → fill at 2021-07-13 open | chan=₹2079.00
+  [SIZING] 2021-07-13 (AMO open)| entry=₹2226.11 | chan=₹2079.00 (chandelier) | dist=₹147.11 | risk=₹1540 → 9 shr [position_cap]
+  BUY  2021-07-13 | 9 shares @ ₹2226.11 (close ₹2225.00) | cost ₹20.00 | cash left ₹82593.17
+  [AMO] 2021-08-03 | SELL deferred → fill at 2021-08-04 open
+  SELL 2021-08-04 | 9 shares @ ₹2187.91 (close ₹2189.00) | P&L ₹-368.79 (-1.72%)
+  [AMO] 2021-09-17 | BUY deferred → fill at 2021-09-20 open | chan=₹2079.00
+  [SIZING] 2021-09-20 (AMO open)| entry=₹2206.10 | chan=₹2079.00 (chandelier) | dist=₹127.10 | risk=₹1534 → 9 shr [position_cap]
+  BUY  2021-09-20 | 9 shares @ ₹2206.10 (close ₹2205.00) | cost ₹20.00 | cash left ₹82384.47
+  SELL 2021-10-19 | 9 shares @ ₹2299.70 (close ₹2300.85) | P&L ₹+817.20 (+4.24%) [CHANDELIER]
+  [COOLDOWN] 2021-10-20 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-10-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-10-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-10-25 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-10-26 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-10-27 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-10-28 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-10-29 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-11-01 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-11-02 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-11-03 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-11-04 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-11-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-11-09 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-11-10 | buy suppressed (1 bars remaining)
+  [AMO] 2022-04-29 | BUY deferred → fill at 2022-05-02 open | chan=₹1485.00
+  [SIZING] 2022-05-02 (AMO open)| entry=₹1605.80 | chan=₹1485.00 (chandelier) | dist=₹120.80 | risk=₹1546 → 12 shr [risk_budget]
+  BUY  2022-05-02 | 12 shares @ ₹1605.80 (close ₹1605.00) | cost ₹20.00 | cash left ₹83766.96
+  [AMO] 2022-05-12 | SELL deferred → fill at 2022-05-13 open
+  SELL 2022-05-13 | 12 shares @ ₹1561.22 (close ₹1562.00) | P&L ₹-559.69 (-2.78%)
+  [AMO] 2022-07-15 | BUY deferred → fill at 2022-07-18 open | chan=₹1566.95
+  [SIZING] 2022-07-18 (AMO open)| entry=₹1700.25 | chan=₹1566.95 (chandelier) | dist=₹133.30 | risk=₹1537 → 11 shr [risk_budget]
+  BUY  2022-07-18 | 11 shares @ ₹1700.25 (close ₹1699.40) | cost ₹20.00 | cash left ₹83754.16
+  SELL 2022-08-22 | 11 shares @ ₹1763.07 (close ₹1763.95) | P&L ₹+666.15 (+3.69%) [CHANDELIER]
+  [COOLDOWN] 2022-08-23 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-08-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-08-25 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-08-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-08-29 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-08-30 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-09-01 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-09-02 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-09-05 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-09-06 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-09-07 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-09-08 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-09-09 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-09-12 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2022-09-13 | buy suppressed (1 bars remaining)
+  [AMO] 2022-09-14 | BUY deferred → fill at 2022-09-15 open | chan=₹1622.45
+  [SIZING] 2022-09-15 (AMO open)| entry=₹1769.68 | chan=₹1622.45 (chandelier) | dist=₹147.24 | risk=₹1547 → 10 shr [risk_budget]
+  BUY  2022-09-15 | 10 shares @ ₹1769.68 (close ₹1768.80) | cost ₹20.00 | cash left ₹85406.22
+  [AMO] 2022-09-23 | SELL deferred → fill at 2022-09-26 open
+  SELL 2022-09-26 | 10 shares @ ₹1640.18 (close ₹1641.00) | P&L ₹-1319.15 (-7.32%)
+
+────────────────────────────────────────────────────────────
+  WHIRLPOOL.NS  —  out_of_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2023-03-29 | BUY deferred → fill at 2023-03-31 open | chan=₹1235.22
+  [SIZING] 2023-03-31 (AMO open)| entry=₹1301.30 | chan=₹1235.22 (chandelier) | dist=₹66.08 | risk=₹1500 → 15 shr [position_cap]
+  BUY  2023-03-31 | 15 shares @ ₹1301.30 (close ₹1300.65) | cost ₹20.00 | cash left ₹80460.50
+  [AMO] 2023-05-02 | SELL deferred → fill at 2023-05-03 open
+  SELL 2023-05-03 | 15 shares @ ₹1315.34 (close ₹1316.00) | P&L ₹+185.69 (+1.08%)
+  [AMO] 2023-05-03 | BUY deferred → fill at 2023-05-04 open | chan=₹1263.47
+  [SIZING] 2023-05-04 (AMO open)| entry=₹1343.12 | chan=₹1263.47 (chandelier) | dist=₹79.65 | risk=₹1502 → 14 shr [position_cap]
+  BUY  2023-05-04 | 14 shares @ ₹1343.12 (close ₹1342.45) | cost ₹20.00 | cash left ₹81342.00
+  [AMO] 2023-05-10 | SELL deferred → fill at 2023-05-11 open
+  SELL 2023-05-11 | 14 shares @ ₹1324.74 (close ₹1325.40) | P&L ₹-282.01 (-1.37%)
+  [AMO] 2023-05-19 | BUY deferred → fill at 2023-05-22 open | chan=₹1281.96
+  [SIZING] 2023-05-22 (AMO open)| entry=₹1371.69 | chan=₹1281.96 (chandelier) | dist=₹89.72 | risk=₹1498 → 14 shr [position_cap]
+  BUY  2023-05-22 | 14 shares @ ₹1371.69 (close ₹1371.00) | cost ₹20.00 | cash left ₹80640.08
+  SELL 2023-07-26 | 14 shares @ ₹1421.34 (close ₹1422.05) | P&L ₹+670.17 (+3.62%) [CHANDELIER]
+  [COOLDOWN] 2023-07-27 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-07-28 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-31 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-08-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-08-11 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-08-14 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-08-16 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-08-17 | buy suppressed (1 bars remaining)
+  [AMO] 2023-08-18 | BUY deferred → fill at 2023-08-21 open | chan=₹1485.00
+  [SIZING] 2023-08-21 (AMO open)| entry=₹1580.79 | chan=₹1485.00 (chandelier) | dist=₹95.79 | risk=₹1508 → 12 shr [position_cap]
+  BUY  2023-08-21 | 12 shares @ ₹1580.79 (close ₹1580.00) | cost ₹20.00 | cash left ₹81524.38
+  SELL 2023-10-30 | 12 shares @ ₹1618.69 (close ₹1619.50) | P&L ₹+429.95 (+2.40%) [CHANDELIER]
+  [COOLDOWN] 2023-10-31 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-11-01 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-11-02 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-11-03 | buy suppressed (12 bars remaining)
+  [AMO] 2024-02-13 | BUY deferred → fill at 2024-02-14 open | chan=₹1269.47
+  [SIZING] 2024-02-14 (AMO open)| entry=₹1330.66 | chan=₹1269.47 (chandelier) | dist=₹61.20 | risk=₹1514 → 15 shr [position_cap]
+  BUY  2024-02-14 | 15 shares @ ₹1330.66 (close ₹1330.00) | cost ₹20.00 | cash left ₹80943.83
+  [AMO] 2024-02-14 | SELL deferred → fill at 2024-02-15 open
+  SELL 2024-02-15 | 15 shares @ ₹1344.33 (close ₹1345.00) | P&L ₹+179.90 (+1.03%)
+  [AMO] 2024-04-15 | BUY deferred → fill at 2024-04-16 open | chan=₹1318.41
+  [SIZING] 2024-04-16 (AMO open)| entry=₹1420.71 | chan=₹1318.41 (chandelier) | dist=₹102.30 | risk=₹1516 → 14 shr [risk_budget]
+  BUY  2024-04-16 | 14 shares @ ₹1420.71 (close ₹1420.00) | cost ₹20.00 | cash left ₹81173.76
+  SELL 2024-05-03 | 14 shares @ ₹1466.57 (close ₹1467.30) | P&L ₹+616.86 (+3.23%) [CHANDELIER]
+  [COOLDOWN] 2024-05-06 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-05-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-05-08 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-05-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-05-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-05-13 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-05-14 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-05-15 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-05-16 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-05-17 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-05-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-05-21 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-05-22 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-05-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-05-24 | buy suppressed (1 bars remaining)
+  [AMO] 2024-05-27 | BUY deferred → fill at 2024-05-28 open | chan=₹1386.00
+  [SIZING] 2024-05-28 (AMO open)| entry=₹1532.92 | chan=₹1386.00 (chandelier) | dist=₹146.92 | risk=₹1525 → 10 shr [risk_budget]
+  BUY  2024-05-28 | 10 shares @ ₹1532.92 (close ₹1532.15) | cost ₹20.00 | cash left ₹86331.39
+  SELL 2024-07-01 | 10 shares @ ₹1956.02 (close ₹1957.00) | P&L ₹+4206.16 (+27.60%) [CHANDELIER]
+  [COOLDOWN] 2024-07-02 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-07-03 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-07-04 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-07-05 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-07-08 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-07-09 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-07-10 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-07-11 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-07-12 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-07-15 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-07-16 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-07-18 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-07-19 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-07-22 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-07-23 | buy suppressed (1 bars remaining)
+  [AMO] 2024-07-24 | BUY deferred → fill at 2024-07-25 open | chan=₹1782.00
+  [SIZING] 2024-07-25 (AMO open)| entry=₹2001.00 | chan=₹1782.00 (chandelier) | dist=₹219.00 | risk=₹1588 → 7 shr [risk_budget]
+  BUY  2024-07-25 | 7 shares @ ₹2001.00 (close ₹2000.00) | cost ₹20.00 | cash left ₹91839.72
+  SELL 2024-09-16 | 7 shares @ ₹2046.18 (close ₹2047.20) | P&L ₹+292.65 (+2.26%) [CHANDELIER]
+  [COOLDOWN] 2024-09-17 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-09-18 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-09-19 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-09-20 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-09-23 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-09-24 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-09-25 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-09-26 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-09-27 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-09-30 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-10-01 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-10-03 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-10-04 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-10-07 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-10-08 | buy suppressed (1 bars remaining)
+  [AMO] 2024-10-09 | BUY deferred → fill at 2024-10-10 open | chan=₹2165.88
+  [SIZING] 2024-10-10 (AMO open)| entry=₹2359.68 | chan=₹2165.88 (chandelier) | dist=₹193.80 | risk=₹1592 → 8 shr [risk_budget]
+  BUY  2024-10-10 | 8 shares @ ₹2359.68 (close ₹2358.50) | cost ₹20.00 | cash left ₹87241.94
+  SELL 2024-10-28 | 8 shares @ ₹2157.27 (close ₹2158.35) | P&L ₹-1643.58 (-8.58%) [CHANDELIER]
+  [COOLDOWN] 2024-10-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-10-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-10-31 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-11-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-11-04 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-11-05 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-11-06 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-11-07 | buy suppressed (8 bars remaining)
+  [AMO] 2025-04-16 | BUY deferred → fill at 2025-04-17 open | chan=₹984.27
+  [SIZING] 2025-04-17 (AMO open)| entry=₹1100.75 | chan=₹984.27 (chandelier) | dist=₹116.48 | risk=₹1567 → 13 shr [risk_budget]
+  BUY  2025-04-17 | 13 shares @ ₹1100.75 (close ₹1100.20) | cost ₹20.00 | cash left ₹90146.04
+  SELL 2025-05-28 | 13 shares @ ₹1223.69 (close ₹1224.30) | P&L ₹+1574.21 (+11.17%) [CHANDELIER]
+  [COOLDOWN] 2025-05-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-05-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-06-02 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-06-03 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-06-04 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-06-05 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-06-06 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-06-09 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-06-10 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-06-11 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-06-12 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-06-13 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2025-06-16 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2025-06-17 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2025-06-18 | buy suppressed (1 bars remaining)
+  [AMO] 2025-06-19 | BUY deferred → fill at 2025-06-20 open | chan=₹1226.35
+  [SIZING] 2025-06-20 (AMO open)| entry=₹1336.67 | chan=₹1226.35 (chandelier) | dist=₹110.32 | risk=₹1590 → 14 shr [risk_budget]
+  BUY  2025-06-20 | 14 shares @ ₹1336.67 (close ₹1336.00) | cost ₹20.00 | cash left ₹87296.65
+  SELL 2025-07-31 | 14 shares @ ₹1333.93 (close ₹1334.60) | P&L ₹-62.96 (-0.20%) [CHANDELIER]
+  [COOLDOWN] 2025-08-01 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-08-04 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-08-05 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-08-06 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-08-07 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-08-08 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-08-11 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-08-12 | buy suppressed (8 bars remaining)
+  [AMO] 2025-11-04 | BUY deferred → fill at 2025-11-06 open | chan=₹1253.34
+  [SIZING] 2025-11-06 (AMO open)| entry=₹1347.17 | chan=₹1253.34 (chandelier) | dist=₹93.83 | risk=₹1589 → 15 shr [position_cap]
+  BUY  2025-11-06 | 15 shares @ ₹1347.17 (close ₹1346.50) | cost ₹20.00 | cash left ₹85719.44
+  SELL 2025-11-11 | 15 shares @ ₹1237.28 (close ₹1237.90) | P&L ₹-1673.02 (-8.16%) [CHANDELIER]
+  [COOLDOWN] 2025-11-12 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-11-13 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-11-14 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-11-17 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-11-18 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-11-19 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-11-20 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-11-21 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-11-24 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-11-25 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-11-26 | buy suppressed (5 bars remaining)
+
+────────────────────────────────────────────────────────────
+  SIEMENS.NS  —  in_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2018-08-16 | BUY deferred → fill at 2018-08-17 open | chan=₹712.19
+  [SIZING] 2018-08-17 (AMO open)| entry=₹765.23 | chan=₹712.19 (chandelier) | dist=₹53.04 | risk=₹1500 → 26 shr [position_cap]
+  BUY  2018-08-17 | 26 shares @ ₹765.23 (close ₹764.85) | cost ₹20.00 | cash left ₹80083.96
+  SELL 2018-09-11 | 26 shares @ ₹726.74 (close ₹727.10) | P&L ₹-1025.62 (-5.03%) [CHANDELIER]
+  [COOLDOWN] 2018-09-12 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-09-14 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-09-17 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2018-09-18 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2018-09-19 | buy suppressed (11 bars remaining)
+  [AMO] 2018-11-28 | BUY deferred → fill at 2018-11-29 open | chan=₹615.91
+  [SIZING] 2018-11-29 (AMO open)| entry=₹693.10 | chan=₹615.91 (chandelier) | dist=₹77.18 | risk=₹1484 → 19 shr [risk_budget]
+  BUY  2018-11-29 | 19 shares @ ₹693.10 (close ₹692.75) | cost ₹20.00 | cash left ₹85765.55
+  SELL 2019-02-13 | 19 shares @ ₹748.28 (close ₹748.65) | P&L ₹+1024.85 (+7.96%) [CHANDELIER]
+  [COOLDOWN] 2019-02-14 | buy suppressed (15 bars remaining)
+  [AMO] 2019-03-22 | BUY deferred → fill at 2019-03-25 open | chan=₹742.50
+  [SIZING] 2019-03-25 (AMO open)| entry=₹792.00 | chan=₹742.50 (chandelier) | dist=₹49.50 | risk=₹1499 → 25 shr [position_cap]
+  BUY  2019-03-25 | 25 shares @ ₹792.00 (close ₹791.60) | cost ₹20.00 | cash left ₹80139.34
+  SELL 2019-05-08 | 25 shares @ ₹829.24 (close ₹829.65) | P&L ₹+905.80 (+4.70%) [CHANDELIER]
+  [COOLDOWN] 2019-05-09 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-05-10 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-05-13 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-05-14 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-05-15 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-05-16 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-05-17 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-05-20 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-05-21 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-05-22 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-05-23 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-05-24 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-05-27 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-05-28 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-05-29 | buy suppressed (1 bars remaining)
+  [AMO] 2019-05-30 | BUY deferred → fill at 2019-05-31 open | chan=₹891.00
+  [SIZING] 2019-05-31 (AMO open)| entry=₹993.55 | chan=₹891.00 (chandelier) | dist=₹102.55 | risk=₹1513 → 14 shr [risk_budget]
+  BUY  2019-05-31 | 14 shares @ ₹993.55 (close ₹993.05) | cost ₹20.00 | cash left ₹86915.38
+  SELL 2019-07-05 | 14 shares @ ₹959.07 (close ₹959.55) | P&L ₹-506.02 (-3.47%) [CHANDELIER]
+  [COOLDOWN] 2019-07-08 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-07-09 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-07-10 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-07-11 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-07-12 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-07-15 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-07-16 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-07-17 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-07-18 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-07-19 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-07-22 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-07-23 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-07-24 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-07-25 | buy suppressed (2 bars remaining)
+  [AMO] 2019-09-17 | BUY deferred → fill at 2019-09-18 open | chan=₹882.45
+  [SIZING] 2019-09-18 (AMO open)| entry=₹952.73 | chan=₹882.45 (chandelier) | dist=₹70.27 | risk=₹1505 → 21 shr [risk_budget]
+  BUY  2019-09-18 | 21 shares @ ₹952.73 (close ₹952.25) | cost ₹20.00 | cash left ₹80291.76
+  SELL 2019-11-15 | 21 shares @ ₹1199.85 (close ₹1200.45) | P&L ₹+5163.30 (+25.94%) [CHANDELIER]
+  [COOLDOWN] 2019-11-18 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-11-19 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-11-20 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-11-21 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-11-22 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-11-25 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-11-26 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-11-27 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-11-28 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-11-29 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-12-02 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-12-03 | buy suppressed (4 bars remaining)
+  [AMO] 2020-01-21 | BUY deferred → fill at 2020-01-22 open | chan=₹1148.14
+  [SIZING] 2020-01-22 (AMO open)| entry=₹1210.35 | chan=₹1148.14 (chandelier) | dist=₹62.22 | risk=₹1582 → 17 shr [position_cap]
+  BUY  2020-01-22 | 17 shares @ ₹1210.35 (close ₹1209.75) | cost ₹20.00 | cash left ₹84866.27
+  SELL 2020-01-28 | 17 shares @ ₹1147.33 (close ₹1147.90) | P&L ₹-1096.37 (-5.21%) [CHANDELIER]
+  [COOLDOWN] 2020-01-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-01-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-01-31 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-02-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-02-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-02-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-02-05 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-02-06 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-02-07 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-02-10 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-02-11 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-02-12 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-02-13 | buy suppressed (3 bars remaining)
+  [AMO] 2020-06-25 | BUY deferred → fill at 2020-06-26 open | chan=₹742.50
+  [SIZING] 2020-06-26 (AMO open)| entry=₹860.48 | chan=₹742.50 (chandelier) | dist=₹117.98 | risk=₹1565 → 13 shr [risk_budget]
+  BUY  2020-06-26 | 13 shares @ ₹860.48 (close ₹860.05) | cost ₹20.00 | cash left ₹93139.70
+  SELL 2020-08-31 | 13 shares @ ₹883.11 (close ₹883.55) | P&L ₹+271.30 (+2.63%) [CHANDELIER]
+  [COOLDOWN] 2020-09-01 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-09-02 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-09-03 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-09-04 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-09-07 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-09-08 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-09-09 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-09-10 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-09-11 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-09-14 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-09-15 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-09-16 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-09-17 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2020-09-18 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2020-09-21 | buy suppressed (1 bars remaining)
+  [AMO] 2020-09-22 | BUY deferred → fill at 2020-09-23 open | chan=₹871.03
+  [SIZING] 2020-09-23 (AMO open)| entry=₹930.11 | chan=₹871.03 (chandelier) | dist=₹59.08 | risk=₹1569 → 22 shr [position_cap]
+  BUY  2020-09-23 | 22 shares @ ₹930.11 (close ₹929.65) | cost ₹20.00 | cash left ₹84114.71
+  SELL 2020-12-17 | 22 shares @ ₹1162.17 (close ₹1162.75) | P&L ₹+5078.79 (+24.95%) [TIME_STOP]
+  [COOLDOWN] 2020-12-18 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-12-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-12-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-12-23 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-12-24 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-12-28 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-12-29 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-12-30 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-12-31 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-01-01 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-01-04 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-01-05 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-01-06 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-01-07 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-01-08 | buy suppressed (1 bars remaining)
+  [AMO] 2021-01-11 | BUY deferred → fill at 2021-01-12 open | chan=₹1181.96
+  [SIZING] 2021-01-12 (AMO open)| entry=₹1262.18 | chan=₹1181.96 (chandelier) | dist=₹80.22 | risk=₹1645 → 17 shr [position_cap]
+  BUY  2021-01-12 | 17 shares @ ₹1262.18 (close ₹1261.55) | cost ₹20.00 | cash left ₹88178.96
+  SELL 2021-01-29 | 17 shares @ ₹1207.95 (close ₹1208.55) | P&L ₹-947.13 (-4.30%) [CHANDELIER]
+  [COOLDOWN] 2021-02-01 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-02-02 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-02-03 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-02-04 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-02-05 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-02-08 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-02-09 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-02-10 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-02-11 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-02-12 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-02-15 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-02-16 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-02-17 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-02-18 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-02-19 | buy suppressed (1 bars remaining)
+  [AMO] 2021-02-22 | BUY deferred → fill at 2021-02-23 open | chan=₹1273.92
+  [SIZING] 2021-02-23 (AMO open)| entry=₹1378.79 | chan=₹1273.92 (chandelier) | dist=₹104.87 | risk=₹1630 → 15 shr [risk_budget]
+  BUY  2021-02-23 | 15 shares @ ₹1378.79 (close ₹1378.10) | cost ₹20.00 | cash left ₹87987.06
+  SELL 2021-03-18 | 15 shares @ ₹1363.87 (close ₹1364.55) | P&L ₹-248.93 (-1.08%) [CHANDELIER]
+  [COOLDOWN] 2021-03-19 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-03-22 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-03-23 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-03-24 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-03-25 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-03-26 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-03-30 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-03-31 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-04-01 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-04-05 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-04-06 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-04-07 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-04-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-04-09 | buy suppressed (2 bars remaining)
+  [AMO] 2021-05-14 | BUY deferred → fill at 2021-05-17 open | chan=₹1428.39
+  [SIZING] 2021-05-17 (AMO open)| entry=₹1525.86 | chan=₹1428.39 (chandelier) | dist=₹97.47 | risk=₹1626 → 14 shr [position_cap]
+  BUY  2021-05-17 | 14 shares @ ₹1525.86 (close ₹1525.10) | cost ₹20.00 | cash left ₹87037.89
+  SELL 2021-06-17 | 14 shares @ ₹1530.68 (close ₹1531.45) | P&L ₹+42.15 (+0.32%) [CHANDELIER]
+  [COOLDOWN] 2021-06-18 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-06-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-06-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-06-23 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-06-24 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-06-25 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-06-28 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-06-29 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-06-30 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-07-01 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-07-02 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-07-05 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-07-06 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-07-07 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-07-08 | buy suppressed (1 bars remaining)
+  [AMO] 2021-07-09 | BUY deferred → fill at 2021-07-12 open | chan=₹1436.47
+  [SIZING] 2021-07-12 (AMO open)| entry=₹1534.37 | chan=₹1436.47 (chandelier) | dist=₹97.90 | risk=₹1627 → 14 shr [position_cap]
+  BUY  2021-07-12 | 14 shares @ ₹1534.37 (close ₹1533.60) | cost ₹20.00 | cash left ₹86940.98
+  [AMO] 2021-07-13 | SELL deferred → fill at 2021-07-14 open
+  SELL 2021-07-14 | 14 shares @ ₹1531.23 (close ₹1532.00) | P&L ₹-69.22 (-0.20%)
+  [AMO] 2021-08-16 | BUY deferred → fill at 2021-08-17 open | chan=₹1584.00
+  [SIZING] 2021-08-17 (AMO open)| entry=₹1692.80 | chan=₹1584.00 (chandelier) | dist=₹108.80 | risk=₹1625 → 12 shr [position_cap]
+  BUY  2021-08-17 | 12 shares @ ₹1692.80 (close ₹1691.95) | cost ₹20.00 | cash left ₹88019.34
+  SELL 2021-09-20 | 12 shares @ ₹1626.59 (close ₹1627.40) | P&L ₹-819.40 (-3.91%) [CHANDELIER]
+  [COOLDOWN] 2021-09-21 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-09-22 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-09-23 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-09-24 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-09-27 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-09-28 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-09-29 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-09-30 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-10-01 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-10-04 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-10-05 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-10-06 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-10-07 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-10-08 | buy suppressed (2 bars remaining)
+  [AMO] 2021-10-27 | BUY deferred → fill at 2021-10-28 open | chan=₹1551.29
+  [SIZING] 2021-10-28 (AMO open)| entry=₹1654.83 | chan=₹1551.29 (chandelier) | dist=₹103.54 | risk=₹1613 → 12 shr [position_cap]
+  BUY  2021-10-28 | 12 shares @ ₹1654.83 (close ₹1654.00) | cost ₹20.00 | cash left ₹87635.57
+  SELL 2021-11-25 | 12 shares @ ₹1640.73 (close ₹1641.55) | P&L ₹-194.10 (-0.85%) [CHANDELIER]
+  [COOLDOWN] 2021-11-26 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-11-29 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-11-30 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-12-01 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-12-02 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-12-03 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-12-06 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-12-07 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-12-08 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-12-09 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-12-10 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-12-13 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-12-14 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-12-15 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-12-16 | buy suppressed (1 bars remaining)
+  [AMO] 2021-12-17 | BUY deferred → fill at 2021-12-20 open | chan=₹1683.00
+  [SIZING] 2021-12-20 (AMO open)| entry=₹1826.96 | chan=₹1683.00 (chandelier) | dist=₹143.96 | risk=₹1609 → 11 shr [risk_budget]
+  BUY  2021-12-20 | 11 shares @ ₹1826.96 (close ₹1826.05) | cost ₹20.00 | cash left ₹87182.81
+  SELL 2022-01-24 | 11 shares @ ₹1698.55 (close ₹1699.40) | P&L ₹-1437.21 (-7.03%) [CHANDELIER]
+  [COOLDOWN] 2022-01-25 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-01-27 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-01-28 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-01-31 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-02-01 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-02-02 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-02-03 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-02-04 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-02-07 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-02-08 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-02-09 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-02-10 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-02-11 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-02-14 | buy suppressed (2 bars remaining)
+  [AMO] 2022-02-21 | BUY deferred → fill at 2022-02-22 open | chan=₹1683.00
+  [SIZING] 2022-02-22 (AMO open)| entry=₹1817.91 | chan=₹1683.00 (chandelier) | dist=₹134.91 | risk=₹1588 → 11 shr [risk_budget]
+  BUY  2022-02-22 | 11 shares @ ₹1817.91 (close ₹1817.00) | cost ₹20.00 | cash left ₹85825.20
+  [AMO] 2022-03-14 | SELL deferred → fill at 2022-03-15 open
+  SELL 2022-03-15 | 11 shares @ ₹1796.80 (close ₹1797.70) | P&L ₹-257.12 (-1.16%)
+  [AMO] 2022-04-12 | BUY deferred → fill at 2022-04-13 open | chan=₹1758.59
+  [SIZING] 2022-04-13 (AMO open)| entry=₹1855.93 | chan=₹1758.59 (chandelier) | dist=₹97.33 | risk=₹1583 → 11 shr [position_cap]
+  BUY  2022-04-13 | 11 shares @ ₹1855.93 (close ₹1855.00) | cost ₹20.00 | cash left ₹85129.87
+  SELL 2022-04-25 | 11 shares @ ₹1722.09 (close ₹1722.95) | P&L ₹-1496.96 (-7.21%) [CHANDELIER]
+  [COOLDOWN] 2022-04-26 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-04-27 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-04-28 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-04-29 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-05-02 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-05-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-05-05 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-05-06 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-05-09 | buy suppressed (7 bars remaining)
+  [AMO] 2022-06-06 | BUY deferred → fill at 2022-06-07 open | chan=₹1653.36
+  [SIZING] 2022-06-07 (AMO open)| entry=₹1773.04 | chan=₹1653.36 (chandelier) | dist=₹119.67 | risk=₹1561 → 11 shr [position_cap]
+  BUY  2022-06-07 | 11 shares @ ₹1773.04 (close ₹1772.15) | cost ₹20.00 | cash left ₹84524.71
+  SELL 2022-09-01 | 11 shares @ ₹2223.99 (close ₹2225.10) | P&L ₹+4934.35 (+25.43%) [TIME_STOP]
+  [COOLDOWN] 2022-09-02 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-09-05 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-09-06 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-09-07 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-09-08 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-09-09 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-09-12 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-09-13 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-09-14 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-09-15 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-09-16 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-09-19 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-09-20 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-09-21 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2022-09-22 | buy suppressed (1 bars remaining)
+  [AMO] 2022-09-23 | BUY deferred → fill at 2022-09-26 open | chan=₹2073.70
+  [SIZING] 2022-09-26 (AMO open)| entry=₹2150.87 | chan=₹2073.70 (chandelier) | dist=₹77.18 | risk=₹1634 → 10 shr [position_cap]
+  BUY  2022-09-26 | 10 shares @ ₹2150.87 (close ₹2149.80) | cost ₹20.00 | cash left ₹87433.70
+  [AMO] 2022-10-12 | SELL deferred → fill at 2022-10-13 open
+  SELL 2022-10-13 | 10 shares @ ₹2109.09 (close ₹2110.15) | P&L ₹-443.07 (-1.94%)
+  [AMO] 2022-11-14 | BUY deferred → fill at 2022-11-15 open | chan=₹2079.00
+  [SIZING] 2022-11-15 (AMO open)| entry=₹2223.26 | chan=₹2079.00 (chandelier) | dist=₹144.26 | risk=₹1627 → 9 shr [position_cap]
+  BUY  2022-11-15 | 9 shares @ ₹2223.26 (close ₹2222.15) | cost ₹20.00 | cash left ₹88470.03
+  [AMO] 2022-12-08 | SELL deferred → fill at 2022-12-09 open
+  SELL 2022-12-09 | 9 shares @ ₹2246.18 (close ₹2247.30) | P&L ₹+181.18 (+1.03%)
+  [AMO] 2022-12-14 | BUY deferred → fill at 2022-12-15 open | chan=₹2158.37
+  [SIZING] 2022-12-15 (AMO open)| entry=₹2305.60 | chan=₹2158.37 (chandelier) | dist=₹147.23 | risk=₹1630 → 9 shr [position_cap]
+  BUY  2022-12-15 | 9 shares @ ₹2305.60 (close ₹2304.45) | cost ₹20.00 | cash left ₹87890.15
+  SELL 2022-12-23 | 9 shares @ ₹2122.24 (close ₹2123.30) | P&L ₹-1675.05 (-7.95%) [CHANDELIER]
+  [COOLDOWN] 2022-12-26 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-12-27 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-12-28 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-12-29 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-12-30 | buy suppressed (11 bars remaining)
+
+────────────────────────────────────────────────────────────
+  SIEMENS.NS  —  out_of_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹2329.05
+  [SIZING] 2023-03-15 (AMO open)| entry=₹2503.60 | chan=₹2329.05 (chandelier) | dist=₹174.55 | risk=₹1500 → 7 shr [position_cap]
+  BUY  2023-03-15 | 7 shares @ ₹2503.60 (close ₹2502.35) | cost ₹20.00 | cash left ₹82454.79
+  SELL 2023-05-22 | 7 shares @ ₹2588.61 (close ₹2589.90) | P&L ₹+570.50 (+3.40%) [CHANDELIER]
+  [COOLDOWN] 2023-05-23 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-05-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-05-25 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-05-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-05-29 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-05-30 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-05-31 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-06-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-06-02 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-06-05 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-06-06 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-06-07 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-06-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-06-09 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-06-12 | buy suppressed (1 bars remaining)
+  [AMO] 2023-06-13 | BUY deferred → fill at 2023-06-14 open | chan=₹2661.87
+  [SIZING] 2023-06-14 (AMO open)| entry=₹2857.43 | chan=₹2661.87 (chandelier) | dist=₹195.56 | risk=₹1508 → 7 shr [risk_budget]
+  BUY  2023-06-14 | 7 shares @ ₹2857.43 (close ₹2856.00) | cost ₹20.00 | cash left ₹80528.50
+  SELL 2023-07-20 | 7 shares @ ₹2768.07 (close ₹2769.45) | P&L ₹-650.38 (-3.13%) [CHANDELIER]
+  [COOLDOWN] 2023-07-21 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-07-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-25 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-07-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-07-27 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-07-28 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-07-31 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-08-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-08-02 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-08-03 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-08-04 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-08-07 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-08-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-08-09 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-08-10 | buy suppressed (1 bars remaining)
+  [AMO] 2023-08-11 | BUY deferred → fill at 2023-08-14 open | chan=₹2574.00
+  [SIZING] 2023-08-14 (AMO open)| entry=₹2794.30 | chan=₹2574.00 (chandelier) | dist=₹220.30 | risk=₹1498 → 6 shr [risk_budget]
+  BUY  2023-08-14 | 6 shares @ ₹2794.30 (close ₹2792.90) | cost ₹20.00 | cash left ₹83094.34
+  [AMO] 2023-08-29 | SELL deferred → fill at 2023-08-30 open
+  SELL 2023-08-30 | 6 shares @ ₹2958.12 (close ₹2959.60) | P&L ₹+958.51 (+5.86%)
+  [AMO] 2023-09-01 | BUY deferred → fill at 2023-09-04 open | chan=₹2772.00
+  [SIZING] 2023-09-04 (AMO open)| entry=₹2964.88 | chan=₹2772.00 (chandelier) | dist=₹192.88 | risk=₹1512 → 6 shr [position_cap]
+  BUY  2023-09-04 | 6 shares @ ₹2964.88 (close ₹2963.40) | cost ₹20.00 | cash left ₹83009.33
+  SELL 2023-09-21 | 6 shares @ ₹2847.73 (close ₹2849.15) | P&L ₹-727.21 (-3.95%) [CHANDELIER]
+  [COOLDOWN] 2023-09-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-09-25 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-09-26 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-09-27 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-09-28 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-09-29 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-10-03 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-10-04 | buy suppressed (8 bars remaining)
+  [AMO] 2023-12-04 | BUY deferred → fill at 2023-12-05 open | chan=₹2753.82
+  [SIZING] 2023-12-05 (AMO open)| entry=₹2903.90 | chan=₹2753.82 (chandelier) | dist=₹150.08 | risk=₹1501 → 6 shr [position_cap]
+  BUY  2023-12-05 | 6 shares @ ₹2903.90 (close ₹2902.45) | cost ₹20.00 | cash left ₹82628.00
+  SELL 2023-12-20 | 6 shares @ ₹2976.51 (close ₹2978.00) | P&L ₹+411.19 (+2.50%) [CHANDELIER]
+  [COOLDOWN] 2023-12-21 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-12-22 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-12-26 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-12-27 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-12-28 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-12-29 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-01-01 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-01-02 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-01-03 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-01-04 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-01-05 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-01-08 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-01-09 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-01-10 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-01-11 | buy suppressed (1 bars remaining)
+  [AMO] 2024-01-12 | BUY deferred → fill at 2024-01-15 open | chan=₹2970.00
+  [SIZING] 2024-01-15 (AMO open)| entry=₹3173.04 | chan=₹2970.00 (chandelier) | dist=₹203.04 | risk=₹1507 → 6 shr [position_cap]
+  BUY  2024-01-15 | 6 shares @ ₹3173.04 (close ₹3171.45) | cost ₹20.00 | cash left ₹81404.39
+  SELL 2024-04-10 | 6 shares @ ₹4250.87 (close ₹4253.00) | P&L ₹+6440.65 (+33.97%) [TIME_STOP]
+  [COOLDOWN] 2024-04-12 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-04-15 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-04-16 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-04-18 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-04-19 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-04-22 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-04-23 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-04-24 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-04-25 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-04-26 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-04-29 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-04-30 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-05-02 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-05-03 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-05-06 | buy suppressed (1 bars remaining)
+  [AMO] 2024-05-07 | BUY deferred → fill at 2024-05-08 open | chan=₹4356.00
+  [SIZING] 2024-05-08 (AMO open)| entry=₹4663.93 | chan=₹4356.00 (chandelier) | dist=₹307.93 | risk=₹1603 → 4 shr [position_cap]
+  BUY  2024-05-08 | 4 shares @ ₹4663.93 (close ₹4661.60) | cost ₹20.00 | cash left ₹88207.53
+  SELL 2024-06-04 | 4 shares @ ₹4851.87 (close ₹4854.30) | P&L ₹+726.92 (+4.03%) [CHANDELIER]
+  [COOLDOWN] 2024-06-05 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-06-06 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-06-07 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-06-10 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-06-11 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-06-12 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-06-13 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-06-14 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-06-18 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-06-19 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-06-20 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-06-21 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-06-24 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-06-25 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-06-26 | buy suppressed (1 bars remaining)
+  [AMO] 2024-06-27 | BUY deferred → fill at 2024-06-28 open | chan=₹5445.00
+  [SIZING] 2024-06-28 (AMO open)| entry=₹5985.09 | chan=₹5445.00 (chandelier) | dist=₹540.09 | risk=₹1614 → 2 shr [risk_budget]
+  BUY  2024-06-28 | 2 shares @ ₹5985.09 (close ₹5982.10) | cost ₹20.00 | cash left ₹95599.99
+  SELL 2024-07-18 | 2 shares @ ₹5422.24 (close ₹5424.95) | P&L ₹-1148.42 (-9.40%) [CHANDELIER]
+  [COOLDOWN] 2024-07-19 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-07-22 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-07-23 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-07-24 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-07-25 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-07-26 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-07-29 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-07-30 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-07-31 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-08-01 | buy suppressed (6 bars remaining)
+  [AMO] 2024-10-07 | BUY deferred → fill at 2024-10-08 open | chan=₹5167.35
+  [SIZING] 2024-10-08 (AMO open)| entry=₹5342.87 | chan=₹5167.35 (chandelier) | dist=₹175.52 | risk=₹1596 → 3 shr [position_cap]
+  BUY  2024-10-08 | 3 shares @ ₹5342.87 (close ₹5340.20) | cost ₹20.00 | cash left ₹90373.14
+  SELL 2024-10-21 | 3 shares @ ₹5696.65 (close ₹5699.50) | P&L ₹+1037.07 (+6.62%) [CHANDELIER]
+  [COOLDOWN] 2024-10-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-10-23 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-10-24 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-10-25 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-10-28 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-10-29 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-10-30 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-10-31 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-11-01 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-11-04 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-11-05 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-11-06 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-11-07 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-11-08 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-11-11 | buy suppressed (1 bars remaining)
+  [AMO] 2024-11-12 | BUY deferred → fill at 2024-11-13 open | chan=₹4851.00
+  [SIZING] 2024-11-13 (AMO open)| entry=₹5182.49 | chan=₹4851.00 (chandelier) | dist=₹331.49 | risk=₹1612 → 4 shr [risk_budget]
+  BUY  2024-11-13 | 4 shares @ ₹5182.49 (close ₹5179.90) | cost ₹20.00 | cash left ₹86688.86
+  [AMO] 2024-11-13 | SELL deferred → fill at 2024-11-14 open
+  SELL 2024-11-14 | 4 shares @ ₹5104.55 (close ₹5107.10) | P&L ₹-336.88 (-1.50%)
+  [AMO] 2024-12-11 | BUY deferred → fill at 2024-12-12 open | chan=₹5560.81
+  [SIZING] 2024-12-12 (AMO open)| entry=₹6004.40 | chan=₹5560.81 (chandelier) | dist=₹443.59 | risk=₹1606 → 3 shr [risk_budget]
+  BUY  2024-12-12 | 3 shares @ ₹6004.40 (close ₹6001.40) | cost ₹20.00 | cash left ₹89048.74
+  SELL 2024-12-20 | 3 shares @ ₹5230.13 (close ₹5232.75) | P&L ₹-2346.72 (-12.89%) [CHANDELIER]
+  [COOLDOWN] 2024-12-23 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-12-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-12-26 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-12-27 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-12-30 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-12-31 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-01-01 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-01-02 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-01-03 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-01-06 | buy suppressed (6 bars remaining)
+  [AMO] 2025-06-06 | BUY deferred → fill at 2025-06-09 open | chan=₹2970.00
+  [SIZING] 2025-06-09 (AMO open)| entry=₹3321.66 | chan=₹2970.00 (chandelier) | dist=₹351.66 | risk=₹1571 → 4 shr [risk_budget]
+  BUY  2025-06-09 | 4 shares @ ₹3321.66 (close ₹3320.00) | cost ₹20.00 | cash left ₹91408.58
+  SELL 2025-07-16 | 4 shares @ ₹3087.76 (close ₹3089.30) | P&L ₹-958.71 (-7.04%) [CHANDELIER]
+  [AMO] 2025-09-11 | BUY deferred → fill at 2025-09-12 open | chan=₹2966.00
+  [SIZING] 2025-09-12 (AMO open)| entry=₹3203.60 | chan=₹2966.00 (chandelier) | dist=₹237.60 | risk=₹1556 → 6 shr [risk_budget]
+  BUY  2025-09-12 | 6 shares @ ₹3203.60 (close ₹3202.00) | cost ₹20.00 | cash left ₹84494.91
+  SELL 2025-09-26 | 6 shares @ ₹3094.75 (close ₹3096.30) | P&L ₹-677.74 (-3.40%) [CHANDELIER]
+  [COOLDOWN] 2025-09-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-09-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-10-01 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-10-03 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-10-06 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-10-07 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-10-08 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-10-09 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-10-10 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-10-13 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-10-14 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-10-15 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2025-10-16 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2025-10-17 | buy suppressed (2 bars remaining)
+  [AMO] 2025-12-01 | BUY deferred → fill at 2025-12-02 open | chan=₹3069.00
+  [SIZING] 2025-12-02 (AMO open)| entry=₹3311.86 | chan=₹3069.00 (chandelier) | dist=₹242.86 | risk=₹1546 → 6 shr [risk_budget]
+  BUY  2025-12-02 | 6 shares @ ₹3311.86 (close ₹3310.20) | cost ₹20.00 | cash left ₹83147.64
+  SELL 2025-12-09 | 6 shares @ ₹3141.23 (close ₹3142.80) | P&L ₹-1048.47 (-5.15%) [CHANDELIER]
+  [COOLDOWN] 2025-12-10 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-12-11 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-12-12 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-12-15 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-12-16 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-12-17 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-12-18 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-12-19 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-12-22 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-12-23 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-12-24 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-12-26 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2025-12-29 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2025-12-30 | buy suppressed (2 bars remaining)
+
+────────────────────────────────────────────────────────────
+  BAJAJ-AUTO.NS  —  in_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2018-05-10 | BUY deferred → fill at 2018-05-11 open | chan=₹2652.63
+  [SIZING] 2018-05-11 (AMO open)| entry=₹2775.89 | chan=₹2652.63 (chandelier) | dist=₹123.26 | risk=₹1500 → 7 shr [position_cap]
+  BUY  2018-05-11 | 7 shares @ ₹2775.89 (close ₹2774.50) | cost ₹20.00 | cash left ₹80548.79
+  SELL 2018-05-21 | 7 shares @ ₹2652.17 (close ₹2653.50) | P&L ₹-890.64 (-4.46%) [CHANDELIER]
+  [COOLDOWN] 2018-05-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-05-23 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-05-24 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2018-05-25 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2018-05-28 | buy suppressed (11 bars remaining)
+  [AMO] 2018-06-21 | BUY deferred → fill at 2018-06-22 open | chan=₹2633.69
+  [SIZING] 2018-06-22 (AMO open)| entry=₹2756.38 | chan=₹2633.69 (chandelier) | dist=₹122.69 | risk=₹1486 → 7 shr [position_cap]
+  BUY  2018-06-22 | 7 shares @ ₹2756.38 (close ₹2755.00) | cost ₹20.00 | cash left ₹79774.72
+  SELL 2018-07-20 | 7 shares @ ₹2768.12 (close ₹2769.50) | P&L ₹+57.32 (+0.43%) [CHANDELIER]
+  [COOLDOWN] 2018-07-23 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-07-24 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-07-25 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2018-07-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2018-07-27 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2018-07-30 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2018-07-31 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2018-08-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2018-08-02 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2018-08-03 | buy suppressed (6 bars remaining)
+  [AMO] 2018-09-25 | BUY deferred → fill at 2018-09-26 open | chan=₹2528.08
+  [SIZING] 2018-09-26 (AMO open)| entry=₹2728.86 | chan=₹2528.08 (chandelier) | dist=₹200.79 | risk=₹1487 → 7 shr [risk_budget]
+  BUY  2018-09-26 | 7 shares @ ₹2728.86 (close ₹2727.50) | cost ₹20.00 | cash left ₹80004.63
+  SELL 2018-10-05 | 7 shares @ ₹2478.76 (close ₹2480.00) | P&L ₹-1775.06 (-9.17%) [CHANDELIER]
+  [COOLDOWN] 2018-10-08 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2018-10-09 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2018-10-10 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2018-10-11 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2018-10-12 | buy suppressed (11 bars remaining)
+  [AMO] 2018-11-30 | BUY deferred → fill at 2018-12-03 open | chan=₹2475.00
+  [SIZING] 2018-12-03 (AMO open)| entry=₹2693.35 | chan=₹2475.00 (chandelier) | dist=₹218.35 | risk=₹1460 → 6 shr [risk_budget]
+  BUY  2018-12-03 | 6 shares @ ₹2693.35 (close ₹2692.00) | cost ₹20.00 | cash left ₹81151.54
+  SELL 2019-01-02 | 6 shares @ ₹2624.19 (close ₹2625.50) | P&L ₹-438.89 (-2.57%) [CHANDELIER]
+  [COOLDOWN] 2019-01-03 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-01-04 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-01-07 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-01-08 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-01-09 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-01-10 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-01-11 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-01-14 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-01-15 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-01-16 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-01-17 | buy suppressed (5 bars remaining)
+  [AMO] 2019-02-22 | BUY deferred → fill at 2019-02-25 open | chan=₹2574.00
+  [SIZING] 2019-02-25 (AMO open)| entry=₹2748.87 | chan=₹2574.00 (chandelier) | dist=₹174.87 | risk=₹1453 → 7 shr [position_cap]
+  BUY  2019-02-25 | 7 shares @ ₹2748.87 (close ₹2747.50) | cost ₹20.00 | cash left ₹77610.61
+  SELL 2019-05-15 | 7 shares @ ₹2841.08 (close ₹2842.50) | P&L ₹+620.46 (+3.35%) [CHANDELIER]
+  [COOLDOWN] 2019-05-16 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-05-17 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-05-20 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-05-21 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-05-22 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-05-23 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-05-24 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-05-27 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-05-28 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-05-29 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-05-30 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-05-31 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-06-03 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-06-04 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-06-06 | buy suppressed (1 bars remaining)
+  [AMO] 2019-06-07 | BUY deferred → fill at 2019-06-10 open | chan=₹2673.00
+  [SIZING] 2019-06-10 (AMO open)| entry=₹2903.95 | chan=₹2673.00 (chandelier) | dist=₹230.95 | risk=₹1462 → 6 shr [risk_budget]
+  BUY  2019-06-10 | 6 shares @ ₹2903.95 (close ₹2902.50) | cost ₹20.00 | cash left ₹80029.48
+  [AMO] 2019-06-17 | SELL deferred → fill at 2019-06-18 open
+  SELL 2019-06-18 | 6 shares @ ₹2765.62 (close ₹2767.00) | P&L ₹-854.16 (-4.76%)
+  [AMO] 2019-09-03 | BUY deferred → fill at 2019-09-04 open | chan=₹2475.00
+  [SIZING] 2019-09-04 (AMO open)| entry=₹2707.35 | chan=₹2475.00 (chandelier) | dist=₹232.35 | risk=₹1449 → 6 shr [risk_budget]
+  BUY  2019-09-04 | 6 shares @ ₹2707.35 (close ₹2706.00) | cost ₹20.00 | cash left ₹80334.92
+  SELL 2019-12-03 | 6 shares @ ₹3177.41 (close ₹3179.00) | P&L ₹+2795.58 (+17.36%) [TIME_STOP]
+  [COOLDOWN] 2019-12-04 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2019-12-05 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2019-12-06 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2019-12-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2019-12-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2019-12-11 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2019-12-12 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2019-12-13 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2019-12-16 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2019-12-17 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2019-12-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2019-12-19 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2019-12-20 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2019-12-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2019-12-24 | buy suppressed (1 bars remaining)
+  [AMO] 2019-12-26 | BUY deferred → fill at 2019-12-27 open | chan=₹2970.00
+  [SIZING] 2019-12-27 (AMO open)| entry=₹3143.07 | chan=₹2970.00 (chandelier) | dist=₹173.07 | risk=₹1491 → 6 shr [position_cap]
+  BUY  2019-12-27 | 6 shares @ ₹3143.07 (close ₹3141.50) | cost ₹20.00 | cash left ₹80496.19
+  SELL 2020-01-06 | 6 shares @ ₹2961.02 (close ₹2962.50) | P&L ₹-1116.75 (-5.79%) [CHANDELIER]
+  [AMO] 2020-05-11 | BUY deferred → fill at 2020-05-12 open | chan=₹2178.00
+  [SIZING] 2020-05-12 (AMO open)| entry=₹2469.73 | chan=₹2178.00 (chandelier) | dist=₹291.73 | risk=₹1474 → 5 shr [risk_budget]
+  BUY  2020-05-12 | 5 shares @ ₹2469.73 (close ₹2468.50) | cost ₹20.00 | cash left ₹85869.19
+  SELL 2020-08-04 | 5 shares @ ₹2895.05 (close ₹2896.50) | P&L ₹+2102.97 (+17.22%) [TIME_STOP]
+  [COOLDOWN] 2020-08-05 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-08-06 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-08-07 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-08-10 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-08-11 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-08-12 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-08-13 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-08-14 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-08-17 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-08-18 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-08-19 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-08-20 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-08-21 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2020-08-24 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2020-08-25 | buy suppressed (1 bars remaining)
+  [AMO] 2020-08-26 | BUY deferred → fill at 2020-08-27 open | chan=₹2772.00
+  [SIZING] 2020-08-27 (AMO open)| entry=₹3007.50 | chan=₹2772.00 (chandelier) | dist=₹235.50 | risk=₹1505 → 6 shr [risk_budget]
+  BUY  2020-08-27 | 6 shares @ ₹3007.50 (close ₹3006.00) | cost ₹20.00 | cash left ₹82255.81
+  [AMO] 2020-09-14 | SELL deferred → fill at 2020-09-15 open
+  SELL 2020-09-15 | 6 shares @ ₹2883.06 (close ₹2884.50) | P&L ₹-771.00 (-4.14%)
+  [AMO] 2020-10-12 | BUY deferred → fill at 2020-10-13 open | chan=₹2756.21
+  [SIZING] 2020-10-13 (AMO open)| entry=₹2951.47 | chan=₹2756.21 (chandelier) | dist=₹195.26 | risk=₹1493 → 6 shr [position_cap]
+  BUY  2020-10-13 | 6 shares @ ₹2951.47 (close ₹2950.00) | cost ₹20.00 | cash left ₹81800.98
+  [AMO] 2020-11-12 | SELL deferred → fill at 2020-11-13 open
+  SELL 2020-11-13 | 6 shares @ ₹2934.03 (close ₹2935.50) | P&L ₹-129.06 (-0.59%)
+  [AMO] 2020-11-25 | BUY deferred → fill at 2020-11-26 open | chan=₹2871.00
+  [SIZING] 2020-11-26 (AMO open)| entry=₹2978.99 | chan=₹2871.00 (chandelier) | dist=₹107.99 | risk=₹1491 → 6 shr [position_cap]
+  BUY  2020-11-26 | 6 shares @ ₹2978.99 (close ₹2977.50) | cost ₹20.00 | cash left ₹81486.84
+  SELL 2021-02-19 | 6 shares @ ₹3900.05 (close ₹3902.00) | P&L ₹+5500.51 (+30.92%) [CHANDELIER]
+  [COOLDOWN] 2021-02-22 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-02-23 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-02-24 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-02-25 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-02-26 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-03-01 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-03-02 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-03-03 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-03-04 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-03-05 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-03-08 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-03-09 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-03-10 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-03-12 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-03-15 | buy suppressed (1 bars remaining)
+  [AMO] 2021-03-16 | BUY deferred → fill at 2021-03-17 open | chan=₹3267.00
+  [SIZING] 2021-03-17 (AMO open)| entry=₹3561.78 | chan=₹3267.00 (chandelier) | dist=₹294.78 | risk=₹1573 → 5 shr [risk_budget]
+  BUY  2021-03-17 | 5 shares @ ₹3561.78 (close ₹3560.00) | cost ₹20.00 | cash left ₹87032.39
+  [AMO] 2021-03-17 | SELL deferred → fill at 2021-03-18 open
+  SELL 2021-03-18 | 5 shares @ ₹3507.25 (close ₹3509.00) | P&L ₹-297.06 (-1.53%)
+  [AMO] 2021-05-10 | BUY deferred → fill at 2021-05-11 open | chan=₹3465.00
+  [SIZING] 2021-05-11 (AMO open)| entry=₹3766.38 | chan=₹3465.00 (chandelier) | dist=₹301.38 | risk=₹1568 → 5 shr [risk_budget]
+  BUY  2021-05-11 | 5 shares @ ₹3766.38 (close ₹3764.50) | cost ₹20.00 | cash left ₹85692.32
+  SELL 2021-06-17 | 5 shares @ ₹3951.52 (close ₹3953.50) | P&L ₹+900.77 (+4.92%) [CHANDELIER]
+  [COOLDOWN] 2021-06-18 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-06-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-06-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-06-23 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-06-24 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-06-25 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-06-28 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-06-29 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-06-30 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2021-07-01 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2021-07-02 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2021-07-05 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2021-07-06 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2021-07-07 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2021-07-08 | buy suppressed (1 bars remaining)
+  [AMO] 2021-07-09 | BUY deferred → fill at 2021-07-12 open | chan=₹3737.96
+  [SIZING] 2021-07-12 (AMO open)| entry=₹3920.46 | chan=₹3737.96 (chandelier) | dist=₹182.50 | risk=₹1581 → 5 shr [position_cap]
+  BUY  2021-07-12 | 5 shares @ ₹3920.46 (close ₹3918.50) | cost ₹20.00 | cash left ₹85802.70
+  [AMO] 2021-07-16 | SELL deferred → fill at 2021-07-19 open
+  SELL 2021-07-19 | 5 shares @ ₹3823.09 (close ₹3825.00) | P&L ₹-511.64 (-2.48%)
+  [AMO] 2021-10-01 | BUY deferred → fill at 2021-10-04 open | chan=₹3564.00
+  [SIZING] 2021-10-04 (AMO open)| entry=₹3762.88 | chan=₹3564.00 (chandelier) | dist=₹198.88 | risk=₹1573 → 5 shr [position_cap]
+  BUY  2021-10-04 | 5 shares @ ₹3762.88 (close ₹3761.00) | cost ₹20.00 | cash left ₹86058.95
+  SELL 2021-10-28 | 5 shares @ ₹3607.20 (close ₹3609.00) | P&L ₹-802.93 (-4.14%) [CHANDELIER]
+  [COOLDOWN] 2021-10-29 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2021-11-01 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2021-11-02 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2021-11-03 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2021-11-04 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2021-11-08 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2021-11-09 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2021-11-10 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2021-11-11 | buy suppressed (7 bars remaining)
+  [AMO] 2022-01-21 | BUY deferred → fill at 2022-01-24 open | chan=₹3153.97
+  [SIZING] 2022-01-24 (AMO open)| entry=₹3338.17 | chan=₹3153.97 (chandelier) | dist=₹184.20 | risk=₹1561 → 6 shr [position_cap]
+  BUY  2022-01-24 | 6 shares @ ₹3338.17 (close ₹3336.50) | cost ₹20.00 | cash left ₹84021.41
+  SELL 2022-03-03 | 6 shares @ ₹3213.89 (close ₹3215.50) | P&L ₹-770.48 (-3.72%) [CHANDELIER]
+  [COOLDOWN] 2022-03-04 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-03-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-03-08 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-03-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-03-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-03-11 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-03-14 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-03-15 | buy suppressed (8 bars remaining)
+  [AMO] 2022-04-01 | BUY deferred → fill at 2022-04-04 open | chan=₹3366.00
+  [SIZING] 2022-04-04 (AMO open)| entry=₹3659.33 | chan=₹3366.00 (chandelier) | dist=₹293.33 | risk=₹1549 → 5 shr [risk_budget]
+  BUY  2022-04-04 | 5 shares @ ₹3659.33 (close ₹3657.50) | cost ₹20.00 | cash left ₹84963.30
+  SELL 2022-05-02 | 5 shares @ ₹3532.23 (close ₹3534.00) | P&L ₹-659.89 (-3.47%) [CHANDELIER]
+  [COOLDOWN] 2022-05-04 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-05-05 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-05-06 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-05-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-05-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-05-11 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-05-12 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-05-13 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-05-16 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-05-17 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-05-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-05-19 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-05-20 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-05-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2022-05-24 | buy suppressed (1 bars remaining)
+  [AMO] 2022-05-25 | BUY deferred → fill at 2022-05-26 open | chan=₹3366.00
+  [SIZING] 2022-05-26 (AMO open)| entry=₹3708.85 | chan=₹3366.00 (chandelier) | dist=₹342.85 | risk=₹1539 → 4 shr [risk_budget]
+  BUY  2022-05-26 | 4 shares @ ₹3708.85 (close ₹3707.00) | cost ₹20.00 | cash left ₹87744.64
+  [AMO] 2022-05-26 | SELL deferred → fill at 2022-05-27 open
+  SELL 2022-05-27 | 4 shares @ ₹3777.11 (close ₹3779.00) | P&L ₹+249.25 (+1.84%)
+  [AMO] 2022-06-01 | BUY deferred → fill at 2022-06-02 open | chan=₹3465.00
+  [SIZING] 2022-06-02 (AMO open)| entry=₹3629.81 | chan=₹3465.00 (chandelier) | dist=₹164.81 | risk=₹1542 → 5 shr [position_cap]
+  BUY  2022-06-02 | 5 shares @ ₹3629.81 (close ₹3628.00) | cost ₹20.00 | cash left ₹84660.23
+  SELL 2022-06-17 | 5 shares @ ₹3537.73 (close ₹3539.50) | P&L ₹-484.84 (-2.54%) [CHANDELIER]
+  [COOLDOWN] 2022-06-20 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-06-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-06-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-06-23 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-06-24 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-06-27 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-06-28 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2022-06-29 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2022-06-30 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2022-07-01 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2022-07-04 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2022-07-05 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2022-07-06 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2022-07-07 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2022-07-08 | buy suppressed (1 bars remaining)
+  [AMO] 2022-07-11 | BUY deferred → fill at 2022-07-12 open | chan=₹3465.00
+  [SIZING] 2022-07-12 (AMO open)| entry=₹3759.88 | chan=₹3465.00 (chandelier) | dist=₹294.88 | risk=₹1535 → 5 shr [risk_budget]
+  BUY  2022-07-12 | 5 shares @ ₹3759.88 (close ₹3758.00) | cost ₹20.00 | cash left ₹83505.07
+  SELL 2022-09-07 | 5 shares @ ₹3748.62 (close ₹3750.50) | P&L ₹-80.96 (-0.30%) [CHANDELIER]
+  [COOLDOWN] 2022-09-08 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-09-09 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-09-12 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-09-13 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-09-14 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-09-15 | buy suppressed (10 bars remaining)
+  [AMO] 2022-11-15 | BUY deferred → fill at 2022-11-16 open | chan=₹3465.00
+  [SIZING] 2022-11-16 (AMO open)| entry=₹3665.83 | chan=₹3465.00 (chandelier) | dist=₹200.83 | risk=₹1533 → 5 shr [position_cap]
+  BUY  2022-11-16 | 5 shares @ ₹3665.83 (close ₹3664.00) | cost ₹20.00 | cash left ₹83874.35
+  [AMO] 2022-12-13 | SELL deferred → fill at 2022-12-14 open
+  SELL 2022-12-14 | 5 shares @ ₹3558.22 (close ₹3560.00) | P&L ₹-562.51 (-2.94%)
+
+────────────────────────────────────────────────────────────
+  BAJAJ-AUTO.NS  —  out_of_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+============================================================
+  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹3465.00
+  [SIZING] 2023-03-15 (AMO open)| entry=₹3683.34 | chan=₹3465.00 (chandelier) | dist=₹218.34 | risk=₹1500 → 5 shr [position_cap]
+  BUY  2023-03-15 | 5 shares @ ₹3683.34 (close ₹3681.50) | cost ₹20.00 | cash left ₹81563.30
+  [AMO] 2023-03-27 | SELL deferred → fill at 2023-03-28 open
+  SELL 2023-03-28 | 5 shares @ ₹3724.64 (close ₹3726.50) | P&L ₹+181.82 (+1.12%)
+  [AMO] 2023-03-28 | BUY deferred → fill at 2023-03-29 open | chan=₹3465.00
+  [SIZING] 2023-03-29 (AMO open)| entry=₹3718.36 | chan=₹3465.00 (chandelier) | dist=₹253.36 | risk=₹1502 → 5 shr [risk_budget]
+  BUY  2023-03-29 | 5 shares @ ₹3718.36 (close ₹3716.50) | cost ₹20.00 | cash left ₹81550.03
+  SELL 2023-06-27 | 5 shares @ ₹4501.75 (close ₹4504.00) | P&L ₹+3891.32 (+21.07%) [TIME_STOP]
+  [COOLDOWN] 2023-06-28 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-06-30 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-03 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-07-04 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-07-05 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-07-06 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-07-07 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-07-10 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-07-11 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-07-12 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-07-13 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-07-14 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-07-17 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-07-18 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-07-19 | buy suppressed (1 bars remaining)
+  [AMO] 2023-07-20 | BUY deferred → fill at 2023-07-21 open | chan=₹4455.00
+  [SIZING] 2023-07-21 (AMO open)| entry=₹4724.86 | chan=₹4455.00 (chandelier) | dist=₹269.86 | risk=₹1560 → 4 shr [position_cap]
+  BUY  2023-07-21 | 4 shares @ ₹4724.86 (close ₹4722.50) | cost ₹20.00 | cash left ₹85113.70
+  SELL 2023-08-08 | 4 shares @ ₹4532.73 (close ₹4535.00) | P&L ₹-793.05 (-4.07%) [CHANDELIER]
+  [COOLDOWN] 2023-08-09 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-08-10 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-08-11 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-08-14 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-08-16 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-08-17 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-08-18 | buy suppressed (9 bars remaining)
+  [AMO] 2023-09-21 | BUY deferred → fill at 2023-09-22 open | chan=₹4752.00
+  [SIZING] 2023-09-22 (AMO open)| entry=₹4928.46 | chan=₹4752.00 (chandelier) | dist=₹176.46 | risk=₹1548 → 4 shr [position_cap]
+  BUY  2023-09-22 | 4 shares @ ₹4928.46 (close ₹4926.00) | cost ₹20.00 | cash left ₹83486.25
+  SELL 2023-12-19 | 4 shares @ ₹6257.37 (close ₹6260.50) | P&L ₹+5289.37 (+26.96%) [TIME_STOP]
+  [COOLDOWN] 2023-12-20 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-12-21 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-12-22 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-12-26 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-12-27 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-12-28 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-12-29 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-01-01 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-01-02 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-01-03 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-01-04 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-01-05 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-01-08 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-01-09 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-01-10 | buy suppressed (1 bars remaining)
+  [AMO] 2024-01-11 | BUY deferred → fill at 2024-01-12 open | chan=₹6693.72
+  [SIZING] 2024-01-12 (AMO open)| entry=₹7181.59 | chan=₹6693.72 (chandelier) | dist=₹487.87 | risk=₹1627 → 3 shr [risk_budget]
+  BUY  2024-01-12 | 3 shares @ ₹7181.59 (close ₹7178.00) | cost ₹20.00 | cash left ₹86924.70
+  SELL 2024-02-29 | 3 shares @ ₹7710.14 (close ₹7714.00) | P&L ₹+1559.88 (+7.36%) [CHANDELIER]
+  [COOLDOWN] 2024-03-01 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-03-02 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-03-04 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-03-05 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-03-06 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-03-07 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-03-11 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-03-12 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-03-13 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-03-14 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-03-15 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-03-18 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-03-19 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-03-20 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-03-21 | buy suppressed (1 bars remaining)
+  [AMO] 2024-03-22 | BUY deferred → fill at 2024-03-26 open | chan=₹8145.45
+  [SIZING] 2024-03-26 (AMO open)| entry=₹8728.36 | chan=₹8145.45 (chandelier) | dist=₹582.91 | risk=₹1650 → 2 shr [risk_budget]
+  BUY  2024-03-26 | 2 shares @ ₹8728.36 (close ₹8724.00) | cost ₹20.00 | cash left ₹92552.62
+  [AMO] 2024-05-31 | SELL deferred → fill at 2024-06-03 open
+  SELL 2024-06-03 | 2 shares @ ₹8948.52 (close ₹8953.00) | P&L ₹+415.85 (+2.52%)
+  [AMO] 2024-06-04 | BUY deferred → fill at 2024-06-05 open | chan=₹8415.00
+  [SIZING] 2024-06-05 (AMO open)| entry=₹9017.01 | chan=₹8415.00 (chandelier) | dist=₹602.01 | risk=₹1656 → 2 shr [risk_budget]
+  BUY  2024-06-05 | 2 shares @ ₹9017.01 (close ₹9012.50) | cost ₹20.00 | cash left ₹92371.18
+  SELL 2024-07-02 | 2 shares @ ₹9164.42 (close ₹9169.00) | P&L ₹+270.24 (+1.63%) [CHANDELIER]
+  [COOLDOWN] 2024-07-03 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-07-04 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-07-05 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-07-08 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-07-09 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-07-10 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-07-11 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-07-12 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-07-15 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-07-16 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-07-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-07-19 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-07-22 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-07-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-07-24 | buy suppressed (1 bars remaining)
+  [AMO] 2024-07-25 | BUY deferred → fill at 2024-07-26 open | chan=₹8397.79
+  [SIZING] 2024-07-26 (AMO open)| entry=₹9093.04 | chan=₹8397.79 (chandelier) | dist=₹695.25 | risk=₹1660 → 2 shr [risk_budget]
+  BUY  2024-07-26 | 2 shares @ ₹9093.04 (close ₹9088.50) | cost ₹20.00 | cash left ₹92469.34
+  [AMO] 2024-08-06 | SELL deferred → fill at 2024-08-07 open
+  SELL 2024-08-07 | 2 shares @ ₹9328.83 (close ₹9333.50) | P&L ₹+446.91 (+2.59%)
+  [AMO] 2024-08-21 | BUY deferred → fill at 2024-08-22 open | chan=₹8910.00
+  [SIZING] 2024-08-22 (AMO open)| entry=₹9660.33 | chan=₹8910.00 (chandelier) | dist=₹750.33 | risk=₹1667 → 2 shr [risk_budget]
+  BUY  2024-08-22 | 2 shares @ ₹9660.33 (close ₹9655.50) | cost ₹20.00 | cash left ₹91761.69
+  SELL 2024-10-03 | 2 shares @ ₹11508.74 (close ₹11514.50) | P&L ₹+3671.08 (+19.13%) [CHANDELIER]
+  [COOLDOWN] 2024-10-04 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-10-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-10-08 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-10-09 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-10-10 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-10-11 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-10-14 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-10-15 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-10-16 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-10-17 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-10-18 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-10-21 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-10-22 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-10-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-10-24 | buy suppressed (1 bars remaining)
+  [AMO] 2024-10-25 | BUY deferred → fill at 2024-10-28 open | chan=₹8910.00
+  [SIZING] 2024-10-28 (AMO open)| entry=₹9958.98 | chan=₹8910.00 (chandelier) | dist=₹1048.98 | risk=₹1721 → 1 shr [risk_budget]
+  BUY  2024-10-28 | 1 shares @ ₹9958.98 (close ₹9954.00) | cost ₹20.00 | cash left ₹104774.44
+  [AMO] 2024-10-29 | SELL deferred → fill at 2024-10-30 open
+  SELL 2024-10-30 | 1 shares @ ₹9572.71 (close ₹9577.50) | P&L ₹-408.66 (-3.88%)
+  [AMO] 2025-02-24 | BUY deferred → fill at 2025-02-25 open | chan=₹7715.25
+  [SIZING] 2025-02-25 (AMO open)| entry=₹8245.12 | chan=₹7715.25 (chandelier) | dist=₹529.87 | risk=₹1715 → 2 shr [position_cap]
+  BUY  2025-02-25 | 2 shares @ ₹8245.12 (close ₹8241.00) | cost ₹20.00 | cash left ₹97814.52
+  SELL 2025-02-28 | 2 shares @ ₹7703.65 (close ₹7707.50) | P&L ₹-1106.80 (-6.57%) [CHANDELIER]
+  [AMO] 2025-05-07 | BUY deferred → fill at 2025-05-08 open | chan=₹7183.18
+  [SIZING] 2025-05-08 (AMO open)| entry=₹7660.33 | chan=₹7183.18 (chandelier) | dist=₹477.14 | risk=₹1698 → 2 shr [position_cap]
+  BUY  2025-05-08 | 2 shares @ ₹7660.33 (close ₹7656.50) | cost ₹20.00 | cash left ₹97857.31
+  SELL 2025-07-08 | 2 shares @ ₹8335.33 (close ₹8339.50) | P&L ₹+1325.84 (+8.81%) [CHANDELIER]
+  [COOLDOWN] 2025-07-09 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-07-10 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-07-11 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-07-14 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-07-15 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-07-16 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-07-17 | buy suppressed (9 bars remaining)
+  [AMO] 2025-08-25 | BUY deferred → fill at 2025-08-26 open | chan=₹8277.08
+  [SIZING] 2025-08-26 (AMO open)| entry=₹8734.36 | chan=₹8277.08 (chandelier) | dist=₹457.28 | risk=₹1718 → 2 shr [position_cap]
+  BUY  2025-08-26 | 2 shares @ ₹8734.36 (close ₹8730.00) | cost ₹20.00 | cash left ₹97015.07
+  SELL 2025-09-24 | 2 shares @ ₹8834.58 (close ₹8839.00) | P&L ₹+176.01 (+1.15%) [CHANDELIER]
+  [COOLDOWN] 2025-09-25 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-09-26 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-09-29 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-09-30 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-10-01 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-10-03 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-10-06 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-10-07 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-10-08 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-10-09 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-10-10 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-10-13 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2025-10-14 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2025-10-15 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2025-10-16 | buy suppressed (1 bars remaining)
+  [AMO] 2025-10-17 | BUY deferred → fill at 2025-10-20 open | chan=₹8686.37
+  [SIZING] 2025-10-20 (AMO open)| entry=₹9199.10 | chan=₹8686.37 (chandelier) | dist=₹512.73 | risk=₹1720 → 2 shr [position_cap]
+  BUY  2025-10-20 | 2 shares @ ₹9199.10 (close ₹9194.50) | cost ₹20.00 | cash left ₹96241.62
+  SELL 2025-11-04 | 2 shares @ ₹8746.62 (close ₹8751.00) | P&L ₹-929.32 (-4.92%) [CHANDELIER]
+  [COOLDOWN] 2025-11-06 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-11-07 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-11-10 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-11-11 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-11-12 | buy suppressed (11 bars remaining)
+  [AMO] 2025-12-03 | BUY deferred → fill at 2025-12-04 open | chan=₹8648.60
+  [SIZING] 2025-12-04 (AMO open)| entry=₹9009.50 | chan=₹8648.60 (chandelier) | dist=₹360.90 | risk=₹1706 → 2 shr [position_cap]
+  BUY  2025-12-04 | 2 shares @ ₹9009.50 (close ₹9005.00) | cost ₹20.00 | cash left ₹95671.49
