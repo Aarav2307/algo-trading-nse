@@ -1,4 +1,4 @@
-Walk-Forward Validation — generated 2026-06-06 01:50:31
+Walk-Forward Validation — generated 2026-06-12 15:06:20
 
 
 ================================================================================
@@ -128,6 +128,23 @@ Walk-Forward Validation — generated 2026-06-06 01:50:31
   BAJAJ-AUTO.NS:
   → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
 
+
+================================================================================
+  SHARPE RATIO SUMMARY  (Out-of-Sample, 2023–2026)
+  Risk-free rate: 6.5%  |  Annualisation: ×252 trading days
+================================================================================
+  Stock                Full-period Sharpe     In-position Sharpe  
+  ────────────────────────────────────────────────────────────────
+  TMPV.NS                    -1.12             +0.27  (253d in)   
+  WHIRLPOOL.NS               -1.74             -0.52  (271d in)   
+  SIEMENS.NS                 -1.62             -0.75  (265d in)   
+  BAJAJ-AUTO.NS              -0.65             +0.61  (363d in)   
+  ────────────────────────────────────────────────────────────────
+  Equal-weight               -2.34             -1.57  (532d in)      ← 743d overlap
+
+  Full-period Sharpe penalises the strategy for cash days (earns 0%, risk-free = 6.5%).
+  In-position Sharpe strips out flat cash days — measures quality of entries/exits only.
+================================================================================
 
 
 ================================================================================

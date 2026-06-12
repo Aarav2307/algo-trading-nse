@@ -18,6 +18,7 @@ from contextlib import redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 # Allow imports from project root when run directly or via `python validation/walk_forward.py`
@@ -78,6 +79,10 @@ PARAMS = {
 }
 
 MIN_BARS = 200   # skip a window if fewer than this many trading days
+
+# Sharpe ratio parameters
+RISK_FREE_RATE      = 0.065   # 6.5% — RBI repo rate approximation
+TRADING_DAYS        = 252     # NSE trading days per year
 
 
 # =============================================================================
@@ -495,6 +500,212 @@ def _degradation_analysis(
             emit(f"  → {issue.strip()}")
 
 
+def _compute_sharpe(equity_curve: pd.DataFrame) -> dict:
+    """
+    Compute annualized Sharpe ratio from a daily equity curve.
+
+    Method:
+      daily_return[t] = (portfolio_value[t] - portfolio_value[t-1]) / portfolio_value[t-1]
+      ann_return       = mean(daily_return) × 252
+      ann_vol          = std(daily_return, ddof=1) × √252
+      Sharpe           = (ann_return − risk_free_rate) / ann_vol
+
+    Using arithmetic mean of daily returns (not CAGR) keeps the numerator and
+    denominator on the same basis, which is the standard Sharpe convention.
+
+    Returns a dict with ann_return_pct, ann_vol_pct, sharpe (float or nan).
+    """
+    prices        = equity_curve["portfolio_value"]
+    daily_returns = prices.pct_change().dropna()
+
+    if len(daily_returns) < 2:
+        return {"ann_return_pct": 0.0, "ann_vol_pct": 0.0, "sharpe": float("nan"), "n_days": 0}
+
+    mean_d = float(daily_returns.mean())
+    std_d  = float(daily_returns.std(ddof=1))
+
+    ann_return = mean_d * TRADING_DAYS
+    ann_vol    = std_d  * np.sqrt(TRADING_DAYS)
+
+    sharpe = (ann_return - RISK_FREE_RATE) / ann_vol if ann_vol > 0 else float("nan")
+
+    return {
+        "ann_return_pct": ann_return * 100,
+        "ann_vol_pct":    ann_vol    * 100,
+        "sharpe":         sharpe,
+        "n_days":         len(daily_returns),
+    }
+
+
+def _inposition_mask(equity_curve: pd.DataFrame, portfolio: Portfolio) -> pd.Series:
+    """
+    Return a boolean Series aligned to equity_curve.index that is True on every
+    day within [entry_date, exit_date] for each completed trade.
+
+    Includes the exit day because that day's return still reflects the trade P&L
+    (sell happens intraday; end-of-day value captures the realised gain/loss).
+    Days with no completed trade and no open position at close are False (cash).
+    """
+    mask = pd.Series(False, index=equity_curve.index)
+    trades = portfolio.get_trade_log()
+    if trades.empty:
+        return mask
+    for _, trade in trades.iterrows():
+        entry = pd.Timestamp(trade["entry_date"])
+        exit_ = pd.Timestamp(trade["exit_date"])
+        mask |= (equity_curve.index >= entry) & (equity_curve.index <= exit_)
+    return mask
+
+
+def _compute_inposition_sharpe(equity_curve: pd.DataFrame, portfolio: Portfolio) -> dict:
+    """
+    Sharpe ratio computed only on days the portfolio held a position.
+
+    Filters the daily return series to in-position days (via _inposition_mask),
+    then applies the same annualisation as _compute_sharpe.
+    """
+    mask = _inposition_mask(equity_curve, portfolio)
+    daily_returns = equity_curve["portfolio_value"].pct_change()
+    in_pos_returns = daily_returns[mask].dropna()
+
+    n = len(in_pos_returns)
+    if n < 2:
+        return {"ann_return_pct": 0.0, "ann_vol_pct": 0.0, "sharpe": float("nan"), "n_days": n}
+
+    mean_d = float(in_pos_returns.mean())
+    std_d  = float(in_pos_returns.std(ddof=1))
+
+    ann_return = mean_d * TRADING_DAYS
+    ann_vol    = std_d  * np.sqrt(TRADING_DAYS)
+    sharpe     = (ann_return - RISK_FREE_RATE) / ann_vol if ann_vol > 0 else float("nan")
+
+    return {
+        "ann_return_pct": ann_return * 100,
+        "ann_vol_pct":    ann_vol    * 100,
+        "sharpe":         sharpe,
+        "n_days":         n,
+    }
+
+
+def _print_sharpe_table(all_results: dict, lines: list) -> None:
+    """
+    Print a two-column Sharpe ratio summary (full-period vs in-position).
+
+    Full-period Sharpe uses every calendar day in the OOS window.
+    In-position Sharpe uses only days where the portfolio held open shares,
+    reconstructed from each stock's trade log (entry_date → exit_date).
+
+    Equal-weight rows average all four stocks' daily returns; the in-position
+    equal-weight row filters to days where at least one stock held a position.
+    """
+
+    def emit(text: str = ""):
+        print(text)
+        lines.append(text)
+
+    oos_window = f"{WINDOWS['out_of_sample'][0][:4]}–{WINDOWS['out_of_sample'][1][:4]}"
+
+    emit()
+    emit("=" * 80)
+    emit(f"  SHARPE RATIO SUMMARY  (Out-of-Sample, {oos_window})")
+    emit(f"  Risk-free rate: {RISK_FREE_RATE * 100:.1f}%  |  "
+         f"Annualisation: ×252 trading days")
+    emit("=" * 80)
+
+    C0, C1, C2 = 18, 24, 22
+    emit(
+        f"  {'Stock':<{C0}}"
+        f"{'Full-period Sharpe':^{C1}}"
+        f"{'In-position Sharpe':^{C2}}"
+    )
+    emit("  " + "─" * (C0 + C1 + C2))
+
+    per_stock_returns:      dict[str, pd.Series] = {}
+    per_stock_inpos_masks:  dict[str, pd.Series] = {}
+
+    for ticker in STOCKS:
+        oos_r = all_results.get(ticker, {}).get("oos", {})
+        if oos_r.get("error") or "equity_curve" not in oos_r:
+            emit(f"  {ticker:<{C0}}{'N/A':^{C1}}{'N/A':^{C2}}")
+            continue
+
+        ec        = oos_r["equity_curve"]
+        portfolio = oos_r["portfolio"]
+
+        full_stat  = _compute_sharpe(ec)
+        inpos_stat = _compute_inposition_sharpe(ec, portfolio)
+
+        per_stock_returns[ticker]     = ec["portfolio_value"].pct_change().dropna()
+        per_stock_inpos_masks[ticker] = _inposition_mask(ec, portfolio)
+
+        full_str  = (f"{full_stat['sharpe']:>+.2f}"
+                     if not np.isnan(full_stat["sharpe"]) else "N/A")
+        inpos_str = (f"{inpos_stat['sharpe']:>+.2f}  ({inpos_stat['n_days']}d in)"
+                     if not np.isnan(inpos_stat["sharpe"]) else "N/A")
+
+        emit(
+            f"  {ticker:<{C0}}"
+            f"{full_str:^{C1}}"
+            f"{inpos_str:^{C2}}"
+        )
+
+    # ── Equal-weight portfolio ────────────────────────────────────────────────
+    emit("  " + "─" * (C0 + C1 + C2))
+
+    if per_stock_returns:
+        combined    = pd.DataFrame(per_stock_returns).dropna()
+        avg_returns = combined.mean(axis=1)
+        n_overlap   = len(combined)
+
+        # Full-period equal-weight Sharpe
+        fake_prices = (1 + avg_returns).cumprod() * PARAMS["initial_capital"]
+        fake_ec     = pd.DataFrame({"portfolio_value": fake_prices}, index=avg_returns.index)
+        full_stat   = _compute_sharpe(fake_ec)
+
+        # In-position equal-weight: any day at least one stock held a position
+        any_inpos = pd.Series(False, index=avg_returns.index)
+        for ticker, mask in per_stock_inpos_masks.items():
+            any_inpos |= mask.reindex(avg_returns.index, fill_value=False)
+
+        inpos_avg = avg_returns[any_inpos]
+        n_inpos   = len(inpos_avg)
+        if n_inpos >= 2:
+            mean_d     = float(inpos_avg.mean())
+            std_d      = float(inpos_avg.std(ddof=1))
+            ann_return = mean_d * TRADING_DAYS
+            ann_vol    = std_d  * np.sqrt(TRADING_DAYS)
+            inpos_sharpe = (ann_return - RISK_FREE_RATE) / ann_vol if ann_vol > 0 else float("nan")
+            inpos_str = (f"{inpos_sharpe:>+.2f}  ({n_inpos}d in)"
+                         if not np.isnan(inpos_sharpe) else "N/A")
+        else:
+            inpos_str = "N/A"
+
+        full_str = (f"{full_stat['sharpe']:>+.2f}"
+                    if not np.isnan(full_stat["sharpe"]) else "N/A")
+
+        line = (
+            f"  {'Equal-weight':<{C0}}"
+            f"{full_str:^{C1}}"
+            f"{inpos_str:^{C2}}"
+            f"   ← {n_overlap}d overlap"
+        )
+        print(line)
+        lines.append(line)
+    else:
+        emit(f"  {'Equal-weight':<{C0}}{'N/A':^{C1}}{'N/A':^{C2}}")
+
+    emit()
+    emit(
+        "  Full-period Sharpe penalises the strategy for cash days (earns 0%, "
+        "risk-free = 6.5%)."
+    )
+    emit(
+        "  In-position Sharpe strips out flat cash days — measures quality of "
+        "entries/exits only."
+    )
+    emit("=" * 80)
+
+
 def _save_results(lines: list, all_verbose: dict):
     """Write summary + full verbose trade logs to validation/walk_forward_results.txt."""
     out_path = Path(__file__).parent / "walk_forward_results.txt"
@@ -593,6 +804,9 @@ def run_walk_forward():
             lines,
         )
     emit()
+
+    # ── Sharpe ratio summary ──────────────────────────────────────────────────
+    _print_sharpe_table(all_results, lines)
 
     # ── Save ──────────────────────────────────────────────────────────────────
     _save_results(lines, all_verbose)

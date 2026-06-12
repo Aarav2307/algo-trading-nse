@@ -22,3 +22,4 @@ __pycache__/
 # Test files with sensitive output
 test_kite.py
 test_kite_fetcher.py
+auth/nse_cache/

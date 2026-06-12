@@ -10,6 +10,8 @@ Automated end-of-day swing trading system for NSE India equity markets. Built en
 
 Currently in paper trading phase with walk-forward validated backtesting results across 8 years of NSE data.
 
+**Current universe (6 stocks):** TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS
+
 ---
 
 ## Table of Contents
