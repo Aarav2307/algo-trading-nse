@@ -69,6 +69,10 @@ STOCKS: List[str] = [
     "BAJAJ-AUTO.NS",
     "CUMMINSIND.NS",
     "HCLTECH.NS",
+    "BOSCHLTD.NS",
+    "COLPAL.NS",
+    "ANURAS.NS",
+    "HEROMOTOCO.NS",
 ]
 
 INITIAL_CAPITAL = 100_000.0    # ₹
