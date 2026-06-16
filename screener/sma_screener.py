@@ -55,93 +55,95 @@ from data.fetcher import get_ohlcv
 # Tickers use yfinance .NS format (NSE). Known rename: TATAMOTORS.NS → TMPV.NS
 # as of the 2026 Tata Motors demerger; TMPV.NS carries the full price history.
 
-UNIVERSE: dict[str, str] = {
-    # ── Banking ──────────────────────────────────────────────────────────────
-    "HDFCBANK.NS":    "Banking",
-    "ICICIBANK.NS":   "Banking",
-    "KOTAKBANK.NS":   "Banking",
-    "SBIN.NS":        "Banking",
-    "AXISBANK.NS":    "Banking",
-    "INDUSINDBK.NS":  "Banking",
-    "BANDHANBNK.NS":  "Banking",
-    "PNB.NS":         "Banking",
-    "FEDERALBNK.NS":  "Banking",
-    "CANBK.NS":       "Banking",
-    # ── Finance / Insurance ───────────────────────────────────────────────────
-    "BAJFINANCE.NS":  "Finance",
-    "BAJAJFINSV.NS":  "Finance",
-    "HDFCLIFE.NS":    "Insurance",
-    "SBILIFE.NS":     "Insurance",
-    "ICICIGI.NS":     "Insurance",
-    # ── IT ────────────────────────────────────────────────────────────────────
-    "TCS.NS":         "IT",
-    "INFY.NS":        "IT",
-    "WIPRO.NS":       "IT",
-    "HCLTECH.NS":     "IT",
-    "TECHM.NS":       "IT",
-    "LTIM.NS":        "IT",
-    "PERSISTENT.NS":  "IT",
-    "MPHASIS.NS":     "IT",
-    # ── Auto ──────────────────────────────────────────────────────────────────
-    "MARUTI.NS":      "Auto",
-    "TMPV.NS":        "Auto",       # Tata Motors (was TATAMOTORS.NS pre-2026 demerger)
-    "BAJAJ-AUTO.NS":  "Auto",
-    "HEROMOTOCO.NS":  "Auto",
-    "EICHERMOT.NS":   "Auto",
-    "ASHOKLEY.NS":    "Auto",
-    "BALKRISIND.NS":  "Auto",
-    # ── Pharma ────────────────────────────────────────────────────────────────
-    "SUNPHARMA.NS":   "Pharma",
-    "DRREDDY.NS":     "Pharma",
-    "CIPLA.NS":       "Pharma",
-    "DIVISLAB.NS":    "Pharma",
-    "AUROPHARMA.NS":  "Pharma",
-    "LUPIN.NS":       "Pharma",
-    # ── FMCG ──────────────────────────────────────────────────────────────────
-    "HINDUNILVR.NS":  "FMCG",
-    "ITC.NS":         "FMCG",
-    "NESTLEIND.NS":   "FMCG",
-    "BRITANNIA.NS":   "FMCG",
-    "DABUR.NS":       "FMCG",
-    "MARICO.NS":      "FMCG",
-    "GODREJCP.NS":    "FMCG",
-    # ── Metals ────────────────────────────────────────────────────────────────
-    "TATASTEEL.NS":   "Metals",
-    "HINDALCO.NS":    "Metals",
-    "JSWSTEEL.NS":    "Metals",
-    "VEDL.NS":        "Metals",
-    "COALINDIA.NS":   "Metals",
-    "NMDC.NS":        "Metals",
-    "SAIL.NS":        "Metals",
-    # ── Energy ────────────────────────────────────────────────────────────────
-    "RELIANCE.NS":    "Energy",
-    "ONGC.NS":        "Energy",
-    "NTPC.NS":        "Energy",
-    "POWERGRID.NS":   "Energy",
-    "BPCL.NS":        "Energy",
-    "IOC.NS":         "Energy",
-    "GAIL.NS":        "Energy",
-    # ── Infra / Capital Goods / Cement ────────────────────────────────────────
-    "LT.NS":          "Infra",
-    "ADANIPORTS.NS":  "Infra",
-    "DLF.NS":         "Infra",
-    "ULTRACEMCO.NS":  "Cement",
-    "GRASIM.NS":      "Cement",
-    "ABB.NS":         "Capital Goods",
-    "SIEMENS.NS":     "Capital Goods",
-    "BHEL.NS":        "Capital Goods",
-    # ── Telecom ───────────────────────────────────────────────────────────────
-    "BHARTIARTL.NS":  "Telecom",
-    # ── Consumer Durables ─────────────────────────────────────────────────────
-    "TITAN.NS":       "Consumer",
-    "HAVELLS.NS":     "Consumer",
-    "VOLTAS.NS":      "Consumer",
-    "WHIRLPOOL.NS":   "Consumer",
-    # ── Conglomerate / Chemicals ──────────────────────────────────────────────
-    "TATACHEM.NS":    "Chemicals",
-    "PIDILITIND.NS":  "Chemicals",
-    "ADANIENT.NS":    "Conglomerate",
+# ── Dynamic NIFTY 500 universe loader ────────────────────────────────────────
+_INDUSTRY_TO_SECTOR: dict[str, str] = {
+    "Banking":                    "Banking",
+    "Financial Services":         "Finance",
+    "Insurance":                  "Insurance",
+    "Information Technology":     "IT",
+    "IT":                         "IT",
+    "Automobile":                 "Auto",
+    "Auto Components":            "Auto Components",
+    "Pharmaceuticals":            "Pharma",
+    "Healthcare":                 "Pharma",
+    "FMCG":                       "FMCG",
+    "Consumer Staples":           "FMCG",
+    "Metals & Mining":            "Metals",
+    "Oil Gas & Consumable Fuels": "Energy",
+    "Power":                      "Energy",
+    "Capital Goods":              "Capital Goods",
+    "Construction":               "Infra",
+    "Realty":                     "Infra",
+    "Infrastructure":             "Infra",
+    "Cement & Cement Products":   "Cement",
+    "Telecommunication":          "Telecom",
+    "Consumer Durables":          "Consumer",
+    "Chemicals":                  "Chemicals",
+    "Diversified":                "Conglomerate",
+    "Textiles":                   "Textiles",
+    "Media Entertainment & Pub":  "Media",
+    "Forest Materials":           "Materials",
+    "Agri, Allied & Agro Proc":   "Agriculture",
+    "Services":                   "Services",
+    "Retailing":                  "Retail",
+    "Transport Infrastructure":   "Infra",
+    "Beverages":                  "FMCG",
 }
+
+def _load_nifty500_universe() -> dict[str, str]:
+    """
+    Fetch the live NIFTY 500 constituent list from NSE and return a
+    {ticker.NS: sector} dict. Falls back to the hardcoded 73-stock list
+    if the NSE request fails.
+    """
+    import requests, io
+    try:
+        url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=10)
+        r.raise_for_status()
+        import pandas as pd
+        df = pd.read_csv(io.StringIO(r.text))
+        universe = {}
+        for _, row in df.iterrows():
+            ticker = str(row["Symbol"]).strip() + ".NS"
+            industry = str(row["Industry"]).strip()
+            sector = _INDUSTRY_TO_SECTOR.get(industry, industry)
+            universe[ticker] = sector
+        if len(universe) > 100:
+            return universe
+    except Exception as e:
+        print(f"[screener] NIFTY 500 fetch failed ({e}), falling back to hardcoded universe.")
+    # ── Fallback: original 73-stock hardcoded universe ────────────────────────
+    return {
+        "HDFCBANK.NS": "Banking", "ICICIBANK.NS": "Banking", "KOTAKBANK.NS": "Banking",
+        "SBIN.NS": "Banking", "AXISBANK.NS": "Banking", "INDUSINDBK.NS": "Banking",
+        "BANDHANBNK.NS": "Banking", "PNB.NS": "Banking", "FEDERALBNK.NS": "Banking",
+        "CANBK.NS": "Banking", "BAJFINANCE.NS": "Finance", "BAJAJFINSV.NS": "Finance",
+        "HDFCLIFE.NS": "Insurance", "SBILIFE.NS": "Insurance", "ICICIGI.NS": "Insurance",
+        "TCS.NS": "IT", "INFY.NS": "IT", "WIPRO.NS": "IT", "HCLTECH.NS": "IT",
+        "TECHM.NS": "IT", "LTIM.NS": "IT", "PERSISTENT.NS": "IT", "MPHASIS.NS": "IT",
+        "MARUTI.NS": "Auto", "TMPV.NS": "Auto", "BAJAJ-AUTO.NS": "Auto",
+        "HEROMOTOCO.NS": "Auto", "EICHERMOT.NS": "Auto", "ASHOKLEY.NS": "Auto",
+        "BALKRISIND.NS": "Auto", "SUNPHARMA.NS": "Pharma", "DRREDDY.NS": "Pharma",
+        "CIPLA.NS": "Pharma", "DIVISLAB.NS": "Pharma", "AUROPHARMA.NS": "Pharma",
+        "LUPIN.NS": "Pharma", "HINDUNILVR.NS": "FMCG", "ITC.NS": "FMCG",
+        "NESTLEIND.NS": "FMCG", "BRITANNIA.NS": "FMCG", "DABUR.NS": "FMCG",
+        "MARICO.NS": "FMCG", "GODREJCP.NS": "FMCG", "TATASTEEL.NS": "Metals",
+        "HINDALCO.NS": "Metals", "JSWSTEEL.NS": "Metals", "VEDL.NS": "Metals",
+        "COALINDIA.NS": "Metals", "NMDC.NS": "Metals", "SAIL.NS": "Metals",
+        "RELIANCE.NS": "Energy", "ONGC.NS": "Energy", "NTPC.NS": "Energy",
+        "POWERGRID.NS": "Energy", "BPCL.NS": "Energy", "IOC.NS": "Energy",
+        "GAIL.NS": "Energy", "LT.NS": "Infra", "ADANIPORTS.NS": "Infra",
+        "DLF.NS": "Infra", "ULTRACEMCO.NS": "Cement", "GRASIM.NS": "Cement",
+        "ABB.NS": "Capital Goods", "SIEMENS.NS": "Capital Goods", "BHEL.NS": "Capital Goods",
+        "BHARTIARTL.NS": "Telecom", "TITAN.NS": "Consumer", "HAVELLS.NS": "Consumer",
+        "VOLTAS.NS": "Consumer", "WHIRLPOOL.NS": "Consumer", "TATACHEM.NS": "Chemicals",
+        "PIDILITIND.NS": "Chemicals", "ADANIENT.NS": "Conglomerate",
+        "CUMMINSIND.NS": "Capital Goods", "HCLTECH.NS": "IT",
+    }
+
+UNIVERSE: dict[str, str] = _load_nifty500_universe()
 
 BENCHMARK_TICKER = "^NSEI"
 
