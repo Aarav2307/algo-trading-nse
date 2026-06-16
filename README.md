@@ -12,6 +12,10 @@ Currently in paper trading phase with walk-forward validated backtesting results
 
 **Current universe (10 stocks):** TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
 
+**Screener universe:** Dynamic NIFTY 500 (504 stocks) fetched live from NSE.
+
+**Current universe (10 stocks):** TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
+
 ---
 
 ## Table of Contents

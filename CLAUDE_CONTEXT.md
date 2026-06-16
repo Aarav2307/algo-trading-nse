@@ -65,3 +65,9 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - No news/merger monitoring — only scheduled NSE ex-dates
 - No F&O support (future project)
 - Screener sector map only covers original 73 stocks — new stocks show as Unknown
+
+## Screener Universe (updated Jun 16)
+- sma_screener.py and regime_classifier.py now dynamically fetch NIFTY 500 (504 stocks) from NSE
+- Falls back to hardcoded 73-stock list if NSE fetch fails
+- Both screeners automatically use the expanded universe on every run
+- sector map covers all major NSE industries via _INDUSTRY_TO_SECTOR mapping
