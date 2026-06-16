@@ -1,0 +1,67 @@
+# Claude Context — NSE Algo Trading System
+Last updated: 2026-06-16
+
+## Current Trading Universe (10 stocks)
+TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
+
+## Universe Addition History
+- Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
+- Added Jun 12: CUMMINSIND (H=0.559, ADX=27.3), HCLTECH (H=0.614, ADX=26.3)
+- Added Jun 16: BOSCHLTD (H=0.576, fresh golden cross), COLPAL (H=0.569, fresh golden cross), ANURAS (H=0.608, fresh golden cross), HEROMOTOCO (H=0.572, death cross -2.84%)
+
+## Watchlist (not yet added)
+- BHEL.NS: H=0.558, ADX=22.8, UNCLASSIFIED — re-check in 3-4 weeks
+- AUBANK: Gap=-0.76%, close to golden cross
+- PFIZER: Gap=-2.66%, low vol quality pharma
+
+## SMA Gap Status (as of Jun 16)
+- CUMMINSIND: already in golden cross before we added it — waiting for fresh cross
+- HCLTECH: death cross -6.60% — waiting
+- BOSCHLTD: golden cross +1.05% — will enter soon
+- COLPAL: golden cross +0.36% — will enter soon
+- ANURAS: golden cross +0.32% — will enter soon
+- HEROMOTOCO: death cross -2.84% — waiting
+
+## Paper Trading Status (as of 2026-06-16)
+- Started: 2026-06-02
+- Portfolio: Rs99,221 (-0.78%)
+- Cash: Rs61,073
+- Open positions: TMPV (+0.7%), SIEMENS (-2.6%), BAJAJ-AUTO (-3.3%)
+- WHIRLPOOL: CLOSED since Jun 3 (BUY + SELL same day via strategy signal, -Rs188). No open position. No cooldown. Will re-enter on next golden cross.
+- Completed trades: 1 (WHIRLPOOL intraday exit Jun 3, -Rs188)
+
+## Infrastructure
+- AWS Lightsail Mumbai: ubuntu@13.205.133.169
+- SSH key: ~/.ssh/LightsailDefaultKey-ap-south-1.pem
+- Cron: 15 10 * * 1-5 (3:45 PM IST), 50 3 * * 1-5 (9:20 AM IST)
+- Server path: /home/ubuntu/algo-trading/
+- Local path: /Users/aaravagarwal/algo-trading/
+- Python on server: python3 (not python)
+- Venv on server: ~/algo-trading/venv
+
+## Key Workflow Notes
+- Always SCP files from server before git push (server is source of truth)
+- correlation_check.py has hardcoded CANDIDATES list — must edit manually
+- universe_expansion.py does not exist on server
+- bars_held=0 mid-day is normal — updates at 3:45 PM signal run
+- morning_fill_check.py and corporate_actions.py are fully dynamic
+- Check logs at: ~/algo-trading/paper_trading/logs/YYYY-MM-DD.log
+
+## Going Live Checklist (future)
+- Minimum capital: Rs50,000 recommended
+- Wait for 20-25 days clean paper trading data (currently at ~10 days)
+- Flip PAPER_TRADING_MODE=False in signal_runner.py
+- Disable dry-run in engine/order_manager.py
+- Reset portfolio_state.json with real capital
+- Archive current paper trading logs before reset
+- Recalibrate position sizer — BAJAJ-AUTO at Rs10,000+ needs >Rs50,000 capital
+
+## Correlation Results (Jun 16)
+- All pairs < 0.70 (safe)
+- Highest pair: HEROMOTOCO/BAJAJ-AUTO r=0.53 (both two-wheelers, acceptable)
+- Best diversifiers: ANURAS (avg r=0.11), COLPAL (avg r=0.19)
+
+## System Limitations
+- No news/merger monitoring — only scheduled NSE ex-dates
+- No F&O support (future project)
+- Screener sector map only covers original 73 stocks — new stocks show as Unknown
