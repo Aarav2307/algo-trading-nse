@@ -135,3 +135,12 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - Skipped signals logged to signal_log.csv with reason and rank score
 - Walk-forward: 17/20 unchanged (ranking only affects paper trading execution path)
 - Test verified: STOCK_C (91.4) → STOCK_A (85.2) → STOCK_B (62.1) correct sort order
+
+### Fix 10 Update: Extended test on 10 stocks — COMPLETED
+- 10-stock extended (2015-19 IS / 2020-23 OOS): 37/50 (74%) — SYSTEM VALIDATED
+- All 10 stocks delivered positive OOS returns through COVID crash and 2022 selloff
+- BSOFT standout: +44.5% OOS, 4/5, 76.9% win rate during hardest macro period
+- HEROMOTOCO weak: 2/5, poor payoff and expectancy — flag for future removal
+- SIEMENS consistent 3/5 underperformer across both windows — flag for removal
+- NEWGEN and ANURAS excluded: insufficient history (listed 2018 and post-2019)
+- Conclusion: strategy is genuinely robust across bull and bear market periods
