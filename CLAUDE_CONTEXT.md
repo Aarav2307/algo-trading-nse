@@ -71,3 +71,18 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - Falls back to hardcoded 73-stock list if NSE fetch fails
 - Both screeners automatically use the expanded universe on every run
 - sector map covers all major NSE industries via _INDUSTRY_TO_SECTOR mapping
+
+## Quant Research Fixes (Jun 17)
+### Fix 1: Exit pricing bias — COMPLETED
+- Problem: RM exits (Chandelier, Hard Stop, Time Stop) were booking at today's close price, but real execution happens at next morning's open via AMO
+- Fix: Deferred RM exits to next-day open in both engine/backtester.py and paper_trading/signal_runner.py, matching how strategy entries already worked
+- Walk-forward rerun after fix: 15/20 PASS — identical to original
+- Detail changes: TMPV OOS return -1.5pp (expected, realistic), BAJAJ-AUTO unchanged, WHIRLPOOL -0.4pp
+- Net verdict: fix is safe, backtest and paper trading now model AMO fills identically end-to-end
+
+### Remaining fixes from quant review (priority order):
+2. Add portfolio-level NIFTY regime filter — if NIFTY SMA20 < SMA50, reduce position sizes or go to cash
+3. Validate cooldown period — backtest 10/15/20/25 bar cooldowns, pick best
+4. Fix transaction costs — add SEBI fees, exchange charges, GST, stamp duty
+5. Remove RPOWER — governance risk unquantifiable
+6. Extend paper trading — minimum 6 months before going live
