@@ -107,6 +107,15 @@ def _fetch_nifty(start: str, end: str) -> pd.DataFrame:
 RISK_FREE_RATE      = 0.065   # 6.5% — RBI repo rate approximation
 TRADING_DAYS        = 252     # NSE trading days per year
 
+# Cooldown sensitivity analysis
+SENSITIVITY_COOLDOWNS   = [10, 15, 20, 25]    # bars to test
+SENSITIVITY_MIN_BARS    = 1_250               # IS + OOS bars to qualify as "5 years"
+SENSITIVITY_UNIVERSE    = [                   # all 10 current trading universe stocks
+    "TMPV.NS", "WHIRLPOOL.NS", "SIEMENS.NS", "BAJAJ-AUTO.NS",
+    "CUMMINSIND.NS", "HCLTECH.NS", "BOSCHLTD.NS", "COLPAL.NS",
+    "ANURAS.NS", "HEROMOTOCO.NS",
+]
+
 
 # =============================================================================
 # Single-window backtest
@@ -174,6 +183,51 @@ def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None) -
         "cooldown":    cooldown,
         "verbose":     verbose,
         "covid_note":  _covid_note(equity_curve),
+    }
+
+
+def _run_one_from_df(
+    df: pd.DataFrame,
+    cooldown_bars: int,
+    nifty_df: pd.DataFrame = None,
+) -> dict:
+    """
+    Run one backtest window using a pre-fetched DataFrame.
+
+    Unlike _run_one(), no data fetching occurs — the caller supplies df and
+    nifty_df. Used by the sensitivity analysis to avoid re-fetching the same
+    stock data for every cooldown value being tested.
+    """
+    n_bars = len(df)
+    if n_bars < MIN_BARS:
+        return {"error": f"INSUFFICIENT DATA — {n_bars} bars (need ≥ {MIN_BARS})"}
+
+    cooldown_cfg = {**PARAMS["cooldown"], "cooldown_bars": cooldown_bars}
+
+    signals      = generate_signals(df, PARAMS["sma_fast"], PARAMS["sma_slow"])
+    risk_manager = RiskManager(PARAMS["risk_management"])
+    cooldown     = CooldownTracker(cooldown_cfg)
+    sizer        = PositionSizer(PARAMS["position_sizing"])
+    portfolio    = Portfolio(PARAMS["initial_capital"])
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        equity_curve = bt_run(
+            df, signals, portfolio,
+            risk_manager=risk_manager,
+            cooldown_tracker=cooldown,
+            position_sizer=sizer,
+            use_next_day_fills=True,
+            nifty_regime_df=nifty_df,
+            nifty_regime_filter=PARAMS.get("nifty_regime_filter", False),
+        )
+
+    return {
+        "error":        None,
+        "n_bars":       n_bars,
+        "metrics":      _metrics(equity_curve, portfolio),
+        "equity_curve": equity_curve,
+        "portfolio":    portfolio,
     }
 
 
@@ -738,6 +792,242 @@ def _print_sharpe_table(all_results: dict, lines: list) -> None:
     emit("=" * 80)
 
 
+def _cooldown_sensitivity(lines: list) -> None:
+    """
+    Cooldown sensitivity analysis across the full 10-stock trading universe.
+
+    For each cooldown value in SENSITIVITY_COOLDOWNS:
+      - Fetches IS (2018-2023) and OOS (2023-2026) data per stock (once).
+      - Skips stocks with IS + OOS bars < SENSITIVITY_MIN_BARS (not enough history).
+      - Runs the full backtester with each cooldown on pre-cached DataFrames.
+      - Records WF score, total OOS trades, and average OOS trade return.
+
+    Data is cached per-stock across cooldown values to avoid redundant Kite fetches.
+    NIFTY regime filter follows the current PARAMS setting.
+    """
+    is_start, is_end     = WINDOWS["in_sample"]
+    oos_start, oos_end   = WINDOWS["out_of_sample"]
+    is_end_ts            = pd.Timestamp(is_end)
+    oos_start_ts         = pd.Timestamp(oos_start)
+    regime_active        = PARAMS.get("nifty_regime_filter", False)
+    current_cd           = PARAMS["cooldown"]["cooldown_bars"]   # baseline (15)
+
+    def emit(text: str = "") -> None:
+        print(text)
+        lines.append(text)
+
+    emit()
+    emit("=" * 80)
+    emit("  COOLDOWN SENSITIVITY ANALYSIS")
+    emit(f"  Universe: {len(SENSITIVITY_UNIVERSE)} stocks tested")
+    emit(f"  Cooldown values: {SENSITIVITY_COOLDOWNS} bars")
+    emit(f"  Eligibility: IS + OOS bars >= {SENSITIVITY_MIN_BARS:,} (~5 years)")
+    emit(f"  IS window:   {is_start} → {is_end}  |  OOS: {oos_start} → {oos_end}")
+    emit(f"  NIFTY filter: {'ACTIVE' if regime_active else 'DISABLED'}")
+    emit("=" * 80)
+
+    # ── Step 1: Eligibility — fetch IS+OOS once per stock, cache if qualifying ──
+    emit()
+    emit("  DATA ELIGIBILITY CHECK (IS + OOS bars >= 1,250):")
+    emit()
+
+    qualifying: list[str]                    = []
+    skipped:    list[tuple[str, str]]        = []
+    cache_is:   dict[str, pd.DataFrame]     = {}
+    cache_oos:  dict[str, pd.DataFrame]     = {}
+
+    for ticker in SENSITIVITY_UNIVERSE:
+        try:
+            df_is  = get_ohlcv(ticker, is_start, is_end)
+            df_oos = get_ohlcv(ticker, oos_start, oos_end)
+            n_is   = len(df_is)  if df_is  is not None else 0
+            n_oos  = len(df_oos) if df_oos is not None else 0
+            total  = n_is + n_oos
+
+            if total >= SENSITIVITY_MIN_BARS and n_is >= MIN_BARS and n_oos >= MIN_BARS:
+                qualifying.append(ticker)
+                cache_is[ticker]  = df_is
+                cache_oos[ticker] = df_oos
+                first_bar = df_is.index[0].date() if n_is > 0 else "?"
+                emit(
+                    f"  ✓  {ticker:<22}  IS={n_is:>5}  OOS={n_oos:>4}  "
+                    f"total={total:>5}  from {first_bar}  — INCLUDED"
+                )
+            else:
+                reason = (
+                    f"total {total} bars < {SENSITIVITY_MIN_BARS}"
+                    if total < SENSITIVITY_MIN_BARS
+                    else f"IS only {n_is} bars"
+                )
+                skipped.append((ticker, reason))
+                first_bar = df_is.index[0].date() if n_is > 0 else "?"
+                emit(
+                    f"  ✗  {ticker:<22}  IS={n_is:>5}  OOS={n_oos:>4}  "
+                    f"total={total:>5}  from {first_bar}  — SKIPPED ({reason})"
+                )
+        except Exception as exc:
+            skipped.append((ticker, f"fetch error: {exc}"))
+            emit(f"  ✗  {ticker:<22}  fetch failed — SKIPPED ({exc})")
+
+    emit()
+    emit(f"  Qualifying: {len(qualifying)}  |  Skipped: {len(skipped)}")
+
+    if not qualifying:
+        emit()
+        emit("  No qualifying stocks — sensitivity analysis aborted.")
+        return
+
+    # ── Step 2: NIFTY data for regime filter (reuse across all cooldown tests) ──
+    if regime_active:
+        print(f"\n[cooldown_sensitivity] Fetching NIFTY 50 for IS window…")
+        nifty_is  = _fetch_nifty(is_start, is_end)
+        print(f"[cooldown_sensitivity] Fetching NIFTY 50 for OOS window…")
+        nifty_oos = _fetch_nifty(oos_start, oos_end)
+    else:
+        nifty_is = nifty_oos = pd.DataFrame()
+
+    # ── Step 3: Run all backtests ─────────────────────────────────────────────
+    # Structure: cd_results[cooldown] = {n_pass, n_total, n_stocks,
+    #                                    total_trades, avg_return, per_stock}
+    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy"]
+    cd_results: dict[int, dict] = {}
+
+    for cd in SENSITIVITY_COOLDOWNS:
+        print(
+            f"\n[cooldown_sensitivity] Testing cooldown={cd} bars "
+            f"on {len(qualifying)} stocks × 2 windows …"
+        )
+        passes:        list[bool]          = []
+        oos_trade_dfs: list[pd.DataFrame]  = []
+        per_stock:     dict[str, dict]     = {}
+
+        for ticker in qualifying:
+            is_r  = _run_one_from_df(cache_is[ticker],  cd, nifty_df=nifty_is)
+            oos_r = _run_one_from_df(cache_oos[ticker], cd, nifty_df=nifty_oos)
+
+            if is_r.get("error") or oos_r.get("error"):
+                print(f"  {ticker}: error IS={is_r.get('error')} OOS={oos_r.get('error')}")
+                continue
+
+            is_m  = is_r["metrics"]
+            oos_m = oos_r["metrics"]
+            stock_passes = [_pass(k, is_m, oos_m) for k in METRICS_KEYS]
+            passes.extend(stock_passes)
+
+            oos_tlog = oos_r["portfolio"].get_trade_log()
+            if not oos_tlog.empty:
+                oos_trade_dfs.append(oos_tlog)
+
+            per_stock[ticker] = {
+                "is_ret":     is_m["total_ret"],
+                "oos_ret":    oos_m["total_ret"],
+                "is_trades":  is_m["n_trades"],
+                "oos_trades": oos_m["n_trades"],
+                "n_pass":     sum(stock_passes),
+            }
+
+        # Aggregate
+        n_pass  = sum(passes)
+        n_total = len(passes)
+
+        if oos_trade_dfs:
+            combined     = pd.concat(oos_trade_dfs, ignore_index=True)
+            total_trades = len(combined)
+            avg_return   = float(combined["return_pct"].mean())
+        else:
+            total_trades = 0
+            avg_return   = 0.0
+
+        cd_results[cd] = {
+            "n_pass":       n_pass,
+            "n_total":      n_total,
+            "n_stocks":     len(per_stock),
+            "total_trades": total_trades,
+            "avg_return":   avg_return,
+            "per_stock":    per_stock,
+        }
+        print(
+            f"  → {n_pass}/{n_total} PASS | {total_trades} OOS trades "
+            f"| avg return {avg_return:>+.2f}%"
+        )
+
+    # ── Step 4: Comparison table ──────────────────────────────────────────────
+    emit()
+    emit("=" * 80)
+    emit(f"  COOLDOWN COMPARISON  ({len(qualifying)} qualifying stocks, OOS 2023–2025)")
+    emit("=" * 80)
+    emit()
+
+    W0, W1, W2, W3, W4 = 14, 10, 18, 16, 20
+    emit(
+        f"  {'Cooldown':>{W0}}"
+        f"  {'Stocks':>{W1}}"
+        f"  {'WF Score':>{W2}}"
+        f"  {'OOS Trades':>{W3}}"
+        f"  {'Avg Trade Return':>{W4}}"
+    )
+    emit("  " + "─" * (W0 + W1 + W2 + W3 + W4 + 10))
+
+    for cd in SENSITIVITY_COOLDOWNS:
+        r = cd_results.get(cd)
+        if r is None:
+            continue
+        n_pass  = r["n_pass"]
+        n_total = r["n_total"]
+        pct     = n_pass / n_total * 100 if n_total else 0.0
+        marker  = "  ← baseline" if cd == current_cd else ""
+        emit(
+            f"  {f'{cd} bars':>{W0}}"
+            f"  {r['n_stocks']:>{W1}}"
+            f"  {f'{n_pass}/{n_total}  ({pct:.0f}%)':>{W2}}"
+            f"  {r['total_trades']:>{W3}}"
+            f"  {r['avg_return']:>+{W4 - 3}.2f}%"
+            f"{marker}"
+        )
+
+    # ── Step 5: Per-stock detail at baseline cooldown ──────────────────────────
+    emit()
+    emit("  " + "─" * (W0 + W1 + W2 + W3 + W4 + 10))
+    emit(f"  Per-stock detail at baseline cooldown ({current_cd} bars):")
+    emit()
+
+    base = cd_results.get(current_cd, {})
+    if base:
+        C0, C1, C2, C3, C4, C5 = 22, 12, 12, 8, 12, 14
+        emit(
+            f"  {'Stock':<{C0}}"
+            f"  {'IS Return':>{C1}}"
+            f"  {'OOS Return':>{C2}}"
+            f"  {'Score':>{C3}}"
+            f"  {'IS Trades':>{C4}}"
+            f"  {'OOS Trades':>{C5}}"
+        )
+        emit("  " + "─" * (C0 + C1 + C2 + C3 + C4 + C5 + 14))
+        for ticker in qualifying:
+            s = base["per_stock"].get(ticker)
+            if s is None:
+                continue
+            verdict = f"{s['n_pass']}/5"
+            emit(
+                f"  {ticker:<{C0}}"
+                f"  {s['is_ret']:>+{C1}.1f}%"
+                f"  {s['oos_ret']:>+{C2}.1f}%"
+                f"  {verdict:>{C3}}"
+                f"  {s['is_trades']:>{C4}}"
+                f"  {s['oos_trades']:>{C5}}"
+            )
+
+    # ── Step 6: Skipped stocks ────────────────────────────────────────────────
+    if skipped:
+        emit()
+        emit("  SKIPPED STOCKS:")
+        for ticker, reason in skipped:
+            emit(f"  ✗  {ticker:<22} — {reason}")
+
+    emit()
+    emit("=" * 80)
+
+
 def _save_results(lines: list, all_verbose: dict):
     """Write summary + full verbose trade logs to validation/walk_forward_results.txt."""
     out_path = Path(__file__).parent / "walk_forward_results.txt"
@@ -852,6 +1142,9 @@ def run_walk_forward():
 
     # ── Sharpe ratio summary ──────────────────────────────────────────────────
     _print_sharpe_table(all_results, lines)
+
+    # ── Cooldown sensitivity analysis ─────────────────────────────────────────
+    _cooldown_sensitivity(lines)
 
     # ── Save ──────────────────────────────────────────────────────────────────
     _save_results(lines, all_verbose)

@@ -1,4 +1,4 @@
-Walk-Forward Validation — generated 2026-06-18 03:42:06
+Walk-Forward Validation — generated 2026-06-18 03:53:51
 
 
 ================================================================================
@@ -14,7 +14,7 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
   Cooldown:    15-bar after RM exits
   Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position
   Capital:     ₹100,000 per window (independent runs)
-  NIFTY Filter: DISABLED
+  NIFTY Filter: ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)
 
 
 ================================================================================
@@ -25,15 +25,15 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
 
   Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Total return                      +10.6%                     +6.8%                  [PASS]
-  vs Buy & Hold              +19.2pp  (B&H -8.6%)      -28.4pp  (B&H +35.2%)          [FAIL]
-  Max drawdown                      -7.7%                      -6.6%                  [PASS]
-  Payoff ratio                      1.66:1                     2.28:1                 [PASS]
-  Expectancy/trade                  ₹+611                      ₹+634                  [PASS]
+  Total return                      +10.2%                     +9.3%                  [PASS]
+  vs Buy & Hold              +18.8pp  (B&H -8.6%)      -25.9pp  (B&H +35.2%)          [FAIL]
+  Max drawdown                      -8.1%                      -6.3%                  [PASS]
+  Payoff ratio                      2.00:1                     2.47:1                 [PASS]
+  Expectancy/trade                  ₹+586                     ₹+1,051                 [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Trades                              18                         11             
-  Win rate                          55.6%                      45.5%            
-  Ret/DD score                       1.37                       1.02            
+  Trades                              18                         9              
+  Win rate                          50.0%                      55.6%            
+  Ret/DD score                       1.26                       1.47            
 
   Score: 4/5 PASS
 
@@ -42,61 +42,61 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
   WHIRLPOOL.NS
 ================================================================================
   Data:  1238 bars in-sample  |  744 bars out-of-sample
-  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.6%. Risk system protected capital well.
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.4%. Risk system protected capital well.
 
   Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Total return                      +2.7%                      +3.9%                  [PASS]
-  vs Buy & Hold              +10.6pp  (B&H -7.9%)      +43.8pp  (B&H -39.9%)          [PASS]
-  Max drawdown                      -4.1%                      -3.2%                  [PASS]
-  Payoff ratio                      1.82:1                     1.47:1                 [FAIL]
-  Expectancy/trade                  ₹+187                      ₹+349                  [PASS]
+  Total return                      -0.4%                      +3.7%                  [PASS]
+  vs Buy & Hold              +7.5pp  (B&H -7.9%)       +43.6pp  (B&H -39.9%)          [PASS]
+  Max drawdown                      -3.9%                      -3.2%                  [PASS]
+  Payoff ratio                      1.65:1                     1.96:1                 [PASS]
+  Expectancy/trade                   ₹-5                       ₹+325                  [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
   Trades                              16                         12             
-  Win rate                          43.8%                      58.3%            
-  Ret/DD score                       0.66                       1.24            
+  Win rate                          37.5%                      50.0%            
+  Ret/DD score                      -0.10                       1.14            
 
-  Score: 4/5 PASS
+  Score: 5/5 PASS
 
 
 ================================================================================
   SIEMENS.NS
 ================================================================================
   Data:  1238 bars in-sample  |  744 bars out-of-sample
-  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.6%. Risk system protected capital well.
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.5%. Risk system protected capital well.
 
   Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Total return                      +8.6%                      +2.7%                  [FAIL]
-  vs Buy & Hold            -119.6pp  (B&H +128.3%)     -39.4pp  (B&H +42.2%)          [FAIL]
-  Max drawdown                      -5.9%                      -7.0%                  [PASS]
-  Payoff ratio                      3.28:1                     1.61:1                 [PASS]
-  Expectancy/trade                  ₹+430                      ₹+230                  [PASS]
+  Total return                      +0.2%                      +1.4%                  [PASS]
+  vs Buy & Hold            -128.1pp  (B&H +128.3%)     -40.8pp  (B&H +42.2%)          [FAIL]
+  Max drawdown                      -5.3%                      -7.2%                  [PASS]
+  Payoff ratio                      0.97:1                     1.91:1                 [PASS]
+  Expectancy/trade                   ₹+31                      ₹+125                  [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Trades                              21                         13             
-  Win rate                          38.1%                      46.2%            
-  Ret/DD score                       1.47                       0.39            
+  Trades                              19                         13             
+  Win rate                          52.6%                      38.5%            
+  Ret/DD score                       0.04                       0.19            
 
-  Score: 3/5 PASS
+  Score: 4/5 PASS
 
 
 ================================================================================
   BAJAJ-AUTO.NS
 ================================================================================
   Data:  1238 bars in-sample  |  744 bars out-of-sample
-  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -3.2%. Risk system protected capital well.
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -3.4%. Risk system protected capital well.
 
   Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2025)        Result
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Total return                      +2.1%                      +14.4%                 [PASS]
-  vs Buy & Hold              -7.8pp  (B&H +9.9%)      -153.7pp  (B&H +168.1%)         [FAIL]
-  Max drawdown                      -5.1%                      -3.2%                  [PASS]
-  Payoff ratio                      2.93:1                     3.32:1                 [PASS]
-  Expectancy/trade                  ₹+124                     ₹+1,001                 [PASS]
+  Total return                      +1.2%                      +13.6%                 [PASS]
+  vs Buy & Hold              -8.7pp  (B&H +9.9%)      -154.4pp  (B&H +168.1%)         [FAIL]
+  Max drawdown                      -6.0%                      -2.1%                  [PASS]
+  Payoff ratio                      2.36:1                     5.07:1                 [PASS]
+  Expectancy/trade                   ₹+89                     ₹+1,201                 [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
-  Trades                              20                         14             
-  Win rate                          30.0%                      64.3%            
-  Ret/DD score                       0.41                       4.50            
+  Trades                              18                         11             
+  Win rate                          33.3%                      72.7%            
+  Ret/DD score                       0.21                       6.65            
 
   Score: 4/5 PASS
 
@@ -104,7 +104,7 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
 ================================================================================
   OVERALL SYSTEM VERDICT
 ================================================================================
-  Total score: 15/20 PASS  (75%)
+  Total score: 17/20 PASS  (85%)
   (Max possible: 20 = 4 stocks × 5 metrics; stocks with data errors are excluded)
 
   Verdict:     SYSTEM VALIDATED
@@ -124,7 +124,7 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
   → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
 
   SIEMENS.NS:
-  → Partial regime change: strategy returned +8.6% in-sample vs +2.7% out-of-sample. The stock trended more consistently in the earlier period.
+  → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
 
   BAJAJ-AUTO.NS:
   → No significant degradation. Performance was consistent across both windows. The strategy's parameters transfer well.
@@ -136,15 +136,70 @@ Walk-Forward Validation — generated 2026-06-18 03:42:06
 ================================================================================
   Stock                Full-period Sharpe     In-position Sharpe  
   ────────────────────────────────────────────────────────────────
-  TMPV.NS                    -1.23             +0.00  (260d in)   
-  WHIRLPOOL.NS               -1.79             -0.60  (275d in)   
-  SIEMENS.NS                 -1.55             -0.64  (270d in)   
-  BAJAJ-AUTO.NS              -0.65             +0.56  (373d in)   
+  TMPV.NS                    -1.04             +0.46  (250d in)   
+  WHIRLPOOL.NS               -1.83             -0.60  (259d in)   
+  SIEMENS.NS                 -1.67             -0.78  (243d in)   
+  BAJAJ-AUTO.NS              -0.81             +0.75  (330d in)   
   ────────────────────────────────────────────────────────────────
-  Equal-weight               -2.41             -1.66  (538d in)      ← 743d overlap
+  Equal-weight               -2.46             -1.43  (481d in)      ← 743d overlap
 
   Full-period Sharpe penalises the strategy for cash days (earns 0%, risk-free = 6.5%).
   In-position Sharpe strips out flat cash days — measures quality of entries/exits only.
+================================================================================
+
+================================================================================
+  COOLDOWN SENSITIVITY ANALYSIS
+  Universe: 10 stocks tested
+  Cooldown values: [10, 15, 20, 25] bars
+  Eligibility: IS + OOS bars >= 1,250 (~5 years)
+  IS window:   2018-01-01 → 2023-01-01  |  OOS: 2023-01-01 → 2026-01-01
+  NIFTY filter: ACTIVE
+================================================================================
+
+  DATA ELIGIBILITY CHECK (IS + OOS bars >= 1,250):
+
+  ✓  TMPV.NS                 IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  WHIRLPOOL.NS            IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  SIEMENS.NS              IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  BAJAJ-AUTO.NS           IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  CUMMINSIND.NS           IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  HCLTECH.NS              IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  BOSCHLTD.NS             IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✓  COLPAL.NS               IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+  ✗  ANURAS.NS               IS=  440  OOS= 744  total= 1184  from 2021-03-24  — SKIPPED (total 1184 bars < 1250)
+  ✓  HEROMOTOCO.NS           IS= 1238  OOS= 744  total= 1982  from 2018-01-01  — INCLUDED
+
+  Qualifying: 9  |  Skipped: 1
+
+================================================================================
+  COOLDOWN COMPARISON  (9 qualifying stocks, OOS 2023–2025)
+================================================================================
+
+        Cooldown      Stocks            WF Score        OOS Trades      Avg Trade Return
+  ────────────────────────────────────────────────────────────────────────────────────────
+         10 bars           9        33/45  (73%)                92              +4.81%
+         15 bars           9        33/45  (73%)                84              +4.39%  ← baseline
+         20 bars           9        31/45  (69%)                82              +4.25%
+         25 bars           9        34/45  (76%)                77              +4.75%
+
+  ────────────────────────────────────────────────────────────────────────────────────────
+  Per-stock detail at baseline cooldown (15 bars):
+
+  Stock                      IS Return    OOS Return     Score     IS Trades      OOS Trades
+  ──────────────────────────────────────────────────────────────────────────────────────────────
+  TMPV.NS                        +10.2%          +9.3%       4/5            18               9
+  WHIRLPOOL.NS                    -0.4%          +3.7%       5/5            16              12
+  SIEMENS.NS                      +0.2%          +1.4%       4/5            19              13
+  BAJAJ-AUTO.NS                   +1.2%         +13.6%       4/5            18              11
+  CUMMINSIND.NS                   -0.0%         +13.6%       4/5            16               9
+  HCLTECH.NS                      +0.5%          +5.0%       3/5            21               8
+  BOSCHLTD.NS                     +3.2%          -2.2%       1/5            11               3
+  COLPAL.NS                       -3.2%         +10.5%       4/5            18               9
+  HEROMOTOCO.NS                   -7.4%         +11.0%       4/5            16              10
+
+  SKIPPED STOCKS:
+  ✗  ANURAS.NS              — total 1184 bars < 1250
+
 ================================================================================
 
 
@@ -162,7 +217,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 829/1239 bull days (67% in uptrend)
 ============================================================
   [AMO] 2018-09-11 | BUY deferred → fill at 2018-09-12 open | chan=₹174.29
   [SIZING] 2018-09-12 (AMO open)| entry=₹184.74 | chan=₹174.29 (chandelier) | dist=₹10.45 | risk=₹1500 → 108 shr [position_cap]
@@ -235,9 +290,9 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2020-02-04 | buy suppressed (11 bars remaining)
   [COOLDOWN] 2020-02-05 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2020-02-06 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2020-02-07 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2020-02-10 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2020-02-11 | buy suppressed (6 bars remaining)
+  [REGIME] 2020-02-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2020-05-20 | BUY deferred → fill at 2020-05-21 open | chan=₹46.06
   [SIZING] 2020-05-21 (AMO open)| entry=₹57.23 | chan=₹46.06 (chandelier) | dist=₹11.17 | risk=₹1507 → 134 shr [risk_budget]
   BUY  2020-05-21 | 134 shares @ ₹57.23 (close ₹57.20) | cost ₹20.00 | cash left ₹92774.02
@@ -359,45 +414,49 @@ NIFTY Filter: DISABLED
   BUY  2021-09-24 | 85 shares @ ₹223.96 (close ₹223.85) | cost ₹20.00 | cash left ₹88895.71
   [AMO] 2021-11-26 | RM EXIT (CHANDELIER) deferred → fill at 2021-11-29 open
   SELL 2021-11-29 | 85 shares @ ₹314.49 (close ₹314.65) | P&L ₹+7668.43 (+40.42%) [CHANDELIER]
-  [COOLDOWN] 2021-11-29 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2021-11-30 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2021-12-01 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2021-12-02 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2021-12-03 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2021-12-06 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2021-12-07 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2021-12-08 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2021-12-09 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2021-12-10 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2021-12-13 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2021-12-14 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2021-12-15 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2021-12-16 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2021-12-17 | buy suppressed (2 bars remaining)
+  [REGIME] 2021-11-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-11-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2022-01-18 | BUY deferred → fill at 2022-01-19 open | chan=₹332.48
   [SIZING] 2022-01-19 (AMO open)| entry=₹351.33 | chan=₹332.48 (chandelier) | dist=₹18.85 | risk=₹1734 → 65 shr [position_cap]
   BUY  2022-01-19 | 65 shares @ ₹351.33 (close ₹351.15) | cost ₹20.00 | cash left ₹92744.75
   [AMO] 2022-02-14 | RM EXIT (CHANDELIER) deferred → fill at 2022-02-15 open
   SELL 2022-02-15 | 65 shares @ ₹327.69 (close ₹327.85) | P&L ₹-1561.89 (-6.73%) [CHANDELIER]
-  [COOLDOWN] 2022-02-15 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2022-02-16 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2022-02-17 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2022-02-18 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2022-02-21 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-02-22 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-02-23 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-02-24 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2022-02-25 | buy suppressed (8 bars remaining)
+  [REGIME] 2022-02-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2022-05-02 | BUY deferred → fill at 2022-05-04 open | chan=₹276.55
   [SIZING] 2022-05-04 (AMO open)| entry=₹301.70 | chan=₹276.55 (chandelier) | dist=₹25.15 | risk=₹1710 → 67 shr [risk_budget]
   BUY  2022-05-04 | 67 shares @ ₹301.70 (close ₹301.55) | cost ₹20.00 | cash left ₹93785.06
   [AMO] 2022-05-09 | SELL deferred → fill at 2022-05-10 open
   SELL 2022-05-10 | 67 shares @ ₹275.26 (close ₹275.40) | P&L ₹-1795.99 (-8.76%)
-  [AMO] 2022-07-18 | BUY deferred → fill at 2022-07-19 open | chan=₹286.59
-  [SIZING] 2022-07-19 (AMO open)| entry=₹307.75 | chan=₹286.59 (chandelier) | dist=₹21.17 | risk=₹1683 → 72 shr [position_cap]
-  BUY  2022-07-19 | 72 shares @ ₹307.75 (close ₹307.60) | cost ₹20.00 | cash left ₹90024.75
+  [REGIME] 2022-07-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-07-22 | BUY deferred → fill at 2022-07-25 open | chan=₹292.41
+  [SIZING] 2022-07-25 (AMO open)| entry=₹314.11 | chan=₹292.41 (chandelier) | dist=₹21.70 | risk=₹1683 → 71 shr [position_cap]
+  BUY  2022-07-25 | 71 shares @ ₹314.11 (close ₹313.95) | cost ₹20.00 | cash left ₹89881.43
   [AMO] 2022-08-22 | RM EXIT (CHANDELIER) deferred → fill at 2022-08-23 open
-  SELL 2022-08-23 | 72 shares @ ₹309.00 (close ₹309.15) | P&L ₹+63.84 (+0.40%) [CHANDELIER]
+  SELL 2022-08-23 | 71 shares @ ₹309.00 (close ₹309.15) | P&L ₹-388.40 (-1.63%) [CHANDELIER]
   [COOLDOWN] 2022-08-23 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2022-08-24 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2022-08-25 | buy suppressed (14 bars remaining)
@@ -415,13 +474,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2022-09-13 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2022-09-14 | buy suppressed (1 bars remaining)
   [AMO] 2022-09-15 | BUY deferred → fill at 2022-09-16 open | chan=₹289.73
-  [SIZING] 2022-09-16 (AMO open)| entry=₹307.20 | chan=₹289.73 (chandelier) | dist=₹17.48 | risk=₹1684 → 73 shr [position_cap]
-  BUY  2022-09-16 | 73 shares @ ₹307.20 (close ₹307.05) | cost ₹20.00 | cash left ₹89801.00
+  [SIZING] 2022-09-16 (AMO open)| entry=₹307.20 | chan=₹289.73 (chandelier) | dist=₹17.48 | risk=₹1677 → 72 shr [position_cap]
+  BUY  2022-09-16 | 72 shares @ ₹307.20 (close ₹307.05) | cost ₹20.00 | cash left ₹89655.97
   [AMO] 2022-09-19 | SELL deferred → fill at 2022-09-20 open
-  SELL 2022-09-20 | 73 shares @ ₹296.30 (close ₹296.45) | P&L ₹-821.24 (-3.55%)
+  SELL 2022-09-20 | 72 shares @ ₹296.30 (close ₹296.45) | P&L ₹-810.26 (-3.55%)
   [AMO] 2022-11-18 | BUY deferred → fill at 2022-11-21 open | chan=₹271.96
-  [SIZING] 2022-11-21 (AMO open)| entry=₹293.20 | chan=₹271.96 (chandelier) | dist=₹21.24 | risk=₹1671 → 75 shr [position_cap]
-  BUY  2022-11-21 | 75 shares @ ₹293.20 (close ₹293.05) | cost ₹20.00 | cash left ₹89395.89
+  [SIZING] 2022-11-21 (AMO open)| entry=₹293.20 | chan=₹271.96 (chandelier) | dist=₹21.24 | risk=₹1664 → 75 shr [position_cap]
+  BUY  2022-11-21 | 75 shares @ ₹293.20 (close ₹293.05) | cost ₹20.00 | cash left ₹88954.62
   [AMO] 2022-12-09 | RM EXIT (CHANDELIER) deferred → fill at 2022-12-12 open
   SELL 2022-12-12 | 75 shares @ ₹283.51 (close ₹283.65) | P&L ₹-751.94 (-3.30%) [CHANDELIER]
   [COOLDOWN] 2022-12-12 | buy suppressed (16 bars remaining)
@@ -445,112 +504,103 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 501/744 bull days (67% in uptrend)
 ============================================================
-  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹270.75
-  [SIZING] 2023-03-15 (AMO open)| entry=₹290.70 | chan=₹270.75 (chandelier) | dist=₹19.95 | risk=₹1500 → 68 shr [position_cap]
-  BUY  2023-03-15 | 68 shares @ ₹290.70 (close ₹290.55) | cost ₹20.00 | cash left ₹80212.72
-  [AMO] 2023-03-20 | SELL deferred → fill at 2023-03-21 open
-  SELL 2023-03-21 | 68 shares @ ₹284.11 (close ₹284.25) | P&L ₹-472.77 (-2.27%)
-  [AMO] 2023-04-19 | BUY deferred → fill at 2023-04-20 open | chan=₹305.18
-  [SIZING] 2023-04-20 (AMO open)| entry=₹326.31 | chan=₹305.18 (chandelier) | dist=₹21.13 | risk=₹1493 → 60 shr [position_cap]
-  BUY  2023-04-20 | 60 shares @ ₹326.31 (close ₹326.15) | cost ₹20.00 | cash left ₹79908.44
-  [AMO] 2023-07-14 | RM EXIT (TIME_STOP) deferred → fill at 2023-07-17 open
-  SELL 2023-07-17 | 60 shares @ ₹431.38 (close ₹431.60) | P&L ₹+6277.80 (+32.20%) [TIME_STOP]
-  [COOLDOWN] 2023-07-17 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-07-18 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-07-19 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-07-20 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2023-07-21 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2023-07-24 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2023-07-25 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2023-07-26 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2023-07-27 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2023-07-28 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2023-07-31 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2023-08-01 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2023-08-02 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2023-08-03 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2023-08-04 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2023-08-07 | buy suppressed (1 bars remaining)
-  [AMO] 2023-08-08 | BUY deferred → fill at 2023-08-09 open | chan=₹396.00
-  [SIZING] 2023-08-09 (AMO open)| entry=₹420.61 | chan=₹396.00 (chandelier) | dist=₹24.61 | risk=₹1586 → 50 shr [position_cap]
-  BUY  2023-08-09 | 50 shares @ ₹420.61 (close ₹420.40) | cost ₹20.00 | cash left ₹84714.51
+  [REGIME] 2023-03-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-04-26 | BUY deferred → fill at 2023-04-27 open | chan=₹309.24
+  [SIZING] 2023-04-27 (AMO open)| entry=₹329.61 | chan=₹309.24 (chandelier) | dist=₹20.38 | risk=₹1500 → 60 shr [position_cap]
+  BUY  2023-04-27 | 60 shares @ ₹329.61 (close ₹329.45) | cost ₹20.00 | cash left ₹80203.12
+  [AMO] 2023-07-21 | RM EXIT (TIME_STOP) deferred → fill at 2023-07-24 open
+  SELL 2023-07-24 | 60 shares @ ₹432.13 (close ₹432.35) | P&L ₹+6124.66 (+31.10%) [TIME_STOP]
+  [COOLDOWN] 2023-07-24 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2023-07-25 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-07-26 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-27 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-07-28 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-07-31 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-08-01 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-08-02 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-08-03 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-08-04 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-08-07 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-08-08 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-08-09 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-08-10 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-08-11 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-08-14 | buy suppressed (1 bars remaining)
+  [AMO] 2023-08-16 | BUY deferred → fill at 2023-08-17 open | chan=₹396.00
+  [SIZING] 2023-08-17 (AMO open)| entry=₹427.06 | chan=₹396.00 (chandelier) | dist=₹31.06 | risk=₹1592 → 49 shr [position_cap]
+  BUY  2023-08-17 | 49 shares @ ₹427.06 (close ₹426.85) | cost ₹20.00 | cash left ₹85158.56
   [AMO] 2023-09-01 | SELL deferred → fill at 2023-09-04 open
-  SELL 2023-09-04 | 50 shares @ ₹423.64 (close ₹423.85) | P&L ₹+126.10 (+0.72%)
+  SELL 2023-09-04 | 49 shares @ ₹423.64 (close ₹423.85) | P&L ₹-193.03 (-0.80%)
   [AMO] 2023-09-27 | BUY deferred → fill at 2023-09-28 open | chan=₹404.30
   [SIZING] 2023-09-28 (AMO open)| entry=₹429.06 | chan=₹404.30 (chandelier) | dist=₹24.77 | risk=₹1588 → 49 shr [position_cap]
-  BUY  2023-09-28 | 49 shares @ ₹429.06 (close ₹428.85) | cost ₹20.00 | cash left ₹84826.97
+  BUY  2023-09-28 | 49 shares @ ₹429.06 (close ₹428.85) | cost ₹20.00 | cash left ₹84847.48
   [AMO] 2023-10-25 | RM EXIT (CHANDELIER) deferred → fill at 2023-10-26 open
   SELL 2023-10-26 | 49 shares @ ₹436.98 (close ₹437.20) | P&L ₹+362.58 (+1.85%) [CHANDELIER]
-  [COOLDOWN] 2023-10-26 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-10-27 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-10-30 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-10-31 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2023-11-01 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2023-11-02 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2023-11-03 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2023-11-06 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2023-11-07 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2023-11-08 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2023-11-09 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2023-11-10 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2023-11-12 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2023-11-13 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2023-11-15 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2023-11-16 | buy suppressed (1 bars remaining)
-  [AMO] 2023-11-17 | BUY deferred → fill at 2023-11-20 open | chan=₹445.50
-  [SIZING] 2023-11-20 (AMO open)| entry=₹469.78 | chan=₹445.50 (chandelier) | dist=₹24.28 | risk=₹1593 → 45 shr [position_cap]
-  BUY  2023-11-20 | 45 shares @ ₹469.78 (close ₹469.55) | cost ₹20.00 | cash left ₹85053.39
-  [AMO] 2024-02-14 | RM EXIT (TIME_STOP) deferred → fill at 2024-02-15 open
-  SELL 2024-02-15 | 45 shares @ ₹635.63 (close ₹635.95) | P&L ₹+7435.98 (+35.30%) [TIME_STOP]
-  [COOLDOWN] 2024-02-15 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2024-02-16 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2024-02-19 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2024-02-20 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2024-02-21 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2024-02-22 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2024-02-23 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2024-02-26 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2024-02-27 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2024-02-28 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2024-02-29 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2024-03-01 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2024-03-02 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2024-03-04 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2024-03-05 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2024-03-06 | buy suppressed (1 bars remaining)
-  [AMO] 2024-03-07 | BUY deferred → fill at 2024-03-11 open | chan=₹672.84
-  [SIZING] 2024-03-11 (AMO open)| entry=₹712.81 | chan=₹672.84 (chandelier) | dist=₹39.97 | risk=₹1704 → 31 shr [position_cap]
-  BUY  2024-03-11 | 31 shares @ ₹712.81 (close ₹712.45) | cost ₹20.00 | cash left ₹91512.68
-  [AMO] 2024-03-15 | RM EXIT (CHANDELIER) deferred → fill at 2024-03-18 open
-  SELL 2024-03-18 | 31 shares @ ₹650.87 (close ₹651.20) | P&L ₹-1944.93 (-8.69%) [CHANDELIER]
-  [COOLDOWN] 2024-03-18 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2024-03-19 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2024-03-20 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2024-03-21 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2024-03-22 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2024-03-26 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2024-03-27 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2024-03-28 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2024-04-01 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2024-04-02 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2024-04-03 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2024-04-04 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2024-04-05 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2024-04-08 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2024-04-09 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2024-04-10 | buy suppressed (1 bars remaining)
-  [AMO] 2024-04-12 | BUY deferred → fill at 2024-04-15 open | chan=₹661.12
-  [SIZING] 2024-04-15 (AMO open)| entry=₹687.54 | chan=₹661.12 (chandelier) | dist=₹26.42 | risk=₹1675 → 32 shr [position_cap]
-  BUY  2024-04-15 | 32 shares @ ₹687.54 (close ₹687.20) | cost ₹20.00 | cash left ₹89643.35
+  [REGIME] 2023-10-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-10-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-10-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-10-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-11-30 | BUY deferred → fill at 2023-12-01 open | chan=₹465.58
+  [SIZING] 2023-12-01 (AMO open)| entry=₹487.69 | chan=₹465.58 (chandelier) | dist=₹22.12 | risk=₹1594 → 43 shr [position_cap]
+  BUY  2023-12-01 | 43 shares @ ₹487.69 (close ₹487.45) | cost ₹20.00 | cash left ₹85243.38
+  [AMO] 2024-02-26 | RM EXIT (TIME_STOP) deferred → fill at 2024-02-27 open
+  SELL 2024-02-27 | 43 shares @ ₹644.63 (close ₹644.95) | P&L ₹+6721.22 (+32.18%) [TIME_STOP]
+  [COOLDOWN] 2024-02-27 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2024-02-28 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2024-02-29 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2024-03-01 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2024-03-02 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2024-03-04 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2024-03-05 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2024-03-06 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2024-03-07 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2024-03-11 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2024-03-12 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2024-03-13 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2024-03-14 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2024-03-15 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2024-03-18 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2024-03-19 | buy suppressed (1 bars remaining)
+  [AMO] 2024-03-20 | BUY deferred → fill at 2024-03-21 open | chan=₹609.50
+  [SIZING] 2024-03-21 (AMO open)| entry=₹655.08 | chan=₹609.50 (chandelier) | dist=₹45.57 | risk=₹1694 → 34 shr [position_cap]
+  BUY  2024-03-21 | 34 shares @ ₹655.08 (close ₹654.75) | cost ₹20.00 | cash left ₹90642.80
   [AMO] 2024-05-13 | RM EXIT (CHANDELIER) deferred → fill at 2024-05-14 open
-  SELL 2024-05-14 | 32 shares @ ₹664.12 (close ₹664.45) | P&L ₹-774.94 (-3.41%) [CHANDELIER]
+  SELL 2024-05-14 | 34 shares @ ₹664.12 (close ₹664.45) | P&L ₹+281.73 (+1.38%) [CHANDELIER]
   [COOLDOWN] 2024-05-14 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2024-05-15 | buy suppressed (15 bars remaining)
   [AMO] 2024-07-04 | BUY deferred → fill at 2024-07-05 open | chan=₹643.14
-  [SIZING] 2024-07-05 (AMO open)| entry=₹692.30 | chan=₹643.14 (chandelier) | dist=₹49.16 | risk=₹1663 → 32 shr [position_cap]
-  BUY  2024-07-05 | 32 shares @ ₹692.30 (close ₹691.95) | cost ₹20.00 | cash left ₹88696.33
+  [SIZING] 2024-07-05 (AMO open)| entry=₹692.30 | chan=₹643.14 (chandelier) | dist=₹49.16 | risk=₹1698 → 32 shr [position_cap]
+  BUY  2024-07-05 | 32 shares @ ₹692.30 (close ₹691.95) | cost ₹20.00 | cash left ₹91023.69
   [AMO] 2024-08-05 | RM EXIT (CHANDELIER) deferred → fill at 2024-08-06 open
   SELL 2024-08-06 | 32 shares @ ₹708.80 (close ₹709.15) | P&L ₹+502.31 (+2.38%) [CHANDELIER]
   [COOLDOWN] 2024-08-06 | buy suppressed (16 bars remaining)
@@ -570,18 +620,18 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-08-27 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-08-28 | buy suppressed (1 bars remaining)
   [AMO] 2024-08-29 | BUY deferred → fill at 2024-08-30 open | chan=₹722.92
-  [SIZING] 2024-08-30 (AMO open)| entry=₹767.33 | chan=₹722.92 (chandelier) | dist=₹44.41 | risk=₹1670 → 29 shr [position_cap]
-  BUY  2024-08-30 | 29 shares @ ₹767.33 (close ₹766.95) | cost ₹20.00 | cash left ₹89079.45
+  [SIZING] 2024-08-30 (AMO open)| entry=₹767.33 | chan=₹722.92 (chandelier) | dist=₹44.41 | risk=₹1705 → 29 shr [position_cap]
+  BUY  2024-08-30 | 29 shares @ ₹767.33 (close ₹766.95) | cost ₹20.00 | cash left ₹91406.80
   [AMO] 2024-09-11 | RM EXIT (CHANDELIER) deferred → fill at 2024-09-12 open
   SELL 2024-09-12 | 29 shares @ ₹671.86 (close ₹672.20) | P&L ₹-2793.49 (-12.44%) [CHANDELIER]
   [COOLDOWN] 2024-09-12 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2024-09-13 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2024-09-16 | buy suppressed (14 bars remaining)
   [AMO] 2025-05-13 | BUY deferred → fill at 2025-05-14 open | chan=₹445.50
-  [SIZING] 2025-05-14 (AMO open)| entry=₹475.29 | chan=₹445.50 (chandelier) | dist=₹29.79 | risk=₹1628 → 45 shr [position_cap]
-  BUY  2025-05-14 | 45 shares @ ₹475.29 (close ₹475.05) | cost ₹20.00 | cash left ₹87130.69
+  [SIZING] 2025-05-14 (AMO open)| entry=₹475.29 | chan=₹445.50 (chandelier) | dist=₹29.79 | risk=₹1663 → 46 shr [position_cap]
+  BUY  2025-05-14 | 46 shares @ ₹475.29 (close ₹475.05) | cost ₹20.00 | cash left ₹88982.76
   [AMO] 2025-06-16 | RM EXIT (CHANDELIER) deferred → fill at 2025-06-17 open
-  SELL 2025-06-17 | 45 shares @ ₹472.16 (close ₹472.40) | P&L ₹-165.88 (-0.66%) [CHANDELIER]
+  SELL 2025-06-17 | 46 shares @ ₹472.16 (close ₹472.40) | P&L ₹-169.12 (-0.66%) [CHANDELIER]
   [COOLDOWN] 2025-06-17 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2025-06-18 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2025-06-19 | buy suppressed (14 bars remaining)
@@ -592,11 +642,19 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2025-06-26 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2025-06-27 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2025-06-30 | buy suppressed (7 bars remaining)
-  [AMO] 2025-09-09 | BUY deferred → fill at 2025-09-10 open | chan=₹465.71
-  [SIZING] 2025-09-10 (AMO open)| entry=₹494.35 | chan=₹465.71 (chandelier) | dist=₹28.64 | risk=₹1625 → 43 shr [position_cap]
-  BUY  2025-09-10 | 43 shares @ ₹494.35 (close ₹494.10) | cost ₹20.00 | cash left ₹87075.83
+  [REGIME] 2025-09-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2025-09-19 | BUY deferred → fill at 2025-09-22 open | chan=₹461.62
+  [SIZING] 2025-09-22 (AMO open)| entry=₹488.39 | chan=₹461.62 (chandelier) | dist=₹26.77 | risk=₹1660 → 45 shr [position_cap]
+  BUY  2025-09-22 | 45 shares @ ₹488.39 (close ₹488.15) | cost ₹20.00 | cash left ₹88679.13
   [AMO] 2025-09-25 | RM EXIT (CHANDELIER) deferred → fill at 2025-09-26 open
-  SELL 2025-09-26 | 43 shares @ ₹458.32 (close ₹458.55) | P&L ₹-1574.06 (-7.29%) [CHANDELIER]
+  SELL 2025-09-26 | 45 shares @ ₹458.32 (close ₹458.55) | P&L ₹-1378.46 (-6.16%) [CHANDELIER]
   [COOLDOWN] 2025-09-26 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2025-09-29 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2025-09-30 | buy suppressed (14 bars remaining)
@@ -620,16 +678,39 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 829/1239 bull days (67% in uptrend)
 ============================================================
-  [AMO] 2018-03-20 | BUY deferred → fill at 2018-03-21 open | chan=₹1420.14
-  [SIZING] 2018-03-21 (AMO open)| entry=₹1528.86 | chan=₹1420.14 (chandelier) | dist=₹108.73 | risk=₹1500 → 13 shr [risk_budget]
-  BUY  2018-03-21 | 13 shares @ ₹1528.86 (close ₹1528.10) | cost ₹20.00 | cash left ₹80104.77
+  [REGIME] 2018-03-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-03-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-04-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2018-04-24 | BUY deferred → fill at 2018-04-25 open | chan=₹1472.69
+  [SIZING] 2018-04-25 (AMO open)| entry=₹1550.77 | chan=₹1472.69 (chandelier) | dist=₹78.09 | risk=₹1500 → 12 shr [position_cap]
+  BUY  2018-04-25 | 12 shares @ ₹1550.77 (close ₹1550.00) | cost ₹20.00 | cash left ₹81370.70
   [AMO] 2018-06-05 | SELL deferred → fill at 2018-06-06 open
-  SELL 2018-06-06 | 13 shares @ ₹1537.58 (close ₹1538.35) | P&L ₹+88.32 (+0.57%)
+  SELL 2018-06-06 | 12 shares @ ₹1537.58 (close ₹1538.35) | P&L ₹-182.94 (-0.85%)
   [AMO] 2018-07-27 | BUY deferred → fill at 2018-07-30 open | chan=₹1561.02
-  [SIZING] 2018-07-30 (AMO open)| entry=₹1690.79 | chan=₹1561.02 (chandelier) | dist=₹129.78 | risk=₹1501 → 11 shr [risk_budget]
-  BUY  2018-07-30 | 11 shares @ ₹1690.79 (close ₹1689.95) | cost ₹20.00 | cash left ₹81449.58
+  [SIZING] 2018-07-30 (AMO open)| entry=₹1690.79 | chan=₹1561.02 (chandelier) | dist=₹129.78 | risk=₹1497 → 11 shr [risk_budget]
+  BUY  2018-07-30 | 11 shares @ ₹1690.79 (close ₹1689.95) | cost ₹20.00 | cash left ₹81178.31
   [AMO] 2018-09-05 | RM EXIT (CHANDELIER) deferred → fill at 2018-09-06 open
   SELL 2018-09-06 | 11 shares @ ₹1689.11 (close ₹1689.95) | P&L ₹-43.23 (-0.10%) [CHANDELIER]
   [COOLDOWN] 2018-09-06 | buy suppressed (16 bars remaining)
@@ -643,8 +724,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2018-09-19 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2018-09-21 | buy suppressed (7 bars remaining)
   [AMO] 2019-01-09 | BUY deferred → fill at 2019-01-10 open | chan=₹1334.65
-  [SIZING] 2019-01-10 (AMO open)| entry=₹1455.58 | chan=₹1334.65 (chandelier) | dist=₹120.93 | risk=₹1500 → 12 shr [risk_budget]
-  BUY  2019-01-10 | 12 shares @ ₹1455.58 (close ₹1454.85) | cost ₹20.00 | cash left ₹82518.16
+  [SIZING] 2019-01-10 (AMO open)| entry=₹1455.58 | chan=₹1334.65 (chandelier) | dist=₹120.93 | risk=₹1496 → 12 shr [risk_budget]
+  BUY  2019-01-10 | 12 shares @ ₹1455.58 (close ₹1454.85) | cost ₹20.00 | cash left ₹82246.89
   [AMO] 2019-02-06 | RM EXIT (CHANDELIER) deferred → fill at 2019-02-07 open
   SELL 2019-02-07 | 12 shares @ ₹1439.28 (close ₹1440.00) | P&L ₹-219.89 (-1.12%) [CHANDELIER]
   [COOLDOWN] 2019-02-07 | buy suppressed (16 bars remaining)
@@ -655,12 +736,12 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-02-14 | buy suppressed (11 bars remaining)
   [COOLDOWN] 2019-02-15 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2019-02-18 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2019-02-19 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2019-02-20 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2019-02-21 | buy suppressed (6 bars remaining)
+  [REGIME] 2019-02-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-02-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-02-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2019-03-18 | BUY deferred → fill at 2019-03-19 open | chan=₹1451.95
-  [SIZING] 2019-03-19 (AMO open)| entry=₹1585.74 | chan=₹1451.95 (chandelier) | dist=₹133.79 | risk=₹1496 → 11 shr [risk_budget]
-  BUY  2019-03-19 | 11 shares @ ₹1585.74 (close ₹1584.95) | cost ₹20.00 | cash left ₹82302.03
+  [SIZING] 2019-03-19 (AMO open)| entry=₹1585.74 | chan=₹1451.95 (chandelier) | dist=₹133.79 | risk=₹1492 → 11 shr [risk_budget]
+  BUY  2019-03-19 | 11 shares @ ₹1585.74 (close ₹1584.95) | cost ₹20.00 | cash left ₹82030.77
   [AMO] 2019-04-09 | RM EXIT (CHANDELIER) deferred → fill at 2019-04-10 open
   SELL 2019-04-10 | 11 shares @ ₹1444.28 (close ₹1445.00) | P&L ₹-1580.09 (-8.92%) [CHANDELIER]
   [COOLDOWN] 2019-04-10 | buy suppressed (16 bars remaining)
@@ -673,25 +754,39 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-04-23 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2019-04-24 | buy suppressed (8 bars remaining)
   [AMO] 2019-06-10 | BUY deferred → fill at 2019-06-11 open | chan=₹1442.12
-  [SIZING] 2019-06-11 (AMO open)| entry=₹1580.44 | chan=₹1442.12 (chandelier) | dist=₹138.32 | risk=₹1472 → 10 shr [risk_budget]
-  BUY  2019-06-11 | 10 shares @ ₹1580.44 (close ₹1579.65) | cost ₹20.00 | cash left ₹82340.71
+  [SIZING] 2019-06-11 (AMO open)| entry=₹1580.44 | chan=₹1442.12 (chandelier) | dist=₹138.32 | risk=₹1468 → 10 shr [risk_budget]
+  BUY  2019-06-11 | 10 shares @ ₹1580.44 (close ₹1579.65) | cost ₹20.00 | cash left ₹82069.45
   [AMO] 2019-07-23 | RM EXIT (CHANDELIER) deferred → fill at 2019-07-24 open
   SELL 2019-07-24 | 10 shares @ ₹1490.25 (close ₹1491.00) | P&L ₹-925.58 (-5.71%) [CHANDELIER]
-  [COOLDOWN] 2019-07-24 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2019-07-25 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2019-07-26 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2019-07-29 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2019-07-30 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2019-07-31 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2019-08-01 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2019-08-02 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2019-08-05 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2019-08-06 | buy suppressed (7 bars remaining)
-  [AMO] 2019-09-09 | BUY deferred → fill at 2019-09-11 open | chan=₹1546.08
-  [SIZING] 2019-09-11 (AMO open)| entry=₹1655.83 | chan=₹1546.08 (chandelier) | dist=₹109.75 | risk=₹1458 → 11 shr [position_cap]
-  BUY  2019-09-11 | 11 shares @ ₹1655.83 (close ₹1655.00) | cost ₹20.00 | cash left ₹78985.43
+  [REGIME] 2019-07-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-08-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-08-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-08-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-08-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-09-30 | BUY deferred → fill at 2019-10-01 open | chan=₹1782.00
+  [SIZING] 2019-10-01 (AMO open)| entry=₹1888.39 | chan=₹1782.00 (chandelier) | dist=₹106.39 | risk=₹1454 → 10 shr [position_cap]
+  BUY  2019-10-01 | 10 shares @ ₹1888.39 (close ₹1887.45) | cost ₹20.00 | cash left ₹78044.33
   [AMO] 2019-11-26 | RM EXIT (CHANDELIER) deferred → fill at 2019-11-27 open
-  SELL 2019-11-27 | 11 shares @ ₹2048.97 (close ₹2050.00) | P&L ₹+4298.99 (+23.74%) [CHANDELIER]
+  SELL 2019-11-27 | 10 shares @ ₹2048.97 (close ₹2050.00) | P&L ₹+1580.69 (+8.50%) [CHANDELIER]
   [COOLDOWN] 2019-11-27 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2019-11-28 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2019-11-29 | buy suppressed (14 bars remaining)
@@ -709,22 +804,22 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-12-17 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2019-12-18 | buy suppressed (1 bars remaining)
   [AMO] 2019-12-19 | BUY deferred → fill at 2019-12-20 open | chan=₹1980.00
-  [SIZING] 2019-12-20 (AMO open)| entry=₹2248.07 | chan=₹1980.00 (chandelier) | dist=₹268.07 | risk=₹1522 → 5 shr [risk_budget]
-  BUY  2019-12-20 | 5 shares @ ₹2248.07 (close ₹2246.95) | cost ₹20.00 | cash left ₹90238.15
+  [SIZING] 2019-12-20 (AMO open)| entry=₹2248.07 | chan=₹1980.00 (chandelier) | dist=₹268.07 | risk=₹1478 → 5 shr [risk_budget]
+  BUY  2019-12-20 | 5 shares @ ₹2248.07 (close ₹2246.95) | cost ₹20.00 | cash left ₹87248.59
   [AMO] 2020-02-11 | RM EXIT (CHANDELIER) deferred → fill at 2020-02-12 open
   SELL 2020-02-12 | 5 shares @ ₹2308.70 (close ₹2309.85) | P&L ₹+280.22 (+2.70%) [CHANDELIER]
-  [COOLDOWN] 2020-02-12 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2020-02-13 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2020-02-14 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2020-02-17 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2020-02-18 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2020-02-19 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2020-02-20 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2020-02-24 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2020-02-25 | buy suppressed (8 bars remaining)
+  [REGIME] 2020-02-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2020-05-21 | BUY deferred → fill at 2020-05-22 open | chan=₹1584.00
-  [SIZING] 2020-05-22 (AMO open)| entry=₹1894.95 | chan=₹1584.00 (chandelier) | dist=₹310.95 | risk=₹1526 → 4 shr [risk_budget]
-  BUY  2020-05-22 | 4 shares @ ₹1894.95 (close ₹1894.00) | cost ₹20.00 | cash left ₹94158.96
+  [SIZING] 2020-05-22 (AMO open)| entry=₹1894.95 | chan=₹1584.00 (chandelier) | dist=₹310.95 | risk=₹1482 → 4 shr [risk_budget]
+  BUY  2020-05-22 | 4 shares @ ₹1894.95 (close ₹1894.00) | cost ₹20.00 | cash left ₹91169.39
   [AMO] 2020-07-31 | RM EXIT (CHANDELIER) deferred → fill at 2020-08-03 open
   SELL 2020-08-03 | 4 shares @ ₹2098.95 (close ₹2100.00) | P&L ₹+793.91 (+10.77%) [CHANDELIER]
   [COOLDOWN] 2020-08-03 | buy suppressed (16 bars remaining)
@@ -739,13 +834,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2020-08-14 | buy suppressed (7 bars remaining)
   [COOLDOWN] 2020-08-17 | buy suppressed (6 bars remaining)
   [AMO] 2020-09-15 | BUY deferred → fill at 2020-09-16 open | chan=₹1980.00
-  [SIZING] 2020-09-16 (AMO open)| entry=₹2239.02 | chan=₹1980.00 (chandelier) | dist=₹259.02 | risk=₹1538 → 5 shr [risk_budget]
-  BUY  2020-09-16 | 5 shares @ ₹2239.02 (close ₹2237.90) | cost ₹20.00 | cash left ₹91317.56
+  [SIZING] 2020-09-16 (AMO open)| entry=₹2239.02 | chan=₹1980.00 (chandelier) | dist=₹259.02 | risk=₹1493 → 5 shr [risk_budget]
+  BUY  2020-09-16 | 5 shares @ ₹2239.02 (close ₹2237.90) | cost ₹20.00 | cash left ₹88328.00
   [AMO] 2020-10-16 | SELL deferred → fill at 2020-10-19 open
   SELL 2020-10-19 | 5 shares @ ₹2076.96 (close ₹2078.00) | P&L ₹-832.89 (-7.24%)
   [AMO] 2020-11-26 | BUY deferred → fill at 2020-11-27 open | chan=₹1980.00
-  [SIZING] 2020-11-27 (AMO open)| entry=₹2135.47 | chan=₹1980.00 (chandelier) | dist=₹155.47 | risk=₹1525 → 9 shr [risk_budget]
-  BUY  2020-11-27 | 9 shares @ ₹2135.47 (close ₹2134.40) | cost ₹20.00 | cash left ₹82440.57
+  [SIZING] 2020-11-27 (AMO open)| entry=₹2135.47 | chan=₹1980.00 (chandelier) | dist=₹155.47 | risk=₹1480 → 9 shr [risk_budget]
+  BUY  2020-11-27 | 9 shares @ ₹2135.47 (close ₹2134.40) | cost ₹20.00 | cash left ₹79451.01
   [AMO] 2021-02-04 | RM EXIT (CHANDELIER) deferred → fill at 2021-02-05 open
   SELL 2021-02-05 | 9 shares @ ₹2478.56 (close ₹2479.80) | P&L ₹+3062.26 (+16.07%) [CHANDELIER]
   [COOLDOWN] 2021-02-05 | buy suppressed (16 bars remaining)
@@ -762,10 +857,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-02-22 | buy suppressed (5 bars remaining)
   [COOLDOWN] 2021-02-23 | buy suppressed (4 bars remaining)
   [AMO] 2021-06-15 | BUY deferred → fill at 2021-06-16 open | chan=₹2178.00
-  [SIZING] 2021-06-16 (AMO open)| entry=₹2399.05 | chan=₹2178.00 (chandelier) | dist=₹221.05 | risk=₹1571 → 7 shr [risk_budget]
-  BUY  2021-06-16 | 7 shares @ ₹2399.05 (close ₹2397.85) | cost ₹20.00 | cash left ₹87908.69
+  [SIZING] 2021-06-16 (AMO open)| entry=₹2399.05 | chan=₹2178.00 (chandelier) | dist=₹221.05 | risk=₹1526 → 6 shr [risk_budget]
+  BUY  2021-06-16 | 6 shares @ ₹2399.05 (close ₹2397.85) | cost ₹20.00 | cash left ₹87318.18
   [AMO] 2021-06-18 | RM EXIT (CHANDELIER) deferred → fill at 2021-06-21 open
-  SELL 2021-06-21 | 7 shares @ ₹2197.90 (close ₹2199.00) | P&L ₹-1431.89 (-8.38%) [CHANDELIER]
+  SELL 2021-06-21 | 6 shares @ ₹2197.90 (close ₹2199.00) | P&L ₹-1230.19 (-8.38%) [CHANDELIER]
   [COOLDOWN] 2021-06-21 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2021-06-22 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2021-06-23 | buy suppressed (14 bars remaining)
@@ -783,13 +878,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-07-09 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-07-12 | buy suppressed (1 bars remaining)
   [AMO] 2021-07-13 | BUY deferred → fill at 2021-07-14 open | chan=₹2076.92
-  [SIZING] 2021-07-14 (AMO open)| entry=₹2219.51 | chan=₹2076.92 (chandelier) | dist=₹142.59 | risk=₹1549 → 9 shr [position_cap]
-  BUY  2021-07-14 | 9 shares @ ₹2219.51 (close ₹2218.40) | cost ₹20.00 | cash left ₹83274.56
+  [SIZING] 2021-07-14 (AMO open)| entry=₹2219.51 | chan=₹2076.92 (chandelier) | dist=₹142.59 | risk=₹1507 → 9 shr [position_cap]
+  BUY  2021-07-14 | 9 shares @ ₹2219.51 (close ₹2218.40) | cost ₹20.00 | cash left ₹80486.70
   [AMO] 2021-08-03 | SELL deferred → fill at 2021-08-04 open
   SELL 2021-08-04 | 9 shares @ ₹2187.91 (close ₹2189.00) | P&L ₹-309.36 (-1.42%)
   [AMO] 2021-09-17 | BUY deferred → fill at 2021-09-20 open | chan=₹2079.00
-  [SIZING] 2021-09-20 (AMO open)| entry=₹2206.10 | chan=₹2079.00 (chandelier) | dist=₹127.10 | risk=₹1544 → 9 shr [position_cap]
-  BUY  2021-09-20 | 9 shares @ ₹2206.10 (close ₹2205.00) | cost ₹20.00 | cash left ₹83065.87
+  [SIZING] 2021-09-20 (AMO open)| entry=₹2206.10 | chan=₹2079.00 (chandelier) | dist=₹127.10 | risk=₹1502 → 9 shr [position_cap]
+  BUY  2021-09-20 | 9 shares @ ₹2206.10 (close ₹2205.00) | cost ₹20.00 | cash left ₹80278.00
   [AMO] 2021-10-19 | RM EXIT (CHANDELIER) deferred → fill at 2021-10-20 open
   SELL 2021-10-20 | 9 shares @ ₹2316.39 (close ₹2317.55) | P&L ₹+967.39 (+5.00%) [CHANDELIER]
   [COOLDOWN] 2021-10-20 | buy suppressed (16 bars remaining)
@@ -808,15 +903,20 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-11-09 | buy suppressed (3 bars remaining)
   [COOLDOWN] 2021-11-10 | buy suppressed (2 bars remaining)
   [AMO] 2022-04-29 | BUY deferred → fill at 2022-05-02 open | chan=₹1485.00
-  [SIZING] 2022-05-02 (AMO open)| entry=₹1605.80 | chan=₹1485.00 (chandelier) | dist=₹120.80 | risk=₹1558 → 12 shr [risk_budget]
-  BUY  2022-05-02 | 12 shares @ ₹1605.80 (close ₹1605.00) | cost ₹20.00 | cash left ₹84598.55
+  [SIZING] 2022-05-02 (AMO open)| entry=₹1605.80 | chan=₹1485.00 (chandelier) | dist=₹120.80 | risk=₹1516 → 12 shr [risk_budget]
+  BUY  2022-05-02 | 12 shares @ ₹1605.80 (close ₹1605.00) | cost ₹20.00 | cash left ₹81810.68
   [AMO] 2022-05-12 | SELL deferred → fill at 2022-05-13 open
   SELL 2022-05-13 | 12 shares @ ₹1561.22 (close ₹1562.00) | P&L ₹-559.69 (-2.78%)
-  [AMO] 2022-07-15 | BUY deferred → fill at 2022-07-18 open | chan=₹1566.95
-  [SIZING] 2022-07-18 (AMO open)| entry=₹1700.25 | chan=₹1566.95 (chandelier) | dist=₹133.30 | risk=₹1550 → 11 shr [risk_budget]
-  BUY  2022-07-18 | 11 shares @ ₹1700.25 (close ₹1699.40) | cost ₹20.00 | cash left ₹84585.74
+  [REGIME] 2022-07-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-07-22 | BUY deferred → fill at 2022-07-25 open | chan=₹1634.68
+  [SIZING] 2022-07-25 (AMO open)| entry=₹1725.86 | chan=₹1634.68 (chandelier) | dist=₹91.18 | risk=₹1508 → 11 shr [position_cap]
+  BUY  2022-07-25 | 11 shares @ ₹1725.86 (close ₹1725.00) | cost ₹20.00 | cash left ₹81516.14
   [AMO] 2022-08-22 | RM EXIT (CHANDELIER) deferred → fill at 2022-08-23 open
-  SELL 2022-08-23 | 11 shares @ ₹1764.57 (close ₹1765.45) | P&L ₹+682.64 (+3.78%) [CHANDELIER]
+  SELL 2022-08-23 | 11 shares @ ₹1764.57 (close ₹1765.45) | P&L ₹+400.90 (+2.24%) [CHANDELIER]
   [COOLDOWN] 2022-08-23 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2022-08-24 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2022-08-25 | buy suppressed (14 bars remaining)
@@ -834,8 +934,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2022-09-13 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2022-09-14 | buy suppressed (1 bars remaining)
   [AMO] 2022-09-15 | BUY deferred → fill at 2022-09-16 open | chan=₹1643.01
-  [SIZING] 2022-09-16 (AMO open)| entry=₹1754.23 | chan=₹1643.01 (chandelier) | dist=₹111.22 | risk=₹1560 → 11 shr [position_cap]
-  BUY  2022-09-16 | 11 shares @ ₹1754.23 (close ₹1753.35) | cost ₹20.00 | cash left ₹84654.64
+  [SIZING] 2022-09-16 (AMO open)| entry=₹1754.23 | chan=₹1643.01 (chandelier) | dist=₹111.22 | risk=₹1514 → 11 shr [position_cap]
+  BUY  2022-09-16 | 11 shares @ ₹1754.23 (close ₹1753.35) | cost ₹20.00 | cash left ₹81585.03
   [AMO] 2022-09-23 | SELL deferred → fill at 2022-09-26 open
   SELL 2022-09-26 | 11 shares @ ₹1640.18 (close ₹1641.00) | P&L ₹-1279.03 (-6.50%)
 
@@ -849,21 +949,37 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 501/744 bull days (67% in uptrend)
 ============================================================
-  [AMO] 2023-03-29 | BUY deferred → fill at 2023-03-31 open | chan=₹1235.22
-  [SIZING] 2023-03-31 (AMO open)| entry=₹1301.30 | chan=₹1235.22 (chandelier) | dist=₹66.08 | risk=₹1500 → 15 shr [position_cap]
-  BUY  2023-03-31 | 15 shares @ ₹1301.30 (close ₹1300.65) | cost ₹20.00 | cash left ₹80460.50
+  [REGIME] 2023-03-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-04-26 | BUY deferred → fill at 2023-04-27 open | chan=₹1253.93
+  [SIZING] 2023-04-27 (AMO open)| entry=₹1320.66 | chan=₹1253.93 (chandelier) | dist=₹66.73 | risk=₹1500 → 15 shr [position_cap]
+  BUY  2023-04-27 | 15 shares @ ₹1320.66 (close ₹1320.00) | cost ₹20.00 | cash left ₹80170.10
   [AMO] 2023-05-02 | SELL deferred → fill at 2023-05-03 open
-  SELL 2023-05-03 | 15 shares @ ₹1315.34 (close ₹1316.00) | P&L ₹+185.69 (+1.08%)
+  SELL 2023-05-03 | 15 shares @ ₹1315.34 (close ₹1316.00) | P&L ₹-104.70 (-0.40%)
   [AMO] 2023-05-03 | BUY deferred → fill at 2023-05-04 open | chan=₹1263.47
-  [SIZING] 2023-05-04 (AMO open)| entry=₹1343.12 | chan=₹1263.47 (chandelier) | dist=₹79.65 | risk=₹1502 → 14 shr [position_cap]
-  BUY  2023-05-04 | 14 shares @ ₹1343.12 (close ₹1342.45) | cost ₹20.00 | cash left ₹81342.00
+  [SIZING] 2023-05-04 (AMO open)| entry=₹1343.12 | chan=₹1263.47 (chandelier) | dist=₹79.65 | risk=₹1498 → 14 shr [position_cap]
+  BUY  2023-05-04 | 14 shares @ ₹1343.12 (close ₹1342.45) | cost ₹20.00 | cash left ₹81051.60
   [AMO] 2023-05-10 | SELL deferred → fill at 2023-05-11 open
   SELL 2023-05-11 | 14 shares @ ₹1324.74 (close ₹1325.40) | P&L ₹-282.01 (-1.37%)
   [AMO] 2023-05-19 | BUY deferred → fill at 2023-05-22 open | chan=₹1281.96
-  [SIZING] 2023-05-22 (AMO open)| entry=₹1371.69 | chan=₹1281.96 (chandelier) | dist=₹89.72 | risk=₹1498 → 14 shr [position_cap]
-  BUY  2023-05-22 | 14 shares @ ₹1371.69 (close ₹1371.00) | cost ₹20.00 | cash left ₹80640.08
+  [SIZING] 2023-05-22 (AMO open)| entry=₹1371.69 | chan=₹1281.96 (chandelier) | dist=₹89.72 | risk=₹1494 → 14 shr [position_cap]
+  BUY  2023-05-22 | 14 shares @ ₹1371.69 (close ₹1371.00) | cost ₹20.00 | cash left ₹80349.69
   [AMO] 2023-07-26 | RM EXIT (CHANDELIER) deferred → fill at 2023-07-27 open
   SELL 2023-07-27 | 14 shares @ ₹1421.34 (close ₹1422.05) | P&L ₹+670.17 (+3.62%) [CHANDELIER]
   [COOLDOWN] 2023-07-27 | buy suppressed (16 bars remaining)
@@ -876,22 +992,22 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2023-08-17 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2023-08-18 | buy suppressed (1 bars remaining)
   [AMO] 2023-08-21 | BUY deferred → fill at 2023-08-22 open | chan=₹1485.00
-  [SIZING] 2023-08-22 (AMO open)| entry=₹1596.70 | chan=₹1485.00 (chandelier) | dist=₹111.70 | risk=₹1508 → 12 shr [position_cap]
-  BUY  2023-08-22 | 12 shares @ ₹1596.70 (close ₹1595.90) | cost ₹20.00 | cash left ₹81333.48
+  [SIZING] 2023-08-22 (AMO open)| entry=₹1596.70 | chan=₹1485.00 (chandelier) | dist=₹111.70 | risk=₹1503 → 12 shr [position_cap]
+  BUY  2023-08-22 | 12 shares @ ₹1596.70 (close ₹1595.90) | cost ₹20.00 | cash left ₹81043.08
   [AMO] 2023-10-30 | RM EXIT (CHANDELIER) deferred → fill at 2023-10-31 open
   SELL 2023-10-31 | 12 shares @ ₹1627.19 (close ₹1628.00) | P&L ₹+340.98 (+1.91%) [CHANDELIER]
-  [COOLDOWN] 2023-10-31 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-11-01 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-11-02 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-11-03 | buy suppressed (13 bars remaining)
+  [REGIME] 2023-10-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-11-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2024-02-13 | BUY deferred → fill at 2024-02-14 open | chan=₹1269.47
-  [SIZING] 2024-02-14 (AMO open)| entry=₹1330.66 | chan=₹1269.47 (chandelier) | dist=₹61.20 | risk=₹1513 → 15 shr [position_cap]
-  BUY  2024-02-14 | 15 shares @ ₹1330.66 (close ₹1330.00) | cost ₹20.00 | cash left ₹80854.86
+  [SIZING] 2024-02-14 (AMO open)| entry=₹1330.66 | chan=₹1269.47 (chandelier) | dist=₹61.20 | risk=₹1508 → 15 shr [position_cap]
+  BUY  2024-02-14 | 15 shares @ ₹1330.66 (close ₹1330.00) | cost ₹20.00 | cash left ₹80564.46
   [AMO] 2024-02-14 | SELL deferred → fill at 2024-02-15 open
   SELL 2024-02-15 | 15 shares @ ₹1344.33 (close ₹1345.00) | P&L ₹+179.90 (+1.03%)
   [AMO] 2024-04-15 | BUY deferred → fill at 2024-04-16 open | chan=₹1318.41
-  [SIZING] 2024-04-16 (AMO open)| entry=₹1420.71 | chan=₹1318.41 (chandelier) | dist=₹102.30 | risk=₹1515 → 14 shr [risk_budget]
-  BUY  2024-04-16 | 14 shares @ ₹1420.71 (close ₹1420.00) | cost ₹20.00 | cash left ₹81084.79
+  [SIZING] 2024-04-16 (AMO open)| entry=₹1420.71 | chan=₹1318.41 (chandelier) | dist=₹102.30 | risk=₹1511 → 14 shr [risk_budget]
+  BUY  2024-04-16 | 14 shares @ ₹1420.71 (close ₹1420.00) | cost ₹20.00 | cash left ₹80794.39
   [AMO] 2024-05-03 | RM EXIT (CHANDELIER) deferred → fill at 2024-05-06 open
   SELL 2024-05-06 | 14 shares @ ₹1476.76 (close ₹1477.50) | P&L ₹+759.55 (+3.95%) [CHANDELIER]
   [COOLDOWN] 2024-05-06 | buy suppressed (16 bars remaining)
@@ -911,8 +1027,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-05-24 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-05-27 | buy suppressed (1 bars remaining)
   [AMO] 2024-05-28 | BUY deferred → fill at 2024-05-29 open | chan=₹1386.00
-  [SIZING] 2024-05-29 (AMO open)| entry=₹1529.71 | chan=₹1386.00 (chandelier) | dist=₹143.71 | risk=₹1526 → 10 shr [risk_budget]
-  BUY  2024-05-29 | 10 shares @ ₹1529.71 (close ₹1528.95) | cost ₹20.00 | cash left ₹86417.13
+  [SIZING] 2024-05-29 (AMO open)| entry=₹1529.71 | chan=₹1386.00 (chandelier) | dist=₹143.71 | risk=₹1522 → 10 shr [risk_budget]
+  BUY  2024-05-29 | 10 shares @ ₹1529.71 (close ₹1528.95) | cost ₹20.00 | cash left ₹86126.74
   [AMO] 2024-07-01 | RM EXIT (CHANDELIER) deferred → fill at 2024-07-02 open
   SELL 2024-07-02 | 10 shares @ ₹1973.81 (close ₹1974.80) | P&L ₹+4416.05 (+29.03%) [CHANDELIER]
   [COOLDOWN] 2024-07-02 | buy suppressed (16 bars remaining)
@@ -932,8 +1048,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-07-23 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-07-24 | buy suppressed (1 bars remaining)
   [AMO] 2024-07-25 | BUY deferred → fill at 2024-07-26 open | chan=₹1850.70
-  [SIZING] 2024-07-26 (AMO open)| entry=₹2057.03 | chan=₹1850.70 (chandelier) | dist=₹206.33 | risk=₹1592 → 7 shr [risk_budget]
-  BUY  2024-07-26 | 7 shares @ ₹2057.03 (close ₹2056.00) | cost ₹20.00 | cash left ₹91711.13
+  [SIZING] 2024-07-26 (AMO open)| entry=₹2057.03 | chan=₹1850.70 (chandelier) | dist=₹206.33 | risk=₹1588 → 7 shr [risk_budget]
+  BUY  2024-07-26 | 7 shares @ ₹2057.03 (close ₹2056.00) | cost ₹20.00 | cash left ₹91420.73
   [AMO] 2024-09-16 | RM EXIT (CHANDELIER) deferred → fill at 2024-09-17 open
   SELL 2024-09-17 | 7 shares @ ₹2028.99 (close ₹2030.00) | P&L ₹-219.85 (-1.36%) [CHANDELIER]
   [COOLDOWN] 2024-09-17 | buy suppressed (16 bars remaining)
@@ -953,21 +1069,21 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-10-08 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-10-09 | buy suppressed (1 bars remaining)
   [AMO] 2024-10-10 | BUY deferred → fill at 2024-10-11 open | chan=₹2178.00
-  [SIZING] 2024-10-11 (AMO open)| entry=₹2383.74 | chan=₹2178.00 (chandelier) | dist=₹205.74 | risk=₹1588 → 7 shr [risk_budget]
-  BUY  2024-10-11 | 7 shares @ ₹2383.74 (close ₹2382.55) | cost ₹20.00 | cash left ₹89184.28
+  [SIZING] 2024-10-11 (AMO open)| entry=₹2383.74 | chan=₹2178.00 (chandelier) | dist=₹205.74 | risk=₹1584 → 7 shr [risk_budget]
+  BUY  2024-10-11 | 7 shares @ ₹2383.74 (close ₹2382.55) | cost ₹20.00 | cash left ₹88893.89
   [AMO] 2024-10-28 | RM EXIT (CHANDELIER) deferred → fill at 2024-10-29 open
   SELL 2024-10-29 | 7 shares @ ₹2146.93 (close ₹2148.00) | P&L ₹-1681.46 (-9.93%) [CHANDELIER]
-  [COOLDOWN] 2024-10-29 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2024-10-30 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2024-10-31 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2024-11-01 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2024-11-04 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2024-11-05 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2024-11-06 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2024-11-07 | buy suppressed (9 bars remaining)
+  [REGIME] 2024-10-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2025-04-16 | BUY deferred → fill at 2025-04-17 open | chan=₹984.27
-  [SIZING] 2025-04-17 (AMO open)| entry=₹1100.75 | chan=₹984.27 (chandelier) | dist=₹116.48 | risk=₹1563 → 13 shr [risk_budget]
-  BUY  2025-04-17 | 13 shares @ ₹1100.75 (close ₹1100.20) | cost ₹20.00 | cash left ₹89859.25
+  [SIZING] 2025-04-17 (AMO open)| entry=₹1100.75 | chan=₹984.27 (chandelier) | dist=₹116.48 | risk=₹1558 → 13 shr [risk_budget]
+  BUY  2025-04-17 | 13 shares @ ₹1100.75 (close ₹1100.20) | cost ₹20.00 | cash left ₹89568.86
   [AMO] 2025-05-28 | RM EXIT (CHANDELIER) deferred → fill at 2025-05-29 open
   SELL 2025-05-29 | 13 shares @ ₹1225.39 (close ₹1226.00) | P&L ₹+1596.30 (+11.32%) [CHANDELIER]
   [COOLDOWN] 2025-05-29 | buy suppressed (16 bars remaining)
@@ -987,21 +1103,21 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2025-06-18 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2025-06-19 | buy suppressed (1 bars remaining)
   [AMO] 2025-06-20 | BUY deferred → fill at 2025-06-23 open | chan=₹1216.46
-  [SIZING] 2025-06-23 (AMO open)| entry=₹1331.67 | chan=₹1216.46 (chandelier) | dist=₹115.21 | risk=₹1586 → 13 shr [risk_budget]
-  BUY  2025-06-23 | 13 shares @ ₹1331.67 (close ₹1331.00) | cost ₹20.00 | cash left ₹88433.65
+  [SIZING] 2025-06-23 (AMO open)| entry=₹1331.67 | chan=₹1216.46 (chandelier) | dist=₹115.21 | risk=₹1582 → 13 shr [risk_budget]
+  BUY  2025-06-23 | 13 shares @ ₹1331.67 (close ₹1331.00) | cost ₹20.00 | cash left ₹88143.26
   [AMO] 2025-07-31 | RM EXIT (CHANDELIER) deferred → fill at 2025-08-01 open
   SELL 2025-08-01 | 13 shares @ ₹1324.34 (close ₹1325.00) | P&L ₹-119.57 (-0.55%) [CHANDELIER]
   [COOLDOWN] 2025-08-01 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2025-08-04 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2025-08-05 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2025-08-06 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2025-08-07 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2025-08-08 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2025-08-11 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2025-08-12 | buy suppressed (9 bars remaining)
+  [REGIME] 2025-08-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2025-11-04 | BUY deferred → fill at 2025-11-06 open | chan=₹1253.34
-  [SIZING] 2025-11-06 (AMO open)| entry=₹1347.17 | chan=₹1253.34 (chandelier) | dist=₹93.83 | risk=₹1584 → 15 shr [position_cap]
-  BUY  2025-11-06 | 15 shares @ ₹1347.17 (close ₹1346.50) | cost ₹20.00 | cash left ₹85398.14
+  [SIZING] 2025-11-06 (AMO open)| entry=₹1347.17 | chan=₹1253.34 (chandelier) | dist=₹93.83 | risk=₹1580 → 15 shr [position_cap]
+  BUY  2025-11-06 | 15 shares @ ₹1347.17 (close ₹1346.50) | cost ₹20.00 | cash left ₹85107.74
   [AMO] 2025-11-11 | RM EXIT (CHANDELIER) deferred → fill at 2025-11-12 open
   SELL 2025-11-12 | 15 shares @ ₹1238.08 (close ₹1238.70) | P&L ₹-1661.03 (-8.10%) [CHANDELIER]
   [COOLDOWN] 2025-11-12 | buy suppressed (16 bars remaining)
@@ -1026,7 +1142,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 829/1239 bull days (67% in uptrend)
 ============================================================
   [AMO] 2018-08-16 | BUY deferred → fill at 2018-08-17 open | chan=₹712.19
   [SIZING] 2018-08-17 (AMO open)| entry=₹765.23 | chan=₹712.19 (chandelier) | dist=₹53.04 | risk=₹1500 → 26 shr [position_cap]
@@ -1038,15 +1154,17 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2018-09-17 | buy suppressed (14 bars remaining)
   [COOLDOWN] 2018-09-18 | buy suppressed (13 bars remaining)
   [COOLDOWN] 2018-09-19 | buy suppressed (12 bars remaining)
-  [AMO] 2018-11-28 | BUY deferred → fill at 2018-11-29 open | chan=₹615.91
-  [SIZING] 2018-11-29 (AMO open)| entry=₹693.10 | chan=₹615.91 (chandelier) | dist=₹77.18 | risk=₹1483 → 19 shr [risk_budget]
-  BUY  2018-11-29 | 19 shares @ ₹693.10 (close ₹692.75) | cost ₹20.00 | cash left ₹85703.20
+  [REGIME] 2018-11-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-11-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2018-11-30 | BUY deferred → fill at 2018-12-03 open | chan=₹643.50
+  [SIZING] 2018-12-03 (AMO open)| entry=₹731.32 | chan=₹643.50 (chandelier) | dist=₹87.82 | risk=₹1483 → 16 shr [risk_budget]
+  BUY  2018-12-03 | 16 shares @ ₹731.32 (close ₹730.95) | cost ₹20.00 | cash left ₹87170.98
   [AMO] 2019-02-13 | RM EXIT (CHANDELIER) deferred → fill at 2019-02-14 open
-  SELL 2019-02-14 | 19 shares @ ₹744.68 (close ₹745.05) | P&L ₹+956.50 (+7.44%) [CHANDELIER]
+  SELL 2019-02-14 | 16 shares @ ₹744.68 (close ₹745.05) | P&L ₹+190.81 (+1.83%) [CHANDELIER]
   [COOLDOWN] 2019-02-14 | buy suppressed (16 bars remaining)
   [AMO] 2019-03-22 | BUY deferred → fill at 2019-03-25 open | chan=₹742.50
-  [SIZING] 2019-03-25 (AMO open)| entry=₹792.00 | chan=₹742.50 (chandelier) | dist=₹49.50 | risk=₹1497 → 25 shr [position_cap]
-  BUY  2019-03-25 | 25 shares @ ₹792.00 (close ₹791.60) | cost ₹20.00 | cash left ₹80008.64
+  [SIZING] 2019-03-25 (AMO open)| entry=₹792.00 | chan=₹742.50 (chandelier) | dist=₹49.50 | risk=₹1486 → 25 shr [position_cap]
+  BUY  2019-03-25 | 25 shares @ ₹792.00 (close ₹791.60) | cost ₹20.00 | cash left ₹79242.95
   [AMO] 2019-05-08 | RM EXIT (CHANDELIER) deferred → fill at 2019-05-09 open
   SELL 2019-05-09 | 25 shares @ ₹822.54 (close ₹822.95) | P&L ₹+738.43 (+3.86%) [CHANDELIER]
   [COOLDOWN] 2019-05-09 | buy suppressed (16 bars remaining)
@@ -1059,17 +1177,19 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-05-20 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2019-05-21 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2019-05-22 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2019-05-23 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2019-05-24 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2019-05-27 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2019-05-28 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2019-05-29 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2019-05-30 | buy suppressed (1 bars remaining)
-  [AMO] 2019-05-31 | BUY deferred → fill at 2019-06-03 open | chan=₹891.00
-  [SIZING] 2019-06-03 (AMO open)| entry=₹970.13 | chan=₹891.00 (chandelier) | dist=₹79.13 | risk=₹1508 → 19 shr [risk_budget]
-  BUY  2019-06-03 | 19 shares @ ₹970.13 (close ₹969.65) | cost ₹20.00 | cash left ₹82094.40
+  [REGIME] 2019-05-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-06-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-06-04 | BUY deferred → fill at 2019-06-06 open | chan=₹887.06
+  [SIZING] 2019-06-06 (AMO open)| entry=₹961.88 | chan=₹887.06 (chandelier) | dist=₹74.82 | risk=₹1497 → 20 shr [risk_budget]
+  BUY  2019-06-06 | 20 shares @ ₹961.88 (close ₹961.40) | cost ₹20.00 | cash left ₹80523.65
   [AMO] 2019-07-05 | RM EXIT (CHANDELIER) deferred → fill at 2019-07-08 open
-  SELL 2019-07-08 | 19 shares @ ₹967.02 (close ₹967.50) | P&L ₹-83.85 (-0.32%) [CHANDELIER]
+  SELL 2019-07-08 | 20 shares @ ₹967.02 (close ₹967.50) | P&L ₹+77.88 (+0.53%) [CHANDELIER]
   [COOLDOWN] 2019-07-08 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2019-07-09 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2019-07-10 | buy suppressed (14 bars remaining)
@@ -1079,16 +1199,25 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-07-16 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2019-07-17 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2019-07-18 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2019-07-19 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2019-07-22 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2019-07-23 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2019-07-24 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2019-07-25 | buy suppressed (3 bars remaining)
-  [AMO] 2019-09-17 | BUY deferred → fill at 2019-09-18 open | chan=₹882.45
-  [SIZING] 2019-09-18 (AMO open)| entry=₹952.73 | chan=₹882.45 (chandelier) | dist=₹70.27 | risk=₹1507 → 21 shr [risk_budget]
-  BUY  2019-09-18 | 21 shares @ ₹952.73 (close ₹952.25) | cost ₹20.00 | cash left ₹80415.86
+  [REGIME] 2019-07-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-07-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-09-30 | BUY deferred → fill at 2019-10-01 open | chan=₹1062.31
+  [SIZING] 2019-10-01 (AMO open)| entry=₹1157.68 | chan=₹1062.31 (chandelier) | dist=₹95.37 | risk=₹1498 → 15 shr [risk_budget]
+  BUY  2019-10-01 | 15 shares @ ₹1157.68 (close ₹1157.10) | cost ₹20.00 | cash left ₹82453.97
   [AMO] 2019-11-15 | RM EXIT (CHANDELIER) deferred → fill at 2019-11-18 open
-  SELL 2019-11-18 | 21 shares @ ₹1199.60 (close ₹1200.20) | P&L ₹+5158.05 (+25.91%) [CHANDELIER]
+  SELL 2019-11-18 | 15 shares @ ₹1199.60 (close ₹1200.20) | P&L ₹+604.32 (+3.62%) [CHANDELIER]
   [COOLDOWN] 2019-11-18 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2019-11-19 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2019-11-20 | buy suppressed (14 bars remaining)
@@ -1102,10 +1231,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-12-02 | buy suppressed (6 bars remaining)
   [COOLDOWN] 2019-12-03 | buy suppressed (5 bars remaining)
   [AMO] 2020-01-21 | BUY deferred → fill at 2020-01-22 open | chan=₹1148.14
-  [SIZING] 2020-01-22 (AMO open)| entry=₹1210.35 | chan=₹1148.14 (chandelier) | dist=₹62.22 | risk=₹1584 → 17 shr [position_cap]
-  BUY  2020-01-22 | 17 shares @ ₹1210.35 (close ₹1209.75) | cost ₹20.00 | cash left ₹84985.13
+  [SIZING] 2020-01-22 (AMO open)| entry=₹1210.35 | chan=₹1148.14 (chandelier) | dist=₹62.22 | risk=₹1506 → 16 shr [position_cap]
+  BUY  2020-01-22 | 16 shares @ ₹1210.35 (close ₹1209.75) | cost ₹20.00 | cash left ₹81037.79
   [AMO] 2020-01-28 | RM EXIT (CHANDELIER) deferred → fill at 2020-01-29 open
-  SELL 2020-01-29 | 17 shares @ ₹1152.02 (close ₹1152.60) | P&L ₹-1016.53 (-4.82%) [CHANDELIER]
+  SELL 2020-01-29 | 16 shares @ ₹1152.02 (close ₹1152.60) | P&L ₹-957.91 (-4.82%) [CHANDELIER]
   [COOLDOWN] 2020-01-29 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2020-01-30 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2020-01-31 | buy suppressed (14 bars remaining)
@@ -1114,16 +1243,16 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2020-02-04 | buy suppressed (11 bars remaining)
   [COOLDOWN] 2020-02-05 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2020-02-06 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2020-02-07 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2020-02-10 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2020-02-11 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2020-02-12 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2020-02-13 | buy suppressed (4 bars remaining)
+  [REGIME] 2020-02-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-02-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2020-06-25 | BUY deferred → fill at 2020-06-26 open | chan=₹742.50
-  [SIZING] 2020-06-26 (AMO open)| entry=₹860.48 | chan=₹742.50 (chandelier) | dist=₹117.98 | risk=₹1568 → 13 shr [risk_budget]
-  BUY  2020-06-26 | 13 shares @ ₹860.48 (close ₹860.05) | cost ₹20.00 | cash left ₹93338.40
+  [SIZING] 2020-06-26 (AMO open)| entry=₹860.48 | chan=₹742.50 (chandelier) | dist=₹117.98 | risk=₹1492 → 12 shr [risk_budget]
+  BUY  2020-06-26 | 12 shares @ ₹860.48 (close ₹860.05) | cost ₹20.00 | cash left ₹89099.80
   [AMO] 2020-08-31 | RM EXIT (CHANDELIER) deferred → fill at 2020-09-01 open
-  SELL 2020-09-01 | 13 shares @ ₹890.10 (close ₹890.55) | P&L ₹+362.23 (+3.44%) [CHANDELIER]
+  SELL 2020-09-01 | 12 shares @ ₹890.10 (close ₹890.55) | P&L ₹+332.83 (+3.44%) [CHANDELIER]
   [COOLDOWN] 2020-09-01 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2020-09-02 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2020-09-03 | buy suppressed (14 bars remaining)
@@ -1141,10 +1270,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2020-09-21 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2020-09-22 | buy suppressed (1 bars remaining)
   [AMO] 2020-09-23 | BUY deferred → fill at 2020-09-24 open | chan=₹872.54
-  [SIZING] 2020-09-24 (AMO open)| entry=₹930.72 | chan=₹872.54 (chandelier) | dist=₹58.18 | risk=₹1573 → 22 shr [position_cap]
-  BUY  2020-09-24 | 22 shares @ ₹930.72 (close ₹930.25) | cost ₹20.00 | cash left ₹84391.13
+  [SIZING] 2020-09-24 (AMO open)| entry=₹930.72 | chan=₹872.54 (chandelier) | dist=₹58.18 | risk=₹1496 → 21 shr [position_cap]
+  BUY  2020-09-24 | 21 shares @ ₹930.72 (close ₹930.25) | cost ₹20.00 | cash left ₹80193.37
   [AMO] 2020-12-18 | RM EXIT (TIME_STOP) deferred → fill at 2020-12-21 open
-  SELL 2020-12-21 | 22 shares @ ₹1174.71 (close ₹1175.30) | P&L ₹+5341.48 (+26.22%) [TIME_STOP]
+  SELL 2020-12-21 | 21 shares @ ₹1174.71 (close ₹1175.30) | P&L ₹+5097.77 (+26.22%) [TIME_STOP]
   [COOLDOWN] 2020-12-21 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2020-12-22 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2020-12-23 | buy suppressed (14 bars remaining)
@@ -1162,10 +1291,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-01-11 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-01-12 | buy suppressed (1 bars remaining)
   [AMO] 2021-01-13 | BUY deferred → fill at 2021-01-14 open | chan=₹1167.33
-  [SIZING] 2021-01-14 (AMO open)| entry=₹1235.52 | chan=₹1167.33 (chandelier) | dist=₹68.19 | risk=₹1653 → 17 shr [position_cap]
-  BUY  2021-01-14 | 17 shares @ ₹1235.52 (close ₹1234.90) | cost ₹20.00 | cash left ₹89184.55
+  [SIZING] 2021-01-14 (AMO open)| entry=₹1235.52 | chan=₹1167.33 (chandelier) | dist=₹68.19 | risk=₹1573 → 16 shr [position_cap]
+  BUY  2021-01-14 | 16 shares @ ₹1235.52 (close ₹1234.90) | cost ₹20.00 | cash left ₹85047.88
   [AMO] 2021-01-29 | RM EXIT (CHANDELIER) deferred → fill at 2021-02-01 open
-  SELL 2021-02-01 | 17 shares @ ₹1212.54 (close ₹1213.15) | P&L ₹-415.71 (-1.86%) [CHANDELIER]
+  SELL 2021-02-01 | 16 shares @ ₹1212.54 (close ₹1213.15) | P&L ₹-392.43 (-1.86%) [CHANDELIER]
   [COOLDOWN] 2021-02-01 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2021-02-02 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2021-02-03 | buy suppressed (14 bars remaining)
@@ -1183,8 +1312,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-02-19 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-02-22 | buy suppressed (1 bars remaining)
   [AMO] 2021-02-23 | BUY deferred → fill at 2021-02-24 open | chan=₹1287.00
-  [SIZING] 2021-02-24 (AMO open)| entry=₹1425.26 | chan=₹1287.00 (chandelier) | dist=₹138.26 | risk=₹1647 → 11 shr [risk_budget]
-  BUY  2021-02-24 | 11 shares @ ₹1425.26 (close ₹1424.55) | cost ₹20.00 | cash left ₹94074.75
+  [SIZING] 2021-02-24 (AMO open)| entry=₹1425.26 | chan=₹1287.00 (chandelier) | dist=₹138.26 | risk=₹1566 → 11 shr [risk_budget]
+  BUY  2021-02-24 | 11 shares @ ₹1425.26 (close ₹1424.55) | cost ₹20.00 | cash left ₹88725.84
   [AMO] 2021-03-18 | RM EXIT (CHANDELIER) deferred → fill at 2021-03-19 open
   SELL 2021-03-19 | 11 shares @ ₹1343.93 (close ₹1344.60) | P&L ₹-918.38 (-5.71%) [CHANDELIER]
   [COOLDOWN] 2021-03-19 | buy suppressed (16 bars remaining)
@@ -1197,15 +1326,19 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-03-31 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2021-04-01 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2021-04-05 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2021-04-06 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2021-04-07 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2021-04-08 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2021-04-09 | buy suppressed (3 bars remaining)
-  [AMO] 2021-05-14 | BUY deferred → fill at 2021-05-17 open | chan=₹1428.39
-  [SIZING] 2021-05-17 (AMO open)| entry=₹1525.86 | chan=₹1428.39 (chandelier) | dist=₹97.47 | risk=₹1633 → 14 shr [position_cap]
-  BUY  2021-05-17 | 14 shares @ ₹1525.86 (close ₹1525.10) | cost ₹20.00 | cash left ₹87452.18
+  [REGIME] 2021-04-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-04-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-04-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-04-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2021-05-20 | BUY deferred → fill at 2021-05-21 open | chan=₹1415.63
+  [SIZING] 2021-05-21 (AMO open)| entry=₹1529.71 | chan=₹1415.63 (chandelier) | dist=₹114.08 | risk=₹1552 → 13 shr [risk_budget]
+  BUY  2021-05-21 | 13 shares @ ₹1529.71 (close ₹1528.95) | cost ₹20.00 | cash left ₹83579.06
   [AMO] 2021-06-17 | RM EXIT (CHANDELIER) deferred → fill at 2021-06-18 open
-  SELL 2021-06-18 | 14 shares @ ₹1535.78 (close ₹1536.55) | P&L ₹+113.49 (+0.65%) [CHANDELIER]
+  SELL 2021-06-18 | 13 shares @ ₹1535.78 (close ₹1536.55) | P&L ₹+53.88 (+0.40%) [CHANDELIER]
   [COOLDOWN] 2021-06-18 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2021-06-21 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2021-06-22 | buy suppressed (14 bars remaining)
@@ -1223,13 +1356,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-07-08 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-07-09 | buy suppressed (1 bars remaining)
   [AMO] 2021-07-12 | BUY deferred → fill at 2021-07-13 open | chan=₹1444.05
-  [SIZING] 2021-07-13 (AMO open)| entry=₹1538.02 | chan=₹1444.05 (chandelier) | dist=₹93.96 | risk=₹1634 → 14 shr [position_cap]
-  BUY  2021-07-13 | 14 shares @ ₹1538.02 (close ₹1537.25) | cost ₹20.00 | cash left ₹87375.49
+  [SIZING] 2021-07-13 (AMO open)| entry=₹1538.02 | chan=₹1444.05 (chandelier) | dist=₹93.96 | risk=₹1553 → 13 shr [position_cap]
+  BUY  2021-07-13 | 13 shares @ ₹1538.02 (close ₹1537.25) | cost ₹20.00 | cash left ₹83504.99
   [AMO] 2021-07-13 | SELL deferred → fill at 2021-07-14 open
-  SELL 2021-07-14 | 14 shares @ ₹1531.23 (close ₹1532.00) | P&L ₹-120.34 (-0.44%)
+  SELL 2021-07-14 | 13 shares @ ₹1531.23 (close ₹1532.00) | P&L ₹-113.18 (-0.44%)
   [AMO] 2021-08-16 | BUY deferred → fill at 2021-08-17 open | chan=₹1584.00
-  [SIZING] 2021-08-17 (AMO open)| entry=₹1692.80 | chan=₹1584.00 (chandelier) | dist=₹108.80 | risk=₹1632 → 12 shr [position_cap]
-  BUY  2021-08-17 | 12 shares @ ₹1692.80 (close ₹1691.95) | cost ₹20.00 | cash left ₹88453.85
+  [SIZING] 2021-08-17 (AMO open)| entry=₹1692.80 | chan=₹1584.00 (chandelier) | dist=₹108.80 | risk=₹1551 → 12 shr [position_cap]
+  BUY  2021-08-17 | 12 shares @ ₹1692.80 (close ₹1691.95) | cost ₹20.00 | cash left ₹83052.50
   [AMO] 2021-09-20 | RM EXIT (CHANDELIER) deferred → fill at 2021-09-21 open
   SELL 2021-09-21 | 12 shares @ ₹1616.59 (close ₹1617.40) | P&L ₹-939.31 (-4.50%) [CHANDELIER]
   [COOLDOWN] 2021-09-21 | buy suppressed (16 bars remaining)
@@ -1247,53 +1380,67 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-10-07 | buy suppressed (4 bars remaining)
   [COOLDOWN] 2021-10-08 | buy suppressed (3 bars remaining)
   [AMO] 2021-10-27 | BUY deferred → fill at 2021-10-28 open | chan=₹1551.29
-  [SIZING] 2021-10-28 (AMO open)| entry=₹1654.83 | chan=₹1551.29 (chandelier) | dist=₹103.54 | risk=₹1617 → 13 shr [position_cap]
-  BUY  2021-10-28 | 13 shares @ ₹1654.83 (close ₹1654.00) | cost ₹20.00 | cash left ₹86295.35
+  [SIZING] 2021-10-28 (AMO open)| entry=₹1654.83 | chan=₹1551.29 (chandelier) | dist=₹103.54 | risk=₹1536 → 12 shr [position_cap]
+  BUY  2021-10-28 | 12 shares @ ₹1654.83 (close ₹1654.00) | cost ₹20.00 | cash left ₹82548.83
   [AMO] 2021-11-25 | RM EXIT (CHANDELIER) deferred → fill at 2021-11-26 open
-  SELL 2021-11-26 | 13 shares @ ₹1643.88 (close ₹1644.70) | P&L ₹-167.68 (-0.66%) [CHANDELIER]
-  [COOLDOWN] 2021-11-26 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2021-11-29 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2021-11-30 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2021-12-01 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2021-12-02 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2021-12-03 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2021-12-06 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2021-12-07 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2021-12-08 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2021-12-09 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2021-12-10 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2021-12-13 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2021-12-14 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2021-12-15 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2021-12-16 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2021-12-17 | buy suppressed (1 bars remaining)
-  [AMO] 2021-12-20 | BUY deferred → fill at 2021-12-21 open | chan=₹1648.88
-  [SIZING] 2021-12-21 (AMO open)| entry=₹1804.05 | chan=₹1648.88 (chandelier) | dist=₹155.17 | risk=₹1615 → 10 shr [risk_budget]
-  BUY  2021-12-21 | 10 shares @ ₹1804.05 (close ₹1803.15) | cost ₹20.00 | cash left ₹89579.90
-  [AMO] 2022-01-24 | RM EXIT (CHANDELIER) deferred → fill at 2022-01-25 open
-  SELL 2022-01-25 | 10 shares @ ₹1694.00 (close ₹1694.85) | P&L ₹-1124.73 (-6.10%) [CHANDELIER]
-  [COOLDOWN] 2022-01-25 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2022-01-27 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2022-01-28 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2022-01-31 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2022-02-01 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-02-02 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-02-03 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-02-04 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2022-02-07 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2022-02-08 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2022-02-09 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2022-02-10 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2022-02-11 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2022-02-14 | buy suppressed (3 bars remaining)
-  [AMO] 2022-02-21 | BUY deferred → fill at 2022-02-22 open | chan=₹1683.00
-  [SIZING] 2022-02-22 (AMO open)| entry=₹1817.91 | chan=₹1683.00 (chandelier) | dist=₹134.91 | risk=₹1597 → 11 shr [risk_budget]
-  BUY  2022-02-22 | 11 shares @ ₹1817.91 (close ₹1817.00) | cost ₹20.00 | cash left ₹86478.70
-  [AMO] 2022-03-14 | SELL deferred → fill at 2022-03-15 open
-  SELL 2022-03-15 | 11 shares @ ₹1796.80 (close ₹1797.70) | P&L ₹-257.12 (-1.16%)
+  SELL 2021-11-26 | 12 shares @ ₹1643.88 (close ₹1644.70) | P&L ₹-156.32 (-0.66%) [CHANDELIER]
+  [REGIME] 2021-11-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-11-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-11-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-12-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-01-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-01-14 | BUY deferred → fill at 2022-01-17 open | chan=₹1683.00
+  [SIZING] 2022-01-17 (AMO open)| entry=₹1840.52 | chan=₹1683.00 (chandelier) | dist=₹157.52 | risk=₹1534 → 9 shr [risk_budget]
+  BUY  2022-01-17 | 9 shares @ ₹1840.52 (close ₹1839.60) | cost ₹20.00 | cash left ₹85665.75
+  [AMO] 2022-02-15 | SELL deferred → fill at 2022-02-16 open
+  SELL 2022-02-16 | 9 shares @ ₹1846.43 (close ₹1847.35) | P&L ₹+29.00 (+0.32%)
+  [REGIME] 2022-02-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-02-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2022-04-12 | BUY deferred → fill at 2022-04-13 open | chan=₹1758.59
-  [SIZING] 2022-04-13 (AMO open)| entry=₹1855.93 | chan=₹1758.59 (chandelier) | dist=₹97.33 | risk=₹1593 → 11 shr [position_cap]
-  BUY  2022-04-13 | 11 shares @ ₹1855.93 (close ₹1855.00) | cost ₹20.00 | cash left ₹85783.37
+  [SIZING] 2022-04-13 (AMO open)| entry=₹1855.93 | chan=₹1758.59 (chandelier) | dist=₹97.33 | risk=₹1534 → 11 shr [position_cap]
+  BUY  2022-04-13 | 11 shares @ ₹1855.93 (close ₹1855.00) | cost ₹20.00 | cash left ₹81824.23
   [AMO] 2022-04-25 | RM EXIT (CHANDELIER) deferred → fill at 2022-04-26 open
   SELL 2022-04-26 | 11 shares @ ₹1742.88 (close ₹1743.75) | P&L ₹-1268.34 (-6.09%) [CHANDELIER]
   [COOLDOWN] 2022-04-26 | buy suppressed (16 bars remaining)
@@ -1305,42 +1452,66 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2022-05-05 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2022-05-06 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2022-05-09 | buy suppressed (8 bars remaining)
-  [AMO] 2022-06-06 | BUY deferred → fill at 2022-06-07 open | chan=₹1653.36
-  [SIZING] 2022-06-07 (AMO open)| entry=₹1773.04 | chan=₹1653.36 (chandelier) | dist=₹119.67 | risk=₹1574 → 11 shr [position_cap]
-  BUY  2022-06-07 | 11 shares @ ₹1773.04 (close ₹1772.15) | cost ₹20.00 | cash left ₹85406.84
-  [AMO] 2022-09-01 | RM EXIT (TIME_STOP) deferred → fill at 2022-09-02 open
-  SELL 2022-09-02 | 11 shares @ ₹2238.33 (close ₹2239.45) | P&L ₹+5092.08 (+26.24%) [TIME_STOP]
-  [COOLDOWN] 2022-09-02 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2022-09-05 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2022-09-06 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2022-09-07 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2022-09-08 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-09-09 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-09-12 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-09-13 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2022-09-14 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2022-09-15 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2022-09-16 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2022-09-19 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2022-09-20 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2022-09-21 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2022-09-22 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2022-09-23 | buy suppressed (1 bars remaining)
-  [AMO] 2022-09-26 | BUY deferred → fill at 2022-09-27 open | chan=₹1980.00
-  [SIZING] 2022-09-27 (AMO open)| entry=₹2109.10 | chan=₹1980.00 (chandelier) | dist=₹129.10 | risk=₹1650 → 10 shr [position_cap]
-  BUY  2022-09-27 | 10 shares @ ₹2109.10 (close ₹2108.05) | cost ₹20.00 | cash left ₹88891.27
-  [AMO] 2022-10-12 | SELL deferred → fill at 2022-10-13 open
-  SELL 2022-10-13 | 10 shares @ ₹2109.09 (close ₹2110.15) | P&L ₹-25.36 (-0.00%)
+  [REGIME] 2022-06-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-07-22 | BUY deferred → fill at 2022-07-25 open | chan=₹1980.00
+  [SIZING] 2022-07-25 (AMO open)| entry=₹2098.45 | chan=₹1980.00 (chandelier) | dist=₹118.45 | risk=₹1515 → 9 shr [position_cap]
+  BUY  2022-07-25 | 9 shares @ ₹2098.45 (close ₹2097.40) | cost ₹20.00 | cash left ₹82065.06
+  [AMO] 2022-09-23 | RM EXIT (CHANDELIER) deferred → fill at 2022-09-26 open
+  SELL 2022-09-26 | 9 shares @ ₹2148.73 (close ₹2149.80) | P&L ₹+427.65 (+2.40%) [CHANDELIER]
+  [COOLDOWN] 2022-09-26 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2022-09-27 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2022-09-28 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2022-09-29 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2022-09-30 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2022-10-03 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2022-10-04 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2022-10-06 | buy suppressed (9 bars remaining)
+  [REGIME] 2022-10-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-10-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-10-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2022-11-14 | BUY deferred → fill at 2022-11-15 open | chan=₹2079.00
-  [SIZING] 2022-11-15 (AMO open)| entry=₹2223.26 | chan=₹2079.00 (chandelier) | dist=₹144.26 | risk=₹1649 → 9 shr [position_cap]
-  BUY  2022-11-15 | 9 shares @ ₹2223.26 (close ₹2222.15) | cost ₹20.00 | cash left ₹89927.60
+  [SIZING] 2022-11-15 (AMO open)| entry=₹2223.26 | chan=₹2079.00 (chandelier) | dist=₹144.26 | risk=₹1521 → 9 shr [position_cap]
+  BUY  2022-11-15 | 9 shares @ ₹2223.26 (close ₹2222.15) | cost ₹20.00 | cash left ₹81349.40
   [AMO] 2022-12-08 | SELL deferred → fill at 2022-12-09 open
   SELL 2022-12-09 | 9 shares @ ₹2246.18 (close ₹2247.30) | P&L ₹+181.18 (+1.03%)
   [AMO] 2022-12-14 | BUY deferred → fill at 2022-12-15 open | chan=₹2158.37
-  [SIZING] 2022-12-15 (AMO open)| entry=₹2305.60 | chan=₹2158.37 (chandelier) | dist=₹147.23 | risk=₹1652 → 9 shr [position_cap]
-  BUY  2022-12-15 | 9 shares @ ₹2305.60 (close ₹2304.45) | cost ₹20.00 | cash left ₹89347.71
+  [SIZING] 2022-12-15 (AMO open)| entry=₹2305.60 | chan=₹2158.37 (chandelier) | dist=₹147.23 | risk=₹1523 → 8 shr [position_cap]
+  BUY  2022-12-15 | 8 shares @ ₹2305.60 (close ₹2304.45) | cost ₹20.00 | cash left ₹83075.11
   [AMO] 2022-12-23 | RM EXIT (CHANDELIER) deferred → fill at 2022-12-26 open
-  SELL 2022-12-26 | 9 shares @ ₹2144.18 (close ₹2145.25) | P&L ₹-1477.65 (-7.00%) [CHANDELIER]
+  SELL 2022-12-26 | 8 shares @ ₹2144.18 (close ₹2145.25) | P&L ₹-1315.69 (-7.00%) [CHANDELIER]
   [COOLDOWN] 2022-12-26 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2022-12-27 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2022-12-28 | buy suppressed (14 bars remaining)
@@ -1357,13 +1528,40 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 501/744 bull days (67% in uptrend)
 ============================================================
-  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹2329.05
-  [SIZING] 2023-03-15 (AMO open)| entry=₹2503.60 | chan=₹2329.05 (chandelier) | dist=₹174.55 | risk=₹1500 → 7 shr [position_cap]
-  BUY  2023-03-15 | 7 shares @ ₹2503.60 (close ₹2502.35) | cost ₹20.00 | cash left ₹82454.79
+  [REGIME] 2023-03-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-04-26 | BUY deferred → fill at 2023-04-27 open | chan=₹2475.00
+  [SIZING] 2023-04-27 (AMO open)| entry=₹2629.46 | chan=₹2475.00 (chandelier) | dist=₹154.46 | risk=₹1500 → 7 shr [position_cap]
+  BUY  2023-04-27 | 7 shares @ ₹2629.46 (close ₹2628.15) | cost ₹20.00 | cash left ₹81573.75
   [AMO] 2023-05-22 | RM EXIT (CHANDELIER) deferred → fill at 2023-05-23 open
-  SELL 2023-05-23 | 7 shares @ ₹2601.75 (close ₹2603.05) | P&L ₹+662.48 (+3.92%) [CHANDELIER]
+  SELL 2023-05-23 | 7 shares @ ₹2601.75 (close ₹2603.05) | P&L ₹-218.56 (-1.05%) [CHANDELIER]
   [COOLDOWN] 2023-05-23 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2023-05-24 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2023-05-25 | buy suppressed (14 bars remaining)
@@ -1381,10 +1579,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2023-06-12 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2023-06-13 | buy suppressed (1 bars remaining)
   [AMO] 2023-06-14 | BUY deferred → fill at 2023-06-15 open | chan=₹2673.00
-  [SIZING] 2023-06-15 (AMO open)| entry=₹2871.89 | chan=₹2673.00 (chandelier) | dist=₹198.89 | risk=₹1510 → 7 shr [risk_budget]
-  BUY  2023-06-15 | 7 shares @ ₹2871.89 (close ₹2870.45) | cost ₹20.00 | cash left ₹80519.28
+  [SIZING] 2023-06-15 (AMO open)| entry=₹2871.89 | chan=₹2673.00 (chandelier) | dist=₹198.89 | risk=₹1496 → 6 shr [position_cap]
+  BUY  2023-06-15 | 6 shares @ ₹2871.89 (close ₹2870.45) | cost ₹20.00 | cash left ₹82510.13
   [AMO] 2023-07-20 | RM EXIT (CHANDELIER) deferred → fill at 2023-07-21 open
-  SELL 2023-07-21 | 7 shares @ ₹2769.26 (close ₹2770.65) | P&L ₹-743.19 (-3.57%) [CHANDELIER]
+  SELL 2023-07-21 | 6 shares @ ₹2769.26 (close ₹2770.65) | P&L ₹-639.88 (-3.57%) [CHANDELIER]
   [COOLDOWN] 2023-07-21 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2023-07-24 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2023-07-25 | buy suppressed (14 bars remaining)
@@ -1402,26 +1600,29 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2023-08-10 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2023-08-11 | buy suppressed (1 bars remaining)
   [AMO] 2023-08-14 | BUY deferred → fill at 2023-08-16 open | chan=₹2574.00
-  [SIZING] 2023-08-16 (AMO open)| entry=₹2743.87 | chan=₹2574.00 (chandelier) | dist=₹169.87 | risk=₹1498 → 7 shr [position_cap]
-  BUY  2023-08-16 | 7 shares @ ₹2743.87 (close ₹2742.50) | cost ₹20.00 | cash left ₹80652.19
+  [SIZING] 2023-08-16 (AMO open)| entry=₹2743.87 | chan=₹2574.00 (chandelier) | dist=₹169.87 | risk=₹1487 → 7 shr [position_cap]
+  BUY  2023-08-16 | 7 shares @ ₹2743.87 (close ₹2742.50) | cost ₹20.00 | cash left ₹79874.46
   [AMO] 2023-08-29 | SELL deferred → fill at 2023-08-30 open
   SELL 2023-08-30 | 7 shares @ ₹2958.12 (close ₹2959.60) | P&L ₹+1474.57 (+7.81%)
-  [AMO] 2023-09-01 | BUY deferred → fill at 2023-09-04 open | chan=₹2772.00
-  [SIZING] 2023-09-04 (AMO open)| entry=₹2964.88 | chan=₹2772.00 (chandelier) | dist=₹192.88 | risk=₹1520 → 6 shr [position_cap]
-  BUY  2023-09-04 | 6 shares @ ₹2964.88 (close ₹2963.40) | cost ₹20.00 | cash left ₹83524.56
-  [AMO] 2023-09-21 | RM EXIT (CHANDELIER) deferred → fill at 2023-09-22 open
-  SELL 2023-09-22 | 6 shares @ ₹2853.92 (close ₹2855.35) | P&L ₹-690.04 (-3.74%) [CHANDELIER]
-  [COOLDOWN] 2023-09-22 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-09-25 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-09-26 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-09-27 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2023-09-28 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2023-09-29 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2023-10-03 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2023-10-04 | buy suppressed (9 bars remaining)
+  [REGIME] 2023-09-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-09-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-09-15 | BUY deferred → fill at 2023-09-18 open | chan=₹2755.10
+  [SIZING] 2023-09-18 (AMO open)| entry=₹2904.55 | chan=₹2755.10 (chandelier) | dist=₹149.45 | risk=₹1508 → 6 shr [position_cap]
+  BUY  2023-09-18 | 6 shares @ ₹2904.55 (close ₹2903.10) | cost ₹20.00 | cash left ₹83108.82
+  [AMO] 2023-10-03 | RM EXIT (CHANDELIER) deferred → fill at 2023-10-04 open
+  SELL 2023-10-04 | 6 shares @ ₹2718.29 (close ₹2719.65) | P&L ₹-1141.65 (-6.41%) [CHANDELIER]
+  [COOLDOWN] 2023-10-04 | buy suppressed (16 bars remaining)
   [AMO] 2023-12-04 | BUY deferred → fill at 2023-12-05 open | chan=₹2753.82
-  [SIZING] 2023-12-05 (AMO open)| entry=₹2903.90 | chan=₹2753.82 (chandelier) | dist=₹150.08 | risk=₹1509 → 6 shr [position_cap]
-  BUY  2023-12-05 | 6 shares @ ₹2903.90 (close ₹2902.45) | cost ₹20.00 | cash left ₹83180.41
+  [SIZING] 2023-12-05 (AMO open)| entry=₹2903.90 | chan=₹2753.82 (chandelier) | dist=₹150.08 | risk=₹1491 → 6 shr [position_cap]
+  BUY  2023-12-05 | 6 shares @ ₹2903.90 (close ₹2902.45) | cost ₹20.00 | cash left ₹81951.07
   [AMO] 2023-12-20 | RM EXIT (CHANDELIER) deferred → fill at 2023-12-21 open
   SELL 2023-12-21 | 6 shares @ ₹2936.03 (close ₹2937.50) | P&L ₹+168.38 (+1.11%) [CHANDELIER]
   [COOLDOWN] 2023-12-21 | buy suppressed (16 bars remaining)
@@ -1441,8 +1642,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-01-11 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-01-12 | buy suppressed (1 bars remaining)
   [AMO] 2024-01-15 | BUY deferred → fill at 2024-01-16 open | chan=₹2970.00
-  [SIZING] 2024-01-16 (AMO open)| entry=₹3183.09 | chan=₹2970.00 (chandelier) | dist=₹213.09 | risk=₹1512 → 6 shr [position_cap]
-  BUY  2024-01-16 | 6 shares @ ₹3183.09 (close ₹3181.50) | cost ₹20.00 | cash left ₹81653.65
+  [SIZING] 2024-01-16 (AMO open)| entry=₹3183.09 | chan=₹2970.00 (chandelier) | dist=₹213.09 | risk=₹1493 → 6 shr [position_cap]
+  BUY  2024-01-16 | 6 shares @ ₹3183.09 (close ₹3181.50) | cost ₹20.00 | cash left ₹80424.31
   [AMO] 2024-04-12 | RM EXIT (TIME_STOP) deferred → fill at 2024-04-15 open
   SELL 2024-04-15 | 6 shares @ ₹4200.15 (close ₹4202.25) | P&L ₹+6076.05 (+31.95%) [TIME_STOP]
   [COOLDOWN] 2024-04-15 | buy suppressed (16 bars remaining)
@@ -1462,8 +1663,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-05-07 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-05-08 | buy suppressed (1 bars remaining)
   [AMO] 2024-05-09 | BUY deferred → fill at 2024-05-10 open | chan=₹4455.00
-  [SIZING] 2024-05-10 (AMO open)| entry=₹4698.95 | chan=₹4455.00 (chandelier) | dist=₹243.95 | risk=₹1602 → 4 shr [position_cap]
-  BUY  2024-05-10 | 4 shares @ ₹4698.95 (close ₹4696.60) | cost ₹20.00 | cash left ₹88012.45
+  [SIZING] 2024-05-10 (AMO open)| entry=₹4698.95 | chan=₹4455.00 (chandelier) | dist=₹243.95 | risk=₹1584 → 4 shr [position_cap]
+  BUY  2024-05-10 | 4 shares @ ₹4698.95 (close ₹4696.60) | cost ₹20.00 | cash left ₹86783.11
   [AMO] 2024-06-04 | RM EXIT (CHANDELIER) deferred → fill at 2024-06-05 open
   SELL 2024-06-05 | 4 shares @ ₹5040.58 (close ₹5043.10) | P&L ₹+1341.48 (+7.27%) [CHANDELIER]
   [COOLDOWN] 2024-06-05 | buy suppressed (16 bars remaining)
@@ -1483,8 +1684,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-06-26 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-06-27 | buy suppressed (1 bars remaining)
   [AMO] 2024-06-28 | BUY deferred → fill at 2024-07-01 open | chan=₹5398.41
-  [SIZING] 2024-07-01 (AMO open)| entry=₹5888.29 | chan=₹5398.41 (chandelier) | dist=₹489.88 | risk=₹1622 → 3 shr [risk_budget]
-  BUY  2024-07-01 | 3 shares @ ₹5888.29 (close ₹5885.35) | cost ₹20.00 | cash left ₹90464.84
+  [SIZING] 2024-07-01 (AMO open)| entry=₹5888.29 | chan=₹5398.41 (chandelier) | dist=₹489.88 | risk=₹1604 → 3 shr [risk_budget]
+  BUY  2024-07-01 | 3 shares @ ₹5888.29 (close ₹5885.35) | cost ₹20.00 | cash left ₹89235.51
   [AMO] 2024-07-18 | RM EXIT (CHANDELIER) deferred → fill at 2024-07-19 open
   SELL 2024-07-19 | 3 shares @ ₹5425.69 (close ₹5428.40) | P&L ₹-1411.89 (-7.86%) [CHANDELIER]
   [COOLDOWN] 2024-07-19 | buy suppressed (16 bars remaining)
@@ -1498,31 +1699,37 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-07-31 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2024-08-01 | buy suppressed (7 bars remaining)
   [AMO] 2024-10-07 | BUY deferred → fill at 2024-10-08 open | chan=₹5167.35
-  [SIZING] 2024-10-08 (AMO open)| entry=₹5342.87 | chan=₹5167.35 (chandelier) | dist=₹175.52 | risk=₹1601 → 3 shr [position_cap]
-  BUY  2024-10-08 | 3 shares @ ₹5342.87 (close ₹5340.20) | cost ₹20.00 | cash left ₹90669.22
+  [SIZING] 2024-10-08 (AMO open)| entry=₹5342.87 | chan=₹5167.35 (chandelier) | dist=₹175.52 | risk=₹1582 → 3 shr [position_cap]
+  BUY  2024-10-08 | 3 shares @ ₹5342.87 (close ₹5340.20) | cost ₹20.00 | cash left ₹89439.89
   [AMO] 2024-10-21 | RM EXIT (CHANDELIER) deferred → fill at 2024-10-22 open
   SELL 2024-10-22 | 3 shares @ ₹5696.65 (close ₹5699.50) | P&L ₹+1037.07 (+6.62%) [CHANDELIER]
   [COOLDOWN] 2024-10-22 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2024-10-23 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2024-10-24 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2024-10-25 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2024-10-28 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2024-10-29 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2024-10-30 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2024-10-31 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2024-11-01 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2024-11-04 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2024-11-05 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2024-11-06 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2024-11-07 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2024-11-08 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2024-11-11 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2024-11-12 | buy suppressed (1 bars remaining)
-  [AMO] 2024-12-11 | BUY deferred → fill at 2024-12-12 open | chan=₹5560.81
-  [SIZING] 2024-12-12 (AMO open)| entry=₹6004.40 | chan=₹5560.81 (chandelier) | dist=₹443.59 | risk=₹1616 → 3 shr [risk_budget]
-  BUY  2024-12-12 | 3 shares @ ₹6004.40 (close ₹6001.40) | cost ₹20.00 | cash left ₹89701.70
+  [REGIME] 2024-10-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-11-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-12-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2024-12-19 | BUY deferred → fill at 2024-12-20 open | chan=₹5380.40
+  [SIZING] 2024-12-20 (AMO open)| entry=₹5872.58 | chan=₹5380.40 (chandelier) | dist=₹492.19 | risk=₹1598 → 3 shr [risk_budget]
+  BUY  2024-12-20 | 3 shares @ ₹5872.58 (close ₹5869.65) | cost ₹20.00 | cash left ₹88867.81
   [AMO] 2024-12-20 | RM EXIT (CHANDELIER) deferred → fill at 2024-12-23 open
-  SELL 2024-12-23 | 3 shares @ ₹5223.39 (close ₹5226.00) | P&L ₹-2366.96 (-13.01%) [CHANDELIER]
+  SELL 2024-12-23 | 3 shares @ ₹5223.39 (close ₹5226.00) | P&L ₹-1971.51 (-11.05%) [CHANDELIER]
   [COOLDOWN] 2024-12-23 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2024-12-24 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2024-12-26 | buy suppressed (14 bars remaining)
@@ -1532,34 +1739,26 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2025-01-01 | buy suppressed (10 bars remaining)
   [COOLDOWN] 2025-01-02 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2025-01-03 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2025-01-06 | buy suppressed (7 bars remaining)
+  [REGIME] 2025-01-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2025-06-06 | BUY deferred → fill at 2025-06-09 open | chan=₹2970.00
-  [SIZING] 2025-06-09 (AMO open)| entry=₹3321.66 | chan=₹2970.00 (chandelier) | dist=₹351.66 | risk=₹1580 → 4 shr [risk_budget]
-  BUY  2025-06-09 | 4 shares @ ₹3321.66 (close ₹3320.00) | cost ₹20.00 | cash left ₹92041.30
+  [SIZING] 2025-06-09 (AMO open)| entry=₹3321.66 | chan=₹2970.00 (chandelier) | dist=₹351.66 | risk=₹1568 → 4 shr [risk_budget]
+  BUY  2025-06-09 | 4 shares @ ₹3321.66 (close ₹3320.00) | cost ₹20.00 | cash left ₹91207.41
   [AMO] 2025-07-16 | RM EXIT (CHANDELIER) deferred → fill at 2025-07-17 open
   SELL 2025-07-17 | 4 shares @ ₹3079.56 (close ₹3081.10) | P&L ₹-991.48 (-7.29%) [CHANDELIER]
-  [AMO] 2025-09-11 | BUY deferred → fill at 2025-09-12 open | chan=₹2966.00
-  [SIZING] 2025-09-12 (AMO open)| entry=₹3203.60 | chan=₹2966.00 (chandelier) | dist=₹237.60 | risk=₹1565 → 6 shr [risk_budget]
-  BUY  2025-09-12 | 6 shares @ ₹3203.60 (close ₹3202.00) | cost ₹20.00 | cash left ₹85094.85
-  [AMO] 2025-09-26 | RM EXIT (CHANDELIER) deferred → fill at 2025-09-29 open
-  SELL 2025-09-29 | 6 shares @ ₹3113.44 (close ₹3115.00) | P&L ₹-565.62 (-2.81%) [CHANDELIER]
-  [COOLDOWN] 2025-09-29 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2025-09-30 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2025-10-01 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2025-10-03 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2025-10-06 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2025-10-07 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2025-10-08 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2025-10-09 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2025-10-10 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2025-10-13 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2025-10-14 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2025-10-15 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2025-10-16 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2025-10-17 | buy suppressed (3 bars remaining)
+  [REGIME] 2025-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2025-09-19 | BUY deferred → fill at 2025-09-22 open | chan=₹3069.00
+  [SIZING] 2025-09-22 (AMO open)| entry=₹3336.67 | chan=₹3069.00 (chandelier) | dist=₹267.67 | risk=₹1553 → 5 shr [risk_budget]
+  BUY  2025-09-22 | 5 shares @ ₹3336.67 (close ₹3335.00) | cost ₹20.00 | cash left ₹86799.23
+  [AMO] 2025-10-20 | SELL deferred → fill at 2025-10-21 open
+  SELL 2025-10-21 | 5 shares @ ₹3122.44 (close ₹3124.00) | P&L ₹-1095.05 (-6.42%)
   [AMO] 2025-12-01 | BUY deferred → fill at 2025-12-02 open | chan=₹3069.00
-  [SIZING] 2025-12-02 (AMO open)| entry=₹3311.86 | chan=₹3069.00 (chandelier) | dist=₹242.86 | risk=₹1556 → 6 shr [risk_budget]
-  BUY  2025-12-02 | 6 shares @ ₹3311.86 (close ₹3310.20) | cost ₹20.00 | cash left ₹83859.71
+  [SIZING] 2025-12-02 (AMO open)| entry=₹3311.86 | chan=₹3069.00 (chandelier) | dist=₹242.86 | risk=₹1536 → 6 shr [risk_budget]
+  BUY  2025-12-02 | 6 shares @ ₹3311.86 (close ₹3310.20) | cost ₹20.00 | cash left ₹82496.39
   [AMO] 2025-12-09 | RM EXIT (CHANDELIER) deferred → fill at 2025-12-10 open
   SELL 2025-12-10 | 6 shares @ ₹3148.43 (close ₹3150.00) | P&L ₹-1005.30 (-4.93%) [CHANDELIER]
   [COOLDOWN] 2025-12-10 | buy suppressed (16 bars remaining)
@@ -1587,7 +1786,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 829/1239 bull days (67% in uptrend)
 ============================================================
   [AMO] 2018-05-10 | BUY deferred → fill at 2018-05-11 open | chan=₹2652.63
   [SIZING] 2018-05-11 (AMO open)| entry=₹2775.89 | chan=₹2652.63 (chandelier) | dist=₹123.26 | risk=₹1500 → 7 shr [position_cap]
@@ -1619,11 +1818,11 @@ NIFTY Filter: DISABLED
   BUY  2018-09-26 | 7 shares @ ₹2728.86 (close ₹2727.50) | cost ₹20.00 | cash left ₹80071.08
   [AMO] 2018-10-05 | RM EXIT (CHANDELIER) deferred → fill at 2018-10-08 open
   SELL 2018-10-08 | 7 shares @ ₹2462.27 (close ₹2463.50) | P&L ₹-1890.48 (-9.77%) [CHANDELIER]
-  [COOLDOWN] 2018-10-08 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2018-10-09 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2018-10-10 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2018-10-11 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2018-10-12 | buy suppressed (12 bars remaining)
+  [REGIME] 2018-10-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-10-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-10-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-10-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2018-10-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2018-11-30 | BUY deferred → fill at 2018-12-03 open | chan=₹2475.00
   [SIZING] 2018-12-03 (AMO open)| entry=₹2693.35 | chan=₹2475.00 (chandelier) | dist=₹218.35 | risk=₹1459 → 6 shr [risk_budget]
   BUY  2018-12-03 | 6 shares @ ₹2693.35 (close ₹2692.00) | cost ₹20.00 | cash left ₹81102.58
@@ -1640,92 +1839,100 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2019-01-15 | buy suppressed (8 bars remaining)
   [COOLDOWN] 2019-01-16 | buy suppressed (7 bars remaining)
   [COOLDOWN] 2019-01-17 | buy suppressed (6 bars remaining)
-  [AMO] 2019-02-22 | BUY deferred → fill at 2019-02-25 open | chan=₹2574.00
-  [SIZING] 2019-02-25 (AMO open)| entry=₹2748.87 | chan=₹2574.00 (chandelier) | dist=₹174.87 | risk=₹1452 → 7 shr [position_cap]
-  BUY  2019-02-25 | 7 shares @ ₹2748.87 (close ₹2747.50) | cost ₹20.00 | cash left ₹77549.66
+  [REGIME] 2019-02-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-02-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-02-26 | BUY deferred → fill at 2019-02-27 open | chan=₹2574.00
+  [SIZING] 2019-02-27 (AMO open)| entry=₹2800.40 | chan=₹2574.00 (chandelier) | dist=₹226.40 | risk=₹1452 → 6 shr [risk_budget]
+  BUY  2019-02-27 | 6 shares @ ₹2800.40 (close ₹2799.00) | cost ₹20.00 | cash left ₹79989.38
   [AMO] 2019-05-15 | RM EXIT (CHANDELIER) deferred → fill at 2019-05-16 open
-  SELL 2019-05-16 | 7 shares @ ₹2854.07 (close ₹2855.50) | P&L ₹+711.39 (+3.83%) [CHANDELIER]
+  SELL 2019-05-16 | 6 shares @ ₹2854.07 (close ₹2855.50) | P&L ₹+297.76 (+1.92%) [CHANDELIER]
   [COOLDOWN] 2019-05-16 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2019-05-17 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2019-05-20 | buy suppressed (14 bars remaining)
   [COOLDOWN] 2019-05-21 | buy suppressed (13 bars remaining)
   [COOLDOWN] 2019-05-22 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2019-05-23 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2019-05-24 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2019-05-27 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2019-05-28 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2019-05-29 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2019-05-30 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2019-05-31 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2019-06-03 | buy suppressed (4 bars remaining)
+  [REGIME] 2019-05-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-05-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-06-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [COOLDOWN] 2019-06-04 | buy suppressed (3 bars remaining)
   [COOLDOWN] 2019-06-06 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2019-06-07 | buy suppressed (1 bars remaining)
   [AMO] 2019-06-10 | BUY deferred → fill at 2019-06-11 open | chan=₹2673.00
-  [SIZING] 2019-06-11 (AMO open)| entry=₹2930.96 | chan=₹2673.00 (chandelier) | dist=₹257.96 | risk=₹1463 → 5 shr [risk_budget]
-  BUY  2019-06-11 | 5 shares @ ₹2930.96 (close ₹2929.50) | cost ₹20.00 | cash left ₹82828.34
+  [SIZING] 2019-06-11 (AMO open)| entry=₹2930.96 | chan=₹2673.00 (chandelier) | dist=₹257.96 | risk=₹1456 → 5 shr [risk_budget]
+  BUY  2019-06-11 | 5 shares @ ₹2930.96 (close ₹2929.50) | cost ₹20.00 | cash left ₹82414.71
   [AMO] 2019-06-17 | SELL deferred → fill at 2019-06-18 open
   SELL 2019-06-18 | 5 shares @ ₹2765.62 (close ₹2767.00) | P&L ₹-850.20 (-5.64%)
-  [AMO] 2019-09-03 | BUY deferred → fill at 2019-09-04 open | chan=₹2475.00
-  [SIZING] 2019-09-04 (AMO open)| entry=₹2707.35 | chan=₹2475.00 (chandelier) | dist=₹232.35 | risk=₹1449 → 6 shr [risk_budget]
-  BUY  2019-09-04 | 6 shares @ ₹2707.35 (close ₹2706.00) | cost ₹20.00 | cash left ₹80368.85
-  [AMO] 2019-12-03 | RM EXIT (TIME_STOP) deferred → fill at 2019-12-04 open
-  SELL 2019-12-04 | 6 shares @ ₹3177.41 (close ₹3179.00) | P&L ₹+2795.58 (+17.36%) [TIME_STOP]
-  [COOLDOWN] 2019-12-04 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2019-12-05 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2019-12-06 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2019-12-09 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2019-12-10 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2019-12-11 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2019-12-12 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2019-12-13 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2019-12-16 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2019-12-17 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2019-12-18 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2019-12-19 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2019-12-20 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2019-12-23 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2019-12-24 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2019-12-26 | buy suppressed (1 bars remaining)
-  [AMO] 2019-12-27 | BUY deferred → fill at 2019-12-30 open | chan=₹2970.00
-  [SIZING] 2019-12-30 (AMO open)| entry=₹3161.58 | chan=₹2970.00 (chandelier) | dist=₹191.58 | risk=₹1491 → 6 shr [position_cap]
-  BUY  2019-12-30 | 6 shares @ ₹3161.58 (close ₹3160.00) | cost ₹20.00 | cash left ₹80419.07
-  [AMO] 2020-01-06 | RM EXIT (CHANDELIER) deferred → fill at 2020-01-07 open
-  SELL 2020-01-07 | 6 shares @ ₹2968.52 (close ₹2970.00) | P&L ₹-1182.84 (-6.11%) [CHANDELIER]
-  [AMO] 2020-05-11 | BUY deferred → fill at 2020-05-12 open | chan=₹2178.00
-  [SIZING] 2020-05-12 (AMO open)| entry=₹2469.73 | chan=₹2178.00 (chandelier) | dist=₹291.73 | risk=₹1473 → 5 shr [risk_budget]
-  BUY  2020-05-12 | 5 shares @ ₹2469.73 (close ₹2468.50) | cost ₹20.00 | cash left ₹85837.04
-  [AMO] 2020-08-04 | RM EXIT (TIME_STOP) deferred → fill at 2020-08-05 open
-  SELL 2020-08-05 | 5 shares @ ₹2911.04 (close ₹2912.50) | P&L ₹+2182.91 (+17.87%) [TIME_STOP]
-  [COOLDOWN] 2020-08-05 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2020-08-06 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2020-08-07 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2020-08-10 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2020-08-11 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2020-08-12 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2020-08-13 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2020-08-14 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2020-08-17 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2020-08-18 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2020-08-19 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2020-08-20 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2020-08-21 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2020-08-24 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2020-08-25 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2020-08-26 | buy suppressed (1 bars remaining)
-  [AMO] 2020-08-27 | BUY deferred → fill at 2020-08-28 open | chan=₹2772.00
-  [SIZING] 2020-08-28 (AMO open)| entry=₹2970.48 | chan=₹2772.00 (chandelier) | dist=₹198.48 | risk=₹1506 → 6 shr [position_cap]
-  BUY  2020-08-28 | 6 shares @ ₹2970.48 (close ₹2969.00) | cost ₹20.00 | cash left ₹82525.71
+  [REGIME] 2019-09-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2019-09-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-09-30 | BUY deferred → fill at 2019-10-01 open | chan=₹2673.00
+  [SIZING] 2019-10-01 (AMO open)| entry=₹2873.44 | chan=₹2673.00 (chandelier) | dist=₹200.44 | risk=₹1443 → 6 shr [position_cap]
+  BUY  2019-10-01 | 6 shares @ ₹2873.44 (close ₹2872.00) | cost ₹20.00 | cash left ₹78958.71
+  [AMO] 2019-12-30 | RM EXIT (TIME_STOP) deferred → fill at 2019-12-31 open
+  SELL 2019-12-31 | 6 shares @ ₹3168.91 (close ₹3170.50) | P&L ₹+1748.12 (+10.28%) [TIME_STOP]
+  [COOLDOWN] 2019-12-31 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2020-01-01 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-01-02 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-01-03 | buy suppressed (13 bars remaining)
+  [REGIME] 2020-05-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-05-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-05-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-05-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2020-05-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2020-05-18 | BUY deferred → fill at 2020-05-19 open | chan=₹2178.00
+  [SIZING] 2020-05-19 (AMO open)| entry=₹2457.23 | chan=₹2178.00 (chandelier) | dist=₹279.23 | risk=₹1469 → 5 shr [risk_budget]
+  BUY  2020-05-19 | 5 shares @ ₹2457.23 (close ₹2456.00) | cost ₹20.00 | cash left ₹85641.31
+  [AMO] 2020-08-11 | RM EXIT (TIME_STOP) deferred → fill at 2020-08-12 open
+  SELL 2020-08-12 | 5 shares @ ₹2931.53 (close ₹2933.00) | P&L ₹+2347.86 (+19.30%) [TIME_STOP]
+  [COOLDOWN] 2020-08-12 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2020-08-13 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2020-08-14 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2020-08-17 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2020-08-18 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2020-08-19 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2020-08-20 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2020-08-21 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2020-08-24 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2020-08-25 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2020-08-26 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2020-08-27 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2020-08-28 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2020-08-31 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2020-09-01 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2020-09-02 | buy suppressed (1 bars remaining)
+  [AMO] 2020-09-03 | BUY deferred → fill at 2020-09-04 open | chan=₹2574.00
+  [SIZING] 2020-09-04 (AMO open)| entry=₹2810.40 | chan=₹2574.00 (chandelier) | dist=₹236.40 | risk=₹1504 → 6 shr [risk_budget]
+  BUY  2020-09-04 | 6 shares @ ₹2810.40 (close ₹2809.00) | cost ₹20.00 | cash left ₹83392.89
   [AMO] 2020-09-14 | SELL deferred → fill at 2020-09-15 open
-  SELL 2020-09-15 | 6 shares @ ₹2883.06 (close ₹2884.50) | P&L ₹-548.89 (-2.94%)
+  SELL 2020-09-15 | 6 shares @ ₹2883.06 (close ₹2884.50) | P&L ₹+411.59 (+2.59%)
   [AMO] 2020-10-12 | BUY deferred → fill at 2020-10-13 open | chan=₹2756.21
-  [SIZING] 2020-10-13 (AMO open)| entry=₹2951.47 | chan=₹2756.21 (chandelier) | dist=₹195.26 | risk=₹1497 → 6 shr [position_cap]
-  BUY  2020-10-13 | 6 shares @ ₹2951.47 (close ₹2950.00) | cost ₹20.00 | cash left ₹82070.88
+  [SIZING] 2020-10-13 (AMO open)| entry=₹2951.47 | chan=₹2756.21 (chandelier) | dist=₹195.26 | risk=₹1510 → 6 shr [position_cap]
+  BUY  2020-10-13 | 6 shares @ ₹2951.47 (close ₹2950.00) | cost ₹20.00 | cash left ₹82938.06
   [AMO] 2020-11-12 | SELL deferred → fill at 2020-11-13 open
   SELL 2020-11-13 | 6 shares @ ₹2934.03 (close ₹2935.50) | P&L ₹-129.06 (-0.59%)
   [AMO] 2020-11-25 | BUY deferred → fill at 2020-11-26 open | chan=₹2871.00
-  [SIZING] 2020-11-26 (AMO open)| entry=₹2978.99 | chan=₹2871.00 (chandelier) | dist=₹107.99 | risk=₹1495 → 6 shr [position_cap]
-  BUY  2020-11-26 | 6 shares @ ₹2978.99 (close ₹2977.50) | cost ₹20.00 | cash left ₹81756.74
+  [SIZING] 2020-11-26 (AMO open)| entry=₹2978.99 | chan=₹2871.00 (chandelier) | dist=₹107.99 | risk=₹1508 → 6 shr [position_cap]
+  BUY  2020-11-26 | 6 shares @ ₹2978.99 (close ₹2977.50) | cost ₹20.00 | cash left ₹82623.92
   [AMO] 2021-02-19 | RM EXIT (CHANDELIER) deferred → fill at 2021-02-22 open
   SELL 2021-02-22 | 6 shares @ ₹3909.04 (close ₹3911.00) | P&L ₹+5554.47 (+31.22%) [CHANDELIER]
   [COOLDOWN] 2021-02-22 | buy suppressed (16 bars remaining)
@@ -1744,11 +1951,18 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-03-12 | buy suppressed (3 bars remaining)
   [COOLDOWN] 2021-03-15 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-03-16 | buy suppressed (1 bars remaining)
-  [AMO] 2021-05-10 | BUY deferred → fill at 2021-05-11 open | chan=₹3465.00
-  [SIZING] 2021-05-11 (AMO open)| entry=₹3766.38 | chan=₹3465.00 (chandelier) | dist=₹301.38 | risk=₹1578 → 5 shr [risk_budget]
-  BUY  2021-05-11 | 5 shares @ ₹3766.38 (close ₹3764.50) | cost ₹20.00 | cash left ₹86333.23
+  [REGIME] 2021-05-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2021-05-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2021-05-20 | BUY deferred → fill at 2021-05-21 open | chan=₹3663.00
+  [SIZING] 2021-05-21 (AMO open)| entry=₹3983.49 | chan=₹3663.00 (chandelier) | dist=₹320.49 | risk=₹1591 → 4 shr [risk_budget]
+  BUY  2021-05-21 | 4 shares @ ₹3983.49 (close ₹3981.50) | cost ₹20.00 | cash left ₹90098.36
   [AMO] 2021-06-17 | RM EXIT (CHANDELIER) deferred → fill at 2021-06-18 open
-  SELL 2021-06-18 | 5 shares @ ₹3953.02 (close ₹3955.00) | P&L ₹+908.26 (+4.96%) [CHANDELIER]
+  SELL 2021-06-18 | 4 shares @ ₹3953.02 (close ₹3955.00) | P&L ₹-145.83 (-0.76%) [CHANDELIER]
   [COOLDOWN] 2021-06-18 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2021-06-21 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2021-06-22 | buy suppressed (14 bars remaining)
@@ -1766,13 +1980,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-07-08 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2021-07-09 | buy suppressed (1 bars remaining)
   [AMO] 2021-07-12 | BUY deferred → fill at 2021-07-13 open | chan=₹3663.00
-  [SIZING] 2021-07-13 (AMO open)| entry=₹3888.44 | chan=₹3663.00 (chandelier) | dist=₹225.44 | risk=₹1591 → 5 shr [position_cap]
-  BUY  2021-07-13 | 5 shares @ ₹3888.44 (close ₹3886.50) | cost ₹20.00 | cash left ₹86611.19
+  [SIZING] 2021-07-13 (AMO open)| entry=₹3888.44 | chan=₹3663.00 (chandelier) | dist=₹225.44 | risk=₹1588 → 5 shr [position_cap]
+  BUY  2021-07-13 | 5 shares @ ₹3888.44 (close ₹3886.50) | cost ₹20.00 | cash left ₹86424.28
   [AMO] 2021-07-16 | SELL deferred → fill at 2021-07-19 open
   SELL 2021-07-19 | 5 shares @ ₹3823.09 (close ₹3825.00) | P&L ₹-351.56 (-1.68%)
   [AMO] 2021-10-01 | BUY deferred → fill at 2021-10-04 open | chan=₹3564.00
-  [SIZING] 2021-10-04 (AMO open)| entry=₹3762.88 | chan=₹3564.00 (chandelier) | dist=₹198.88 | risk=₹1586 → 5 shr [position_cap]
-  BUY  2021-10-04 | 5 shares @ ₹3762.88 (close ₹3761.00) | cost ₹20.00 | cash left ₹86867.44
+  [SIZING] 2021-10-04 (AMO open)| entry=₹3762.88 | chan=₹3564.00 (chandelier) | dist=₹198.88 | risk=₹1583 → 5 shr [position_cap]
+  BUY  2021-10-04 | 5 shares @ ₹3762.88 (close ₹3761.00) | cost ₹20.00 | cash left ₹86680.54
   [AMO] 2021-10-28 | RM EXIT (CHANDELIER) deferred → fill at 2021-10-29 open
   SELL 2021-10-29 | 5 shares @ ₹3626.19 (close ₹3628.00) | P&L ₹-708.01 (-3.63%) [CHANDELIER]
   [COOLDOWN] 2021-10-29 | buy suppressed (16 bars remaining)
@@ -1785,65 +1999,83 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2021-11-10 | buy suppressed (9 bars remaining)
   [COOLDOWN] 2021-11-11 | buy suppressed (8 bars remaining)
   [AMO] 2022-01-21 | BUY deferred → fill at 2022-01-24 open | chan=₹3153.97
-  [SIZING] 2022-01-24 (AMO open)| entry=₹3338.17 | chan=₹3153.97 (chandelier) | dist=₹184.20 | risk=₹1575 → 6 shr [position_cap]
-  BUY  2022-01-24 | 6 shares @ ₹3338.17 (close ₹3336.50) | cost ₹20.00 | cash left ₹84924.83
+  [SIZING] 2022-01-24 (AMO open)| entry=₹3338.17 | chan=₹3153.97 (chandelier) | dist=₹184.20 | risk=₹1572 → 6 shr [position_cap]
+  BUY  2022-01-24 | 6 shares @ ₹3338.17 (close ₹3336.50) | cost ₹20.00 | cash left ₹84737.92
   [AMO] 2022-03-03 | RM EXIT (CHANDELIER) deferred → fill at 2022-03-04 open
   SELL 2022-03-04 | 6 shares @ ₹3168.91 (close ₹3170.50) | P&L ₹-1040.27 (-5.07%) [CHANDELIER]
-  [COOLDOWN] 2022-03-04 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2022-03-07 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2022-03-08 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2022-03-09 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2022-03-10 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-03-11 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-03-14 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-03-15 | buy suppressed (9 bars remaining)
-  [AMO] 2022-04-01 | BUY deferred → fill at 2022-04-04 open | chan=₹3366.00
-  [SIZING] 2022-04-04 (AMO open)| entry=₹3659.33 | chan=₹3366.00 (chandelier) | dist=₹293.33 | risk=₹1559 → 5 shr [risk_budget]
-  BUY  2022-04-04 | 5 shares @ ₹3659.33 (close ₹3657.50) | cost ₹20.00 | cash left ₹85596.92
+  [REGIME] 2022-03-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-03-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-04-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-04-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-04-05 | BUY deferred → fill at 2022-04-06 open | chan=₹3456.05
+  [SIZING] 2022-04-06 (AMO open)| entry=₹3708.85 | chan=₹3456.05 (chandelier) | dist=₹252.81 | risk=₹1556 → 5 shr [position_cap]
+  BUY  2022-04-06 | 5 shares @ ₹3708.85 (close ₹3707.00) | cost ₹20.00 | cash left ₹85162.39
   [AMO] 2022-05-02 | RM EXIT (CHANDELIER) deferred → fill at 2022-05-04 open
-  SELL 2022-05-04 | 5 shares @ ₹3533.73 (close ₹3535.50) | P&L ₹-652.40 (-3.43%) [CHANDELIER]
+  SELL 2022-05-04 | 5 shares @ ₹3533.73 (close ₹3535.50) | P&L ₹-900.02 (-4.72%) [CHANDELIER]
   [COOLDOWN] 2022-05-04 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2022-05-05 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2022-05-06 | buy suppressed (14 bars remaining)
   [COOLDOWN] 2022-05-09 | buy suppressed (13 bars remaining)
   [COOLDOWN] 2022-05-10 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-05-11 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-05-12 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-05-13 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2022-05-16 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2022-05-17 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2022-05-18 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2022-05-19 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2022-05-20 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2022-05-23 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2022-05-24 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2022-05-25 | buy suppressed (1 bars remaining)
-  [AMO] 2022-06-01 | BUY deferred → fill at 2022-06-02 open | chan=₹3465.00
-  [SIZING] 2022-06-02 (AMO open)| entry=₹3629.81 | chan=₹3465.00 (chandelier) | dist=₹164.81 | risk=₹1549 → 5 shr [position_cap]
-  BUY  2022-06-02 | 5 shares @ ₹3629.81 (close ₹3628.00) | cost ₹20.00 | cash left ₹85072.10
-  [AMO] 2022-06-17 | RM EXIT (CHANDELIER) deferred → fill at 2022-06-20 open
-  SELL 2022-06-20 | 5 shares @ ₹3529.23 (close ₹3531.00) | P&L ₹-527.31 (-2.77%) [CHANDELIER]
-  [COOLDOWN] 2022-06-20 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2022-06-21 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2022-06-22 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2022-06-23 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2022-06-24 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2022-06-27 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2022-06-28 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2022-06-29 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2022-06-30 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2022-07-01 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2022-07-04 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2022-07-05 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2022-07-06 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2022-07-07 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2022-07-08 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2022-07-11 | buy suppressed (1 bars remaining)
-  [AMO] 2022-07-12 | BUY deferred → fill at 2022-07-13 open | chan=₹3465.00
-  [SIZING] 2022-07-13 (AMO open)| entry=₹3764.38 | chan=₹3465.00 (chandelier) | dist=₹299.38 | risk=₹1540 → 5 shr [risk_budget]
-  BUY  2022-07-13 | 5 shares @ ₹3764.38 (close ₹3762.50) | cost ₹20.00 | cash left ₹83851.95
+  [REGIME] 2022-05-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-05-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-06-30 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-07 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2022-07-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2022-07-22 | BUY deferred → fill at 2022-07-25 open | chan=₹3741.30
+  [SIZING] 2022-07-25 (AMO open)| entry=₹3956.48 | chan=₹3741.30 (chandelier) | dist=₹215.18 | risk=₹1542 → 5 shr [position_cap]
+  BUY  2022-07-25 | 5 shares @ ₹3956.48 (close ₹3954.50) | cost ₹20.00 | cash left ₹83004.25
   [AMO] 2022-09-07 | RM EXIT (CHANDELIER) deferred → fill at 2022-09-08 open
-  SELL 2022-09-08 | 5 shares @ ₹3767.62 (close ₹3769.50) | P&L ₹-8.54 (+0.09%) [CHANDELIER]
+  SELL 2022-09-08 | 5 shares @ ₹3767.62 (close ₹3769.50) | P&L ₹-969.02 (-4.77%) [CHANDELIER]
   [COOLDOWN] 2022-09-08 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2022-09-09 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2022-09-12 | buy suppressed (14 bars remaining)
@@ -1851,8 +2083,8 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2022-09-14 | buy suppressed (12 bars remaining)
   [COOLDOWN] 2022-09-15 | buy suppressed (11 bars remaining)
   [AMO] 2022-11-15 | BUY deferred → fill at 2022-11-16 open | chan=₹3465.00
-  [SIZING] 2022-11-16 (AMO open)| entry=₹3665.83 | chan=₹3465.00 (chandelier) | dist=₹200.83 | risk=₹1540 → 5 shr [position_cap]
-  BUY  2022-11-16 | 5 shares @ ₹3665.83 (close ₹3664.00) | cost ₹20.00 | cash left ₹84316.16
+  [SIZING] 2022-11-16 (AMO open)| entry=₹3665.83 | chan=₹3465.00 (chandelier) | dist=₹200.83 | risk=₹1527 → 5 shr [position_cap]
+  BUY  2022-11-16 | 5 shares @ ₹3665.83 (close ₹3664.00) | cost ₹20.00 | cash left ₹83468.46
   [AMO] 2022-12-13 | SELL deferred → fill at 2022-12-14 open
   SELL 2022-12-14 | 5 shares @ ₹3558.22 (close ₹3560.00) | P&L ₹-562.51 (-2.94%)
 
@@ -1866,49 +2098,63 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: DISABLED
+NIFTY Filter: ACTIVE — 501/744 bull days (67% in uptrend)
 ============================================================
-  [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹3465.00
-  [SIZING] 2023-03-15 (AMO open)| entry=₹3683.34 | chan=₹3465.00 (chandelier) | dist=₹218.34 | risk=₹1500 → 5 shr [position_cap]
-  BUY  2023-03-15 | 5 shares @ ₹3683.34 (close ₹3681.50) | cost ₹20.00 | cash left ₹81563.30
-  [AMO] 2023-03-27 | SELL deferred → fill at 2023-03-28 open
-  SELL 2023-03-28 | 5 shares @ ₹3724.64 (close ₹3726.50) | P&L ₹+181.82 (+1.12%)
-  [AMO] 2023-03-28 | BUY deferred → fill at 2023-03-29 open | chan=₹3465.00
-  [SIZING] 2023-03-29 (AMO open)| entry=₹3718.36 | chan=₹3465.00 (chandelier) | dist=₹253.36 | risk=₹1502 → 5 shr [risk_budget]
-  BUY  2023-03-29 | 5 shares @ ₹3718.36 (close ₹3716.50) | cost ₹20.00 | cash left ₹81550.03
-  [AMO] 2023-06-27 | RM EXIT (TIME_STOP) deferred → fill at 2023-06-28 open
-  SELL 2023-06-28 | 5 shares @ ₹4513.24 (close ₹4515.50) | P&L ₹+3948.78 (+21.38%) [TIME_STOP]
-  [COOLDOWN] 2023-06-28 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-06-30 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-07-03 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-07-04 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2023-07-05 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2023-07-06 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2023-07-07 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2023-07-10 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2023-07-11 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2023-07-12 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2023-07-13 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2023-07-14 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2023-07-17 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2023-07-18 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2023-07-19 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2023-07-20 | buy suppressed (1 bars remaining)
-  [AMO] 2023-07-21 | BUY deferred → fill at 2023-07-24 open | chan=₹4455.00
-  [SIZING] 2023-07-24 (AMO open)| entry=₹4744.37 | chan=₹4455.00 (chandelier) | dist=₹289.37 | risk=₹1561 → 4 shr [position_cap]
-  BUY  2023-07-24 | 4 shares @ ₹4744.37 (close ₹4742.00) | cost ₹20.00 | cash left ₹85093.12
-  [AMO] 2023-08-08 | RM EXIT (CHANDELIER) deferred → fill at 2023-08-09 open
-  SELL 2023-08-09 | 4 shares @ ₹4533.23 (close ₹4535.50) | P&L ₹-869.09 (-4.45%) [CHANDELIER]
-  [COOLDOWN] 2023-08-09 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2023-08-10 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2023-08-11 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2023-08-14 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2023-08-16 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2023-08-17 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2023-08-18 | buy suppressed (10 bars remaining)
+  [REGIME] 2023-03-14 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-22 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-23 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-03-31 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-06 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-13 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-19 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-20 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-21 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2023-04-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2023-04-26 | BUY deferred → fill at 2023-04-27 open | chan=₹3960.00
+  [SIZING] 2023-04-27 (AMO open)| entry=₹4195.60 | chan=₹3960.00 (chandelier) | dist=₹235.60 | risk=₹1500 → 4 shr [position_cap]
+  BUY  2023-04-27 | 4 shares @ ₹4195.60 (close ₹4193.50) | cost ₹20.00 | cash left ₹83197.61
+  [AMO] 2023-07-21 | RM EXIT (TIME_STOP) deferred → fill at 2023-07-24 open
+  SELL 2023-07-24 | 4 shares @ ₹4739.63 (close ₹4742.00) | P&L ₹+2151.39 (+12.97%) [TIME_STOP]
+  [COOLDOWN] 2023-07-24 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2023-07-25 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2023-07-26 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2023-07-27 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2023-07-28 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2023-07-31 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2023-08-01 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2023-08-02 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2023-08-03 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2023-08-04 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2023-08-07 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2023-08-08 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2023-08-09 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2023-08-10 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2023-08-11 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2023-08-14 | buy suppressed (1 bars remaining)
+  [AMO] 2023-08-16 | BUY deferred → fill at 2023-08-17 open | chan=₹4247.51
+  [SIZING] 2023-08-17 (AMO open)| entry=₹4465.23 | chan=₹4247.51 (chandelier) | dist=₹217.72 | risk=₹1532 → 4 shr [position_cap]
+  BUY  2023-08-17 | 4 shares @ ₹4465.23 (close ₹4463.00) | cost ₹20.00 | cash left ₹84250.46
+  [AMO] 2023-08-21 | SELL deferred → fill at 2023-08-22 open
+  SELL 2023-08-22 | 4 shares @ ₹4501.75 (close ₹4504.00) | P&L ₹+121.56 (+0.82%)
   [AMO] 2023-09-21 | BUY deferred → fill at 2023-09-22 open | chan=₹4752.00
-  [SIZING] 2023-09-22 (AMO open)| entry=₹4928.46 | chan=₹4752.00 (chandelier) | dist=₹176.46 | risk=₹1548 → 4 shr [position_cap]
-  BUY  2023-09-22 | 4 shares @ ₹4928.46 (close ₹4926.00) | cost ₹20.00 | cash left ₹83467.66
+  [SIZING] 2023-09-22 (AMO open)| entry=₹4928.46 | chan=₹4752.00 (chandelier) | dist=₹176.46 | risk=₹1533 → 4 shr [position_cap]
+  BUY  2023-09-22 | 4 shares @ ₹4928.46 (close ₹4926.00) | cost ₹20.00 | cash left ₹82499.10
   [AMO] 2023-12-19 | RM EXIT (TIME_STOP) deferred → fill at 2023-12-20 open
   SELL 2023-12-20 | 4 shares @ ₹6271.86 (close ₹6275.00) | P&L ₹+5347.33 (+27.26%) [TIME_STOP]
   [COOLDOWN] 2023-12-20 | buy suppressed (16 bars remaining)
@@ -1928,10 +2174,10 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-01-10 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-01-11 | buy suppressed (1 bars remaining)
   [AMO] 2024-01-12 | BUY deferred → fill at 2024-01-15 open | chan=₹6734.66
-  [SIZING] 2024-01-15 (AMO open)| entry=₹7185.59 | chan=₹6734.66 (chandelier) | dist=₹450.93 | risk=₹1628 → 3 shr [risk_budget]
-  BUY  2024-01-15 | 3 shares @ ₹7185.59 (close ₹7182.00) | cost ₹20.00 | cash left ₹86952.07
+  [SIZING] 2024-01-15 (AMO open)| entry=₹7185.59 | chan=₹6734.66 (chandelier) | dist=₹450.93 | risk=₹1613 → 2 shr [position_cap]
+  BUY  2024-01-15 | 2 shares @ ₹7185.59 (close ₹7182.00) | cost ₹20.00 | cash left ₹93169.10
   [AMO] 2024-02-29 | RM EXIT (CHANDELIER) deferred → fill at 2024-03-01 open
-  SELL 2024-03-01 | 3 shares @ ₹7754.62 (close ₹7758.50) | P&L ₹+1681.27 (+7.92%) [CHANDELIER]
+  SELL 2024-03-01 | 2 shares @ ₹7754.62 (close ₹7758.50) | P&L ₹+1114.18 (+7.92%) [CHANDELIER]
   [COOLDOWN] 2024-03-01 | buy suppressed (16 bars remaining)
   [COOLDOWN] 2024-03-02 | buy suppressed (15 bars remaining)
   [COOLDOWN] 2024-03-04 | buy suppressed (14 bars remaining)
@@ -1949,13 +2195,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-03-21 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-03-22 | buy suppressed (1 bars remaining)
   [AMO] 2024-03-26 | BUY deferred → fill at 2024-03-27 open | chan=₹8124.47
-  [SIZING] 2024-03-27 (AMO open)| entry=₹8741.87 | chan=₹8124.47 (chandelier) | dist=₹617.40 | risk=₹1653 → 2 shr [risk_budget]
-  BUY  2024-03-27 | 2 shares @ ₹8741.87 (close ₹8737.50) | cost ₹20.00 | cash left ₹92686.38
+  [SIZING] 2024-03-27 (AMO open)| entry=₹8741.87 | chan=₹8124.47 (chandelier) | dist=₹617.40 | risk=₹1630 → 2 shr [risk_budget]
+  BUY  2024-03-27 | 2 shares @ ₹8741.87 (close ₹8737.50) | cost ₹20.00 | cash left ₹91150.72
   [AMO] 2024-05-31 | SELL deferred → fill at 2024-06-03 open
   SELL 2024-06-03 | 2 shares @ ₹8948.52 (close ₹8953.00) | P&L ₹+388.84 (+2.36%)
   [AMO] 2024-06-04 | BUY deferred → fill at 2024-06-05 open | chan=₹8415.00
-  [SIZING] 2024-06-05 (AMO open)| entry=₹9017.01 | chan=₹8415.00 (chandelier) | dist=₹602.01 | risk=₹1658 → 2 shr [risk_budget]
-  BUY  2024-06-05 | 2 shares @ ₹9017.01 (close ₹9012.50) | cost ₹20.00 | cash left ₹92504.94
+  [SIZING] 2024-06-05 (AMO open)| entry=₹9017.01 | chan=₹8415.00 (chandelier) | dist=₹602.01 | risk=₹1635 → 2 shr [risk_budget]
+  BUY  2024-06-05 | 2 shares @ ₹9017.01 (close ₹9012.50) | cost ₹20.00 | cash left ₹90969.28
   [AMO] 2024-07-02 | RM EXIT (CHANDELIER) deferred → fill at 2024-07-03 open
   SELL 2024-07-03 | 2 shares @ ₹9235.38 (close ₹9240.00) | P&L ₹+412.13 (+2.42%) [CHANDELIER]
   [COOLDOWN] 2024-07-03 | buy suppressed (16 bars remaining)
@@ -1975,13 +2221,13 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-07-24 | buy suppressed (2 bars remaining)
   [COOLDOWN] 2024-07-25 | buy suppressed (1 bars remaining)
   [AMO] 2024-07-26 | BUY deferred → fill at 2024-07-29 open | chan=₹8587.37
-  [SIZING] 2024-07-29 (AMO open)| entry=₹9317.66 | chan=₹8587.37 (chandelier) | dist=₹730.29 | risk=₹1664 → 2 shr [risk_budget]
-  BUY  2024-07-29 | 2 shares @ ₹9317.66 (close ₹9313.00) | cost ₹20.00 | cash left ₹92295.77
+  [SIZING] 2024-07-29 (AMO open)| entry=₹9317.66 | chan=₹8587.37 (chandelier) | dist=₹730.29 | risk=₹1641 → 2 shr [risk_budget]
+  BUY  2024-07-29 | 2 shares @ ₹9317.66 (close ₹9313.00) | cost ₹20.00 | cash left ₹90760.11
   [AMO] 2024-08-06 | SELL deferred → fill at 2024-08-07 open
   SELL 2024-08-07 | 2 shares @ ₹9328.83 (close ₹9333.50) | P&L ₹-2.31 (+0.12%)
   [AMO] 2024-08-21 | BUY deferred → fill at 2024-08-22 open | chan=₹8910.00
-  [SIZING] 2024-08-22 (AMO open)| entry=₹9660.33 | chan=₹8910.00 (chandelier) | dist=₹750.33 | risk=₹1664 → 2 shr [risk_budget]
-  BUY  2024-08-22 | 2 shares @ ₹9660.33 (close ₹9655.50) | cost ₹20.00 | cash left ₹91588.11
+  [SIZING] 2024-08-22 (AMO open)| entry=₹9660.33 | chan=₹8910.00 (chandelier) | dist=₹750.33 | risk=₹1641 → 2 shr [risk_budget]
+  BUY  2024-08-22 | 2 shares @ ₹9660.33 (close ₹9655.50) | cost ₹20.00 | cash left ₹90052.46
   [AMO] 2024-10-03 | RM EXIT (CHANDELIER) deferred → fill at 2024-10-04 open
   SELL 2024-10-04 | 2 shares @ ₹11367.31 (close ₹11373.00) | P&L ₹+3388.29 (+17.67%) [CHANDELIER]
   [COOLDOWN] 2024-10-04 | buy suppressed (16 bars remaining)
@@ -1998,21 +2244,15 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2024-10-21 | buy suppressed (5 bars remaining)
   [COOLDOWN] 2024-10-22 | buy suppressed (4 bars remaining)
   [COOLDOWN] 2024-10-23 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2024-10-24 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2024-10-25 | buy suppressed (1 bars remaining)
-  [AMO] 2024-10-28 | BUY deferred → fill at 2024-10-29 open | chan=₹8910.00
-  [SIZING] 2024-10-29 (AMO open)| entry=₹9829.91 | chan=₹8910.00 (chandelier) | dist=₹919.91 | risk=₹1714 → 1 shr [risk_budget]
-  BUY  2024-10-29 | 1 shares @ ₹9829.91 (close ₹9825.00) | cost ₹20.00 | cash left ₹104447.14
-  [AMO] 2024-10-29 | SELL deferred → fill at 2024-10-30 open
-  SELL 2024-10-30 | 1 shares @ ₹9572.71 (close ₹9577.50) | P&L ₹-279.59 (-2.62%)
-  [AMO] 2025-02-24 | BUY deferred → fill at 2025-02-25 open | chan=₹7715.25
-  [SIZING] 2025-02-25 (AMO open)| entry=₹8245.12 | chan=₹7715.25 (chandelier) | dist=₹529.87 | risk=₹1710 → 2 shr [position_cap]
-  BUY  2025-02-25 | 2 shares @ ₹8245.12 (close ₹8241.00) | cost ₹20.00 | cash left ₹97487.22
-  [AMO] 2025-02-28 | RM EXIT (CHANDELIER) deferred → fill at 2025-03-03 open
-  SELL 2025-03-03 | 2 shares @ ₹7735.13 (close ₹7739.00) | P&L ₹-1043.85 (-6.19%) [CHANDELIER]
+  [REGIME] 2024-10-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2024-10-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-02-24 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-02-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-02-27 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
   [AMO] 2025-05-07 | BUY deferred → fill at 2025-05-08 open | chan=₹7183.18
-  [SIZING] 2025-05-08 (AMO open)| entry=₹7660.33 | chan=₹7183.18 (chandelier) | dist=₹477.14 | risk=₹1694 → 2 shr [position_cap]
-  BUY  2025-05-08 | 2 shares @ ₹7660.33 (close ₹7656.50) | cost ₹20.00 | cash left ₹97592.96
+  [SIZING] 2025-05-08 (AMO open)| entry=₹7660.33 | chan=₹7183.18 (chandelier) | dist=₹477.14 | risk=₹1691 → 2 shr [position_cap]
+  BUY  2025-05-08 | 2 shares @ ₹7660.33 (close ₹7656.50) | cost ₹20.00 | cash left ₹97420.75
   [AMO] 2025-07-08 | RM EXIT (CHANDELIER) deferred → fill at 2025-07-09 open
   SELL 2025-07-09 | 2 shares @ ₹8345.83 (close ₹8350.00) | P&L ₹+1346.82 (+8.95%) [CHANDELIER]
   [COOLDOWN] 2025-07-09 | buy suppressed (16 bars remaining)
@@ -2022,32 +2262,50 @@ NIFTY Filter: DISABLED
   [COOLDOWN] 2025-07-15 | buy suppressed (12 bars remaining)
   [COOLDOWN] 2025-07-16 | buy suppressed (11 bars remaining)
   [COOLDOWN] 2025-07-17 | buy suppressed (10 bars remaining)
-  [AMO] 2025-08-25 | BUY deferred → fill at 2025-08-26 open | chan=₹8277.08
-  [SIZING] 2025-08-26 (AMO open)| entry=₹8734.36 | chan=₹8277.08 (chandelier) | dist=₹457.28 | risk=₹1714 → 2 shr [position_cap]
-  BUY  2025-08-26 | 2 shares @ ₹8734.36 (close ₹8730.00) | cost ₹20.00 | cash left ₹96771.70
-  [AMO] 2025-09-24 | RM EXIT (CHANDELIER) deferred → fill at 2025-09-25 open
-  SELL 2025-09-25 | 2 shares @ ₹8816.59 (close ₹8821.00) | P&L ₹+140.04 (+0.94%) [CHANDELIER]
-  [COOLDOWN] 2025-09-25 | buy suppressed (16 bars remaining)
-  [COOLDOWN] 2025-09-26 | buy suppressed (15 bars remaining)
-  [COOLDOWN] 2025-09-29 | buy suppressed (14 bars remaining)
-  [COOLDOWN] 2025-09-30 | buy suppressed (13 bars remaining)
-  [COOLDOWN] 2025-10-01 | buy suppressed (12 bars remaining)
-  [COOLDOWN] 2025-10-03 | buy suppressed (11 bars remaining)
-  [COOLDOWN] 2025-10-06 | buy suppressed (10 bars remaining)
-  [COOLDOWN] 2025-10-07 | buy suppressed (9 bars remaining)
-  [COOLDOWN] 2025-10-08 | buy suppressed (8 bars remaining)
-  [COOLDOWN] 2025-10-09 | buy suppressed (7 bars remaining)
-  [COOLDOWN] 2025-10-10 | buy suppressed (6 bars remaining)
-  [COOLDOWN] 2025-10-13 | buy suppressed (5 bars remaining)
-  [COOLDOWN] 2025-10-14 | buy suppressed (4 bars remaining)
-  [COOLDOWN] 2025-10-15 | buy suppressed (3 bars remaining)
-  [COOLDOWN] 2025-10-16 | buy suppressed (2 bars remaining)
-  [COOLDOWN] 2025-10-17 | buy suppressed (1 bars remaining)
-  [AMO] 2025-10-20 | BUY deferred → fill at 2025-10-21 open | chan=₹8732.92
-  [SIZING] 2025-10-21 (AMO open)| entry=₹9164.08 | chan=₹8732.92 (chandelier) | dist=₹431.16 | risk=₹1716 → 2 shr [position_cap]
-  BUY  2025-10-21 | 2 shares @ ₹9164.08 (close ₹9159.50) | cost ₹20.00 | cash left ₹96032.32
+  [REGIME] 2025-08-25 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-26 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-08-29 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-01 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-02 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-03 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-04 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-05 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-08 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-10 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-11 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-12 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-15 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-16 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-17 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [REGIME] 2025-09-18 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2025-09-19 | BUY deferred → fill at 2025-09-22 open | chan=₹8415.00
+  [SIZING] 2025-09-22 (AMO open)| entry=₹8975.99 | chan=₹8415.00 (chandelier) | dist=₹560.99 | risk=₹1711 → 2 shr [position_cap]
+  BUY  2025-09-22 | 2 shares @ ₹8975.99 (close ₹8971.50) | cost ₹20.00 | cash left ₹96116.25
+  [AMO] 2025-09-30 | RM EXIT (CHANDELIER) deferred → fill at 2025-10-01 open
+  SELL 2025-10-01 | 2 shares @ ₹8715.64 (close ₹8720.00) | P&L ₹-545.05 (-2.90%) [CHANDELIER]
+  [COOLDOWN] 2025-10-01 | buy suppressed (16 bars remaining)
+  [COOLDOWN] 2025-10-03 | buy suppressed (15 bars remaining)
+  [COOLDOWN] 2025-10-06 | buy suppressed (14 bars remaining)
+  [COOLDOWN] 2025-10-07 | buy suppressed (13 bars remaining)
+  [COOLDOWN] 2025-10-08 | buy suppressed (12 bars remaining)
+  [COOLDOWN] 2025-10-09 | buy suppressed (11 bars remaining)
+  [COOLDOWN] 2025-10-10 | buy suppressed (10 bars remaining)
+  [COOLDOWN] 2025-10-13 | buy suppressed (9 bars remaining)
+  [COOLDOWN] 2025-10-14 | buy suppressed (8 bars remaining)
+  [COOLDOWN] 2025-10-15 | buy suppressed (7 bars remaining)
+  [COOLDOWN] 2025-10-16 | buy suppressed (6 bars remaining)
+  [COOLDOWN] 2025-10-17 | buy suppressed (5 bars remaining)
+  [COOLDOWN] 2025-10-20 | buy suppressed (4 bars remaining)
+  [COOLDOWN] 2025-10-21 | buy suppressed (3 bars remaining)
+  [COOLDOWN] 2025-10-23 | buy suppressed (2 bars remaining)
+  [COOLDOWN] 2025-10-24 | buy suppressed (1 bars remaining)
+  [AMO] 2025-10-27 | BUY deferred → fill at 2025-10-28 open | chan=₹8650.06
+  [SIZING] 2025-10-28 (AMO open)| entry=₹9104.55 | chan=₹8650.06 (chandelier) | dist=₹454.49 | risk=₹1703 → 2 shr [position_cap]
+  BUY  2025-10-28 | 2 shares @ ₹9104.55 (close ₹9100.00) | cost ₹20.00 | cash left ₹95294.08
   [AMO] 2025-11-13 | SELL deferred → fill at 2025-11-14 open
-  SELL 2025-11-14 | 2 shares @ ₹8863.07 (close ₹8867.50) | P&L ₹-626.46 (-3.28%)
+  SELL 2025-11-14 | 2 shares @ ₹8863.07 (close ₹8867.50) | P&L ₹-507.40 (-2.65%)
   [AMO] 2025-12-03 | BUY deferred → fill at 2025-12-04 open | chan=₹8648.60
-  [SIZING] 2025-12-04 (AMO open)| entry=₹9009.50 | chan=₹8648.60 (chandelier) | dist=₹360.90 | risk=₹1706 → 2 shr [position_cap]
-  BUY  2025-12-04 | 2 shares @ ₹9009.50 (close ₹9005.00) | cost ₹20.00 | cash left ₹95695.01
+  [SIZING] 2025-12-04 (AMO open)| entry=₹9009.50 | chan=₹8648.60 (chandelier) | dist=₹360.90 | risk=₹1695 → 2 shr [position_cap]
+  BUY  2025-12-04 | 2 shares @ ₹9009.50 (close ₹9005.00) | cost ₹20.00 | cash left ₹94956.77

@@ -86,3 +86,19 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 4. Fix transaction costs — add SEBI fees, exchange charges, GST, stamp duty
 5. Remove RPOWER — governance risk unquantifiable
 6. Extend paper trading — minimum 6 months before going live
+
+### Fix 2: NIFTY portfolio-level regime filter — COMPLETED
+- Problem: system entered long positions even during NIFTY bear markets, swimming against the tide
+- Fix: added NIFTY SMA20/SMA50 check before every BUY signal in backtester.py and signal_runner.py
+- If NIFTY SMA20 < SMA50: suppress all new entries, log "Market regime filter: NIFTY in death cross"
+- Walk-forward result: 15/20 → 17/20 (75% → 85%) — WHIRLPOOL and SIEMENS each gained 1 pass
+- Config flag: nifty_regime_filter=True in walk_forward.py line 79, toggleable
+- Market regime shown in daily report header and persisted in portfolio_state.json
+
+### Fix 3: Cooldown validation — COMPLETED
+- Tested 10/15/20/25 bars across 9 qualifying stocks (ANURAS skipped, only 440 IS bars)
+- Results: 10=33/45, 15=33/45, 20=31/45, 25=34/45
+- Decision: keep 15 bars — ties with 10 on score but better trade quality (+4.39% vs +4.81% with 8 fewer low-quality trades)
+- 25 bars marginal +1 point but within statistical noise
+- Side finding: BOSCHLTD scored 1/5 — low vol compounder, not SMA crossover candidate, flag for removal
+- Side finding: ANURAS has insufficient history for validation — monitor carefully
