@@ -76,9 +76,32 @@ PARAMS = {
         "max_position_pct":   0.20,
         "fallback_stop_pct":  0.20,
     },
+    # Portfolio-level regime filter: suppress BUY when NIFTY SMA20 < SMA50.
+    # Toggle to False to reproduce the original 15/20 baseline without filtering.
+    "nifty_regime_filter": True,
 }
 
-MIN_BARS = 200   # skip a window if fewer than this many trading days
+MIN_BARS     = 200   # skip a window if fewer than this many trading days
+NIFTY_TICKER = "NIFTY 50.NS"   # Kite Connect instrument token 256265 (NSE index)
+
+
+def _fetch_nifty(start: str, end: str) -> pd.DataFrame:
+    """
+    Fetch NIFTY 50 daily closes for the regime filter.
+
+    Uses the same kite_fetcher as equity data so the date alignment is
+    identical to stock bars (same NSE trading-day calendar, no source mismatch).
+    Returns an empty DataFrame on any failure — the backtester treats that as
+    filter-disabled and allows all BUYs.
+    """
+    try:
+        df = get_ohlcv(NIFTY_TICKER, start, end)
+        if df is not None and len(df) >= 50:
+            print(f"[walk_forward] NIFTY 50: {len(df)} bars loaded for regime filter")
+            return df
+    except Exception as exc:
+        print(f"[walk_forward] WARNING: NIFTY fetch failed ({exc}) — regime filter disabled for this window")
+    return pd.DataFrame()
 
 # Sharpe ratio parameters
 RISK_FREE_RATE      = 0.065   # 6.5% — RBI repo rate approximation
@@ -89,12 +112,17 @@ TRADING_DAYS        = 252     # NSE trading days per year
 # Single-window backtest
 # =============================================================================
 
-def _run_one(ticker: str, start: str, end: str) -> dict:
+def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None) -> dict:
     """
     Fetch data and run one full backtest for ticker in [start, end).
     Kite_fetcher prints progress to stdout (intentional — shows loading).
     The backtester's verbose bar-by-bar output is captured and kept for the
     saved file only (not printed to terminal).
+
+    Args:
+        nifty_df: Pre-fetched NIFTY 50 DataFrame for the same window. Passed to
+                  the backtester for the portfolio-level regime filter. None or
+                  empty DataFrame disables the filter for this run.
 
     Returns a result dict, or {"error": message} on failure.
     """
@@ -119,6 +147,8 @@ def _run_one(ticker: str, start: str, end: str) -> dict:
     sizer        = PositionSizer(PARAMS["position_sizing"])
     portfolio    = Portfolio(PARAMS["initial_capital"])
 
+    regime_active = PARAMS.get("nifty_regime_filter", False)
+
     buf = io.StringIO()
     with redirect_stdout(buf):
         equity_curve = bt_run(
@@ -126,7 +156,9 @@ def _run_one(ticker: str, start: str, end: str) -> dict:
             risk_manager=risk_manager,
             cooldown_tracker=cooldown,
             position_sizer=sizer,
-            use_next_day_fills=True,   # AMO-realistic: fills at next day's open
+            use_next_day_fills=True,       # AMO-realistic: fills at next day's open
+            nifty_regime_df=nifty_df,      # None → filter disabled
+            nifty_regime_filter=regime_active,
         )
     verbose = buf.getvalue()
 
@@ -756,10 +788,23 @@ def run_walk_forward():
     emit(f"  Cooldown:    15-bar after RM exits")
     emit(f"  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position")
     emit(f"  Capital:     ₹{PARAMS['initial_capital']:,} per window (independent runs)")
+    regime_flag = PARAMS.get("nifty_regime_filter", False)
+    emit(f"  NIFTY Filter: {'ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)' if regime_flag else 'DISABLED'}")
     emit()
 
     is_start, is_end   = WINDOWS["in_sample"]
     oos_start, oos_end = WINDOWS["out_of_sample"]
+
+    # ── Fetch NIFTY 50 once per window for the regime filter ─────────────────
+    # Fetched outside the per-stock loop: one NIFTY pull per window, shared
+    # across all 4 stocks in that window. None if filter is disabled.
+    if regime_flag:
+        print(f"\n[walk_forward] Fetching NIFTY 50 for regime filter (in-sample)…")
+        nifty_is  = _fetch_nifty(is_start, is_end)
+        print(f"[walk_forward] Fetching NIFTY 50 for regime filter (out-of-sample)…")
+        nifty_oos = _fetch_nifty(oos_start, oos_end)
+    else:
+        nifty_is = nifty_oos = pd.DataFrame()
 
     # ── Run all 8 backtests (4 stocks × 2 windows) ───────────────────────────
     all_results: dict[str, dict] = {}
@@ -767,10 +812,10 @@ def run_walk_forward():
 
     for ticker in STOCKS:
         print(f"\n[walk_forward] ── {ticker} in-sample ──────────────────────────────")
-        is_r = _run_one(ticker, is_start, is_end)
+        is_r = _run_one(ticker, is_start, is_end, nifty_df=nifty_is)
 
         print(f"\n[walk_forward] ── {ticker} out-of-sample ──────────────────────────")
-        oos_r = _run_one(ticker, oos_start, oos_end)
+        oos_r = _run_one(ticker, oos_start, oos_end, nifty_df=nifty_oos)
 
         all_results[ticker] = {"is": is_r, "oos": oos_r}
         all_verbose[ticker] = {

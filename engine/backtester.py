@@ -41,6 +41,8 @@ def run(
     position_sizer=None,            # engine.position_sizer.PositionSizer | None
     fill_on_next_open: bool = False,
     use_next_day_fills: bool = False,
+    nifty_regime_df: pd.DataFrame = None,   # NIFTY 50 OHLCV (must have "close" column)
+    nifty_regime_filter: bool = False,      # toggle: suppress BUY when NIFTY in death cross
 ) -> pd.DataFrame:
     """
     Run the backtest simulation.
@@ -101,6 +103,31 @@ def run(
         print("Fill mode : NEXT-OPEN (legacy, no cooldown/sizing integration)")
     else:
         print("Fill mode : SAME-DAY CLOSE (default)")
+
+    # ── NIFTY regime filter: pre-compute bull/bear dict before the main loop ──
+    # Key: date (Python date object) → True = NIFTY SMA20 > SMA50 (bull), False = bear
+    # Empty dict means filter is disabled or data unavailable → all dates default to bull.
+    _nifty_bull: dict = {}
+    if nifty_regime_filter:
+        if nifty_regime_df is not None and len(nifty_regime_df) >= 50:
+            _nc   = nifty_regime_df["close"]
+            _ns20 = _nc.rolling(20).mean()
+            _ns50 = _nc.rolling(50).mean()
+            _bull = _ns20 > _ns50
+            _nifty_bull = {
+                ts.date(): bool(v)
+                for ts, v in _bull.items()
+                if not pd.isna(v)
+            }
+            _n_bull = sum(_nifty_bull.values())
+            print(
+                f"NIFTY Filter: ACTIVE — {_n_bull}/{len(_nifty_bull)} bull days "
+                f"({_n_bull/len(_nifty_bull)*100:.0f}% in uptrend)"
+            )
+        else:
+            print("NIFTY Filter: ACTIVE but no data provided — filter disabled for this run")
+    else:
+        print("NIFTY Filter: DISABLED")
     print("="*60)
 
     # Pending deferred action from the previous bar's signal (use_next_day_fills only).
@@ -253,7 +280,13 @@ def run(
                 _is_last_bar = (i == n_bars - 1)
 
                 if signal == 1 and portfolio.shares_held == 0 and _pending_fill is None:
-                    if cooldown_tracker is not None and cooldown_tracker.is_in_cooldown():
+                    _regime_ok = not _nifty_bull or _nifty_bull.get(date.date(), True)
+                    if not _regime_ok:
+                        print(
+                            f"  [REGIME] {date.date()} | BUY suppressed "
+                            f"— NIFTY in death cross (SMA20 < SMA50)"
+                        )
+                    elif cooldown_tracker is not None and cooldown_tracker.is_in_cooldown():
                         cooldown_tracker.record_suppressed_signal(date, float(row["close"]))
                         print(
                             f"  [COOLDOWN] {date.date()} | buy suppressed "
@@ -334,10 +367,15 @@ def run(
             else:
                 # ── Close-fill (default) ──────────────────────────────────────
                 if signal == 1 and portfolio.shares_held == 0:
+                    _regime_ok = not _nifty_bull or _nifty_bull.get(date.date(), True)
+                    if not _regime_ok:
+                        print(
+                            f"  [REGIME] {date.date()} | BUY suppressed "
+                            f"— NIFTY in death cross (SMA20 < SMA50)"
+                        )
                     # ── ③ Cooldown gate ───────────────────────────────────────
-                    if cooldown_tracker is not None and cooldown_tracker.is_in_cooldown():
+                    elif cooldown_tracker is not None and cooldown_tracker.is_in_cooldown():
                         # Buy signal exists but cooldown is active — suppress.
-                        # Log the suppression so we can audit it post-backtest.
                         cooldown_tracker.record_suppressed_signal(date, float(row["close"]))
                         print(
                             f"  [COOLDOWN] {date.date()} | buy suppressed "

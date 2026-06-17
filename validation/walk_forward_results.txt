@@ -1,4 +1,4 @@
-Walk-Forward Validation — generated 2026-06-18 03:25:24
+Walk-Forward Validation — generated 2026-06-18 03:42:06
 
 
 ================================================================================
@@ -14,6 +14,7 @@ Walk-Forward Validation — generated 2026-06-18 03:25:24
   Cooldown:    15-bar after RM exits
   Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position
   Capital:     ₹100,000 per window (independent runs)
+  NIFTY Filter: DISABLED
 
 
 ================================================================================
@@ -161,6 +162,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2018-09-11 | BUY deferred → fill at 2018-09-12 open | chan=₹174.29
   [SIZING] 2018-09-12 (AMO open)| entry=₹184.74 | chan=₹174.29 (chandelier) | dist=₹10.45 | risk=₹1500 → 108 shr [position_cap]
@@ -443,6 +445,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹270.75
   [SIZING] 2023-03-15 (AMO open)| entry=₹290.70 | chan=₹270.75 (chandelier) | dist=₹19.95 | risk=₹1500 → 68 shr [position_cap]
@@ -617,6 +620,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2018-03-20 | BUY deferred → fill at 2018-03-21 open | chan=₹1420.14
   [SIZING] 2018-03-21 (AMO open)| entry=₹1528.86 | chan=₹1420.14 (chandelier) | dist=₹108.73 | risk=₹1500 → 13 shr [risk_budget]
@@ -845,6 +849,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2023-03-29 | BUY deferred → fill at 2023-03-31 open | chan=₹1235.22
   [SIZING] 2023-03-31 (AMO open)| entry=₹1301.30 | chan=₹1235.22 (chandelier) | dist=₹66.08 | risk=₹1500 → 15 shr [position_cap]
@@ -1021,6 +1026,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2018-08-16 | BUY deferred → fill at 2018-08-17 open | chan=₹712.19
   [SIZING] 2018-08-17 (AMO open)| entry=₹765.23 | chan=₹712.19 (chandelier) | dist=₹53.04 | risk=₹1500 → 26 shr [position_cap]
@@ -1351,6 +1357,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹2329.05
   [SIZING] 2023-03-15 (AMO open)| entry=₹2503.60 | chan=₹2329.05 (chandelier) | dist=₹174.55 | risk=₹1500 → 7 shr [position_cap]
@@ -1580,6 +1587,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2018-05-10 | BUY deferred → fill at 2018-05-11 open | chan=₹2652.63
   [SIZING] 2018-05-11 (AMO open)| entry=₹2775.89 | chan=₹2652.63 (chandelier) | dist=₹123.26 | risk=₹1500 → 7 shr [position_cap]
@@ -1858,6 +1866,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: DISABLED
 ============================================================
   [AMO] 2023-03-14 | BUY deferred → fill at 2023-03-15 open | chan=₹3465.00
   [SIZING] 2023-03-15 (AMO open)| entry=₹3683.34 | chan=₹3465.00 (chandelier) | dist=₹218.34 | risk=₹1500 → 5 shr [position_cap]

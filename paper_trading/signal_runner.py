@@ -62,6 +62,8 @@ from utils.market_calendar import is_trading_day, next_trading_day
 # (Do not change without re-validating on walk_forward.py)
 # =============================================================================
 
+NIFTY_TICKER = "NIFTY 50.NS"   # Kite instrument token 256265; strips to "NIFTY 50" internally
+
 STOCKS: List[str] = [
     "TMPV.NS",
     "WHIRLPOOL.NS",
@@ -194,6 +196,49 @@ def _warn_if_market_open() -> None:
 
 
 # =============================================================================
+# NIFTY regime filter
+# =============================================================================
+
+def _fetch_nifty_regime(today: date) -> str:
+    """
+    Determine the current NIFTY 50 market regime from SMA20 vs SMA50.
+
+    Fetches the last 90 calendar days of NIFTY 50 data (≈63 trading bars —
+    enough for SMA50 plus a buffer). Uses the same kite_fetcher as all other
+    data so there is no additional auth dependency.
+
+    Returns:
+        "BULL"    — NIFTY SMA20 > SMA50 (uptrend confirmed)
+        "BEAR"    — NIFTY SMA20 < SMA50 (downtrend confirmed — suppress new entries)
+        "UNKNOWN" — data unavailable or insufficient; filter skipped, no suppression
+    """
+    try:
+        start = (today - timedelta(days=90)).isoformat()
+        end   = (today + timedelta(days=1)).isoformat()
+        df    = get_ohlcv(NIFTY_TICKER, start, end)
+
+        if df is None or len(df) < 50:
+            print(f"  [NIFTY] Insufficient data ({len(df) if df is not None else 0} bars) — regime UNKNOWN")
+            return "UNKNOWN"
+
+        close = df["close"]
+        sma20 = float(close.rolling(20).mean().iloc[-1])
+        sma50 = float(close.rolling(50).mean().iloc[-1])
+        regime = "BULL" if sma20 > sma50 else "BEAR"
+        gap_pct = (sma20 - sma50) / sma50 * 100
+        print(
+            f"  [NIFTY] {today} | close ₹{close.iloc[-1]:,.2f} | "
+            f"SMA20 ₹{sma20:,.2f} | SMA50 ₹{sma50:,.2f} | "
+            f"gap {gap_pct:>+.2f}% → regime: {regime}"
+        )
+        return regime
+
+    except Exception as exc:
+        print(f"  [NIFTY] Regime fetch failed: {exc} — regime UNKNOWN")
+        return "UNKNOWN"
+
+
+# =============================================================================
 # Data fetching
 # =============================================================================
 
@@ -311,6 +356,7 @@ def _process_stock(
     df: pd.DataFrame,
     portfolio: PaperPortfolio,
     current_prices: Dict[str, float],
+    market_regime: str = "UNKNOWN",
 ) -> dict:
     """
     Run the full signal pipeline for one stock and return a signal dict.
@@ -461,6 +507,16 @@ def _process_stock(
             })
             return result
 
+        # ── NIFTY regime filter ─────────────────────────────────────────────
+        # Suppress new entries when the broad market is in a death cross.
+        # UNKNOWN regime (data failure) → allow entry (fail-open, not fail-closed).
+        if market_regime == "BEAR":
+            result.update({
+                "signal": "REGIME_SKIP",
+                "reason": "Market regime filter: NIFTY in death cross — no new entries",
+            })
+            return result
+
         # ── Position sizing ─────────────────────────────────────────────────
         entry_exec_px = apply_slippage(close_px, "buy")
 
@@ -533,6 +589,7 @@ def _format_report(
     results: Dict[str, dict],
     current_prices: Dict[str, float],
     is_backfill: bool = False,
+    market_regime: str = "UNKNOWN",
 ) -> str:
     """
     Build the full terminal report as a string. Printed to stdout and saved
@@ -555,7 +612,7 @@ def _format_report(
         hr()
     ln("  NSE PAPER TRADING SIGNAL REPORT")
     day_name = today.strftime("%A, %d %B %Y")
-    ln(f"  Date: {day_name}  |  Run: {run_time_str}")
+    ln(f"  Date: {day_name}  |  Run: {run_time_str}  |  NIFTY Regime: {market_regime}")
     hr()
 
     # ── Portfolio summary ──────────────────────────────────────────────────────
@@ -850,6 +907,11 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
         real_value = portfolio.get_portfolio_value(current_prices)
         portfolio.state["weekly_start_value"] = real_value
 
+    # ── Step 8 (new): NIFTY regime filter ────────────────────────────────────
+    print(f"[paper_trading] Checking NIFTY 50 market regime …")
+    market_regime = _fetch_nifty_regime(today)
+    print()
+
     # ── Step 8a: Corporate actions safety check ───────────────────────────────
     # Run BEFORE any strategy signal is generated. If a stock has a material
     # corporate action ex-date within the next 2 trading days (split, bonus,
@@ -906,7 +968,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             print(f"  [CORP_ACTION] {ticker} SKIPPED — {ca['reason']}")
             continue
 
-        results[ticker] = _process_stock(ticker, dfs[ticker], portfolio, current_prices)
+        results[ticker] = _process_stock(ticker, dfs[ticker], portfolio, current_prices, market_regime)
 
     # ── Step 9: Advance cooldowns (end-of-day, unconditional for all stocks) ──
     # Mirrors advance_bar() in the backtester — called AFTER signal processing,
@@ -917,14 +979,16 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 
     # ── Step 10: Save state ────────────────────────────────────────────────────
     if not is_backfill:
-        portfolio.state["last_run_date"] = today.isoformat()
-        portfolio.state["last_run_time"] = _get_ist_now().strftime("%H:%M")  # IST HH:MM
+        portfolio.state["last_run_date"]   = today.isoformat()
+        portfolio.state["last_run_time"]   = _get_ist_now().strftime("%H:%M")  # IST HH:MM
+        portfolio.state["market_regime"]   = market_regime
+        portfolio.state["last_regime_date"] = today.isoformat()
         portfolio.save()
         print("\n[paper_trading] Portfolio state saved.")
 
     # ── Step 11: Print report ─────────────────────────────────────────────────
     run_time_str = _get_ist_now().strftime("%-I:%M %p IST")
-    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill)
+    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill, market_regime)
     print()
     print(report)
 
