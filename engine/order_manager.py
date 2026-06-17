@@ -28,7 +28,7 @@ from typing import List, Optional
 # ── Column header for the CSV log ─────────────────────────────────────────────
 _CSV_HEADER = [
     "date", "ticker", "order_type", "signal_price", "limit_price",
-    "shares", "status", "fill_price", "fill_date", "notes",
+    "shares", "status", "fill_price", "fill_date", "notes", "order_id",
 ]
 
 
@@ -111,6 +111,7 @@ class AMOOrderManager:
             "fill_price":   "",      # populated by morning_fill_check.py
             "fill_date":    "",      # populated by morning_fill_check.py
             "notes":        notes,
+            "order_id":     "",      # populated in live mode by kite.place_order() return value
         }
         self.log_order(order)
         return order
@@ -148,6 +149,7 @@ class AMOOrderManager:
             "fill_price":   "",
             "fill_date":    "",
             "notes":        notes,
+            "order_id":     "",      # populated in live mode by kite.place_order() return value
         }
         self.log_order(order)
         return order
@@ -166,8 +168,27 @@ class AMOOrderManager:
     # ── Internal ───────────────────────────────────────────────────────────────
 
     def _ensure_csv_header(self) -> None:
-        """Create the CSV with a header row if it doesn't exist yet."""
+        """Create the CSV with a header row if it doesn't exist.
+        Migrates an existing file to add the order_id column if absent.
+        """
         if not self.order_log_file.exists():
             self.order_log_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.order_log_file, "w", newline="") as fh:
                 csv.DictWriter(fh, fieldnames=_CSV_HEADER).writeheader()
+            return
+
+        # Migrate existing file if order_id column is absent
+        with open(self.order_log_file, newline="") as fh:
+            reader = csv.DictReader(fh)
+            if "order_id" in (reader.fieldnames or []):
+                return  # already up to date
+            rows = list(reader)
+
+        tmp = str(self.order_log_file) + ".tmp"
+        with open(tmp, "w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=_CSV_HEADER)
+            writer.writeheader()
+            for row in rows:
+                row.setdefault("order_id", "")
+                writer.writerow(row)
+        os.replace(tmp, str(self.order_log_file))

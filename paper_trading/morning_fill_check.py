@@ -53,6 +53,10 @@ _RM_EXIT_NOTES  = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
 _COOLDOWN_BARS  = 15
 _COOLDOWN_BARS_WITH_OFFSET = _COOLDOWN_BARS + 1
 
+# Set to True only when PAPER_TRADING_MODE = False in signal_runner.py
+# When True: queries actual Zerodha order status instead of simulating fills
+LIVE_TRADING_MODE: bool = False  # NEVER set to True manually — controlled by deployment config
+
 # ── IST offset ────────────────────────────────────────────────────────────────
 _IST = timedelta(hours=5, minutes=30)
 
@@ -105,6 +109,185 @@ def _fetch_open_price(ticker: str, today: date) -> Optional[float]:
     except Exception as exc:
         print(f"  WARN: Could not fetch {ticker} open — {exc}")
         return None
+
+
+def _fetch_prev_close(ticker: str, today: date) -> float:
+    """
+    Fetch the previous trading day's closing price for circuit breaker check.
+    Returns 0.0 on failure (circuit check is skipped — safe default).
+    """
+    try:
+        start = (today - timedelta(days=5)).isoformat()
+        end   = today.isoformat()   # exclusive — data up to but not including today
+        df    = get_ohlcv(ticker, start, end)
+        if df is None or df.empty:
+            return 0.0
+        return float(df["close"].iloc[-1])
+    except Exception:
+        return 0.0
+
+
+def _fetch_live_order_status(order_id: str, kite) -> dict:
+    """
+    Query Zerodha Kite API for actual order status.
+    Only called when LIVE_TRADING_MODE = True and order_id is not empty.
+
+    Returns dict with keys:
+        status:        "COMPLETE" | "REJECTED" | "CANCELLED" | "OPEN" | "UNKNOWN"
+        fill_price:    float | None  (actual average fill price if COMPLETE)
+        fill_qty:      int | None    (actual filled quantity)
+        reject_reason: str | None    (rejection reason if REJECTED)
+        raw:           full order dict from Kite API
+    """
+    if not order_id:
+        return {"status": "UNKNOWN", "fill_price": None, "fill_qty": None,
+                "reject_reason": "No order_id — paper trading order", "raw": {}}
+
+    try:
+        orders = kite.orders()
+        for order in orders:
+            if str(order.get("order_id")) == str(order_id):
+                status        = order.get("status", "UNKNOWN").upper()
+                fill_price    = None
+                fill_qty      = None
+                reject_reason = None
+
+                if status == "COMPLETE":
+                    fill_price = float(order.get("average_price", 0))
+                    fill_qty   = int(order.get("filled_quantity", 0))
+                elif status == "REJECTED":
+                    reject_reason = order.get("status_message", "Unknown rejection reason")
+                elif status == "CANCELLED":
+                    reject_reason = "Order was cancelled"
+
+                return {
+                    "status":        status,
+                    "fill_price":    fill_price,
+                    "fill_qty":      fill_qty,
+                    "reject_reason": reject_reason,
+                    "raw":           order,
+                }
+
+        # order_id not found in today's orders
+        return {"status": "NOT_FOUND", "fill_price": None, "fill_qty": None,
+                "reject_reason": f"order_id {order_id} not found in Kite order book", "raw": {}}
+
+    except Exception as e:
+        return {"status": "ERROR", "fill_price": None, "fill_qty": None,
+                "reject_reason": str(e), "raw": {}}
+
+
+def _check_circuit_breaker(ticker: str, open_price: float, prev_close: float) -> tuple[bool, str]:
+    """
+    Check if a stock has hit a circuit breaker at open.
+    NSE circuit limits: 2%, 5%, 10%, 20% depending on stock category.
+
+    A circuit breaker is suspected if open price moved > 19% from prev close
+    (lower circuit = stock can't be sold, upper circuit = can't be bought).
+
+    Returns:
+        (True, reason) if circuit breaker suspected
+        (False, "") if normal
+    """
+    if prev_close <= 0:
+        return False, ""
+
+    pct_move = abs(open_price - prev_close) / prev_close * 100
+
+    if pct_move >= 19.0:
+        direction = "upper" if open_price > prev_close else "lower"
+        return True, (
+            f"Possible {direction} circuit breaker: open moved {pct_move:.1f}% "
+            f"from prev close ₹{prev_close:.2f}"
+        )
+
+    return False, ""
+
+
+def _process_order(order: dict, today_open: float, prev_close: float, kite=None) -> dict:
+    """
+    Process a single AMO order and determine fill status.
+
+    Paper mode (LIVE_TRADING_MODE=False):
+        Simulates fill based on open price vs limit price.
+
+    Live mode (LIVE_TRADING_MODE=True):
+        Queries actual Zerodha order status via Kite API.
+        Falls back to simulation if order_id missing or API fails.
+
+    Returns dict with keys:
+        filled:       bool
+        fill_price:   float | None
+        fill_qty:     int | None
+        status:       "FILLED" | "MISSED" | "REJECTED" | "CANCELLED" | "ERROR"
+        reason:       str explaining the outcome
+        circuit_flag: bool  (True if circuit breaker suspected)
+        circuit_msg:  str
+    """
+    ticker      = order["ticker"]
+    order_type  = order["order_type"]   # "BUY" or "SELL"
+    limit_price = float(order["limit_price"])
+    shares      = int(order["shares"])
+    order_id    = order.get("order_id", "")
+
+    # Check for circuit breaker regardless of mode
+    circuit_flag, circuit_msg = _check_circuit_breaker(ticker, today_open, prev_close)
+
+    if LIVE_TRADING_MODE and order_id and kite is not None:
+        # ── LIVE MODE: query actual Zerodha order status ──────────────────────
+        live_status = _fetch_live_order_status(order_id, kite)
+
+        if live_status["status"] == "COMPLETE":
+            return {
+                "filled":       True,
+                "fill_price":   live_status["fill_price"],
+                "fill_qty":     live_status["fill_qty"],
+                "status":       "FILLED",
+                "reason":       f"Zerodha confirmed fill @ ₹{live_status['fill_price']:.2f}",
+                "circuit_flag": circuit_flag,
+                "circuit_msg":  circuit_msg,
+            }
+        elif live_status["status"] in ("REJECTED", "CANCELLED"):
+            return {
+                "filled":       False,
+                "fill_price":   None,
+                "fill_qty":     None,
+                "status":       live_status["status"],
+                "reason":       live_status["reject_reason"],
+                "circuit_flag": circuit_flag,
+                "circuit_msg":  circuit_msg,
+            }
+        else:
+            # OPEN, NOT_FOUND, ERROR — fall through to simulation with warning
+            print(f"  WARN [{ticker}]: Live order status '{live_status['status']}' — falling back to price simulation")
+            print(f"  WARN [{ticker}]: {live_status['reject_reason']}")
+
+    # ── PAPER MODE (or live fallback): simulate fill from open price ──────────
+    if order_type == "BUY":
+        filled = today_open <= limit_price
+    else:  # SELL
+        filled = today_open >= limit_price
+
+    if filled:
+        return {
+            "filled":       True,
+            "fill_price":   today_open,
+            "fill_qty":     shares,
+            "status":       "FILLED",
+            "reason":       f"Open ₹{today_open:.2f} {'≤' if order_type == 'BUY' else '≥'} limit ₹{limit_price:.2f}",
+            "circuit_flag": circuit_flag,
+            "circuit_msg":  circuit_msg,
+        }
+    else:
+        return {
+            "filled":       False,
+            "fill_price":   None,
+            "fill_qty":     None,
+            "status":       "MISSED",
+            "reason":       f"Open ₹{today_open:.2f} {'>' if order_type == 'BUY' else '<'} limit ₹{limit_price:.2f}",
+            "circuit_flag": circuit_flag,
+            "circuit_msg":  circuit_msg,
+        }
 
 
 def _update_csv_row(target_date: str, ticker: str, order_type: str,
@@ -254,6 +437,12 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
     """
     _check_auth()
 
+    if LIVE_TRADING_MODE:
+        print("⚠️  LIVE_TRADING_MODE = True — querying actual Zerodha order status")
+        print("⚠️  Any REJECTED or CANCELLED orders require immediate manual attention")
+    else:
+        print("[morning_fill_check] Paper trading mode — simulating fills from open price")
+
     today = check_date or date.today()
 
     # ── Trading day guard ──────────────────────────────────────────────────────
@@ -307,8 +496,9 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
         ex_today = {t: False for t in pending_tickers}
 
     print()
-    filled_count = 0
-    missed_count = 0
+    results:        list[dict] = []
+    filled_count    = 0
+    missed_count    = 0
     cancelled_count = 0
 
     for order in pending:
@@ -340,23 +530,24 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                   f"| limit ₹{limit_px:,.2f} | open price unavailable")
             continue
 
-        # Fill logic
-        if order_type == "BUY":
-            filled = open_px <= limit_px
-        else:   # SELL
-            filled = open_px >= limit_px
+        prev_close = _fetch_prev_close(ticker, today)
+        result     = _process_order(order, open_px, prev_close, kite=None)
+        result["ticker"] = ticker
+        results.append(result)
 
         gap_pct = (open_px - limit_px) / limit_px * 100
         rm_tag  = f" [RM:{notes}]" if is_rm_exit else ""
 
-        if filled:
+        if result["filled"]:
             filled_count += 1
-            status_tag = "✓ FILLED "
             detail = (
                 f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                f"| FILLED at ₹{open_px:,.2f}{rm_tag}"
+                f"| FILLED at ₹{result['fill_price']:,.2f}{rm_tag}"
             )
-            print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+            print(f"  ✓ FILLED   {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+            if result["circuit_flag"]:
+                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
+                print(f"  ⚠️  Verify position manually in Zerodha dashboard")
 
             _update_csv_row(order_date, ticker, order_type,
                             "FILLED", str(round(open_px, 4)), today.isoformat())
@@ -367,14 +558,23 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                     is_rm_exit=is_rm_exit,
                 )
 
+        elif result["status"] in ("REJECTED", "CANCELLED"):
+            detail = f"| {result['reason']}{rm_tag}"
+            print(f"  ✗ {result['status']:<10} {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+            if result["circuit_flag"]:
+                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
+            _update_csv_row(order_date, ticker, order_type, result["status"], "", "")
+
         else:
             missed_count += 1
-            status_tag = "✗ MISSED "
             detail = (
                 f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
                 f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%{rm_tag}"
             )
-            print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+            print(f"  ✗ MISSED   {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
+            if result["circuit_flag"]:
+                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
+                print(f"  ⚠️  Verify position manually in Zerodha dashboard")
 
             _update_csv_row(order_date, ticker, order_type,
                             "MISSED", "", "")
@@ -388,6 +588,18 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
         print(f"  Portfolio updated with {filled_count} actual fill price(s).")
     elif not apply_fills and filled_count > 0:
         print(f"  To update portfolio with these fills, re-run with --apply flag.")
+
+    # ── REJECTED / CANCELLED orders requiring manual attention ────────────────
+    if any(r["status"] in ("REJECTED", "CANCELLED") for r in results):
+        print("\n" + "="*60)
+        print("⚠️  ORDERS REQUIRING MANUAL ATTENTION")
+        print("="*60)
+        for r in results:
+            if r["status"] in ("REJECTED", "CANCELLED"):
+                print(f"  {r['ticker']:<20} {r['status']}: {r['reason']}")
+        print("Manual action required: check Zerodha dashboard and update portfolio_state.json")
+        print("="*60)
+
     print("=" * W)
     print()
 
