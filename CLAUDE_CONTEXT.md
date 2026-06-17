@@ -109,3 +109,9 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - New total: ₹94.09 per ₹1,00,000 round-trip — old model understated by 2x
 - Walk-forward: 17/20 unchanged — strategy survives realistic costs
 - OOS returns dipped 0.1-0.3pp per stock, within rounding on PASS thresholds
+
+### Fix 5: Removed RPOWER and BOSCHLTD — COMPLETED
+- RPOWER removed: governance risk (promoter pledging, debt restructuring history) — asymmetric downside unquantifiable by the model
+- BOSCHLTD removed: walk-forward score 1/5 — low volatility compounder, not SMA crossover candidate
+- Both had 0 open positions at time of removal — clean exit
+- Universe now 12 stocks: TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO, CUMMINSIND, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
