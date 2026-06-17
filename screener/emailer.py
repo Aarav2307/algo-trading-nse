@@ -27,10 +27,11 @@ SENDGRID_TO        = os.getenv("SENDGRID_TO_EMAIL", "aaravpagarwal07@gmail.com")
 # ── HTML template ─────────────────────────────────────────────────────────────
 
 def build_html(results: dict) -> str:
-    meta    = results["meta"]
-    adds    = results["adds"]
-    watches = results["watches"]
-    removes = results["removes"]
+    meta     = results["meta"]
+    adds     = results["adds"]
+    monitors = results.get("monitors", [])
+    watches  = results["watches"]
+    removes  = results["removes"]
 
     run_date   = meta["run_date"]
     screened   = meta["screened"]
@@ -69,19 +70,50 @@ def build_html(results: dict) -> str:
             <td style="padding: 10px; font-size: 12px; color: #e67e22;">⚠️ WATCH</td>
         </tr>"""
 
+    def monitor_row(s: dict, rank: int) -> str:
+        gap_str = f"+{s['gap']}%" if s.get("gap") and s["gap"] > 0 else f"{s.get('gap', 0)}%"
+        return f"""
+        <tr style="border-bottom: 1px solid #ecf0f1;">
+            <td style="padding: 10px; font-weight: bold; color: #2c3e50;">#{rank} {s['ticker']}</td>
+            <td style="padding: 10px; color: #7f8c8d;">{s['industry']}</td>
+            <td style="padding: 10px; text-align: center;">{s['hurst']}</td>
+            <td style="padding: 10px; text-align: center;">{s['adx']}</td>
+            <td style="padding: 10px; text-align: center; color: #27ae60; font-weight: bold;">{gap_str}</td>
+            <td style="padding: 10px; text-align: center;">{s['vol']}%</td>
+            <td style="padding: 10px; text-align: center;">{s['avg_corr']}</td>
+            <td style="padding: 10px; font-size: 12px; color: #3498db;">👁 IN CROSS</td>
+        </tr>"""
+
     def remove_row(s: dict) -> str:
+        flags     = s.get("consecutive_flags", 1)
+        flags_str = f"Flagged {flags} consecutive screen{'s' if flags != 1 else ''}"
+        gap_val   = s.get("gap")
+        gap_disp  = f"{gap_val}%" if gap_val is not None else "N/A"
         return f"""
         <tr style="border-bottom: 1px solid #ecf0f1;">
             <td style="padding: 10px; font-weight: bold; color: #e74c3c;">{s['ticker']}</td>
             <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['hurst']}</td>
             <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['adx']}</td>
-            <td style="padding: 10px; text-align: center;">{s['gap']}%</td>
+            <td style="padding: 10px; text-align: center;">{gap_disp}</td>
             <td style="padding: 10px; color: #e74c3c;">{s['reason']}</td>
+            <td style="padding: 10px; color: #7f8c8d; font-size: 12px;">{flags_str}</td>
         </tr>"""
 
     # ── Table headers ─────────────────────────────────────────────────────────
     stock_table_header = """
         <tr style="background: #2c3e50; color: white;">
+            <th style="padding: 10px; text-align: left;">Stock</th>
+            <th style="padding: 10px; text-align: left;">Industry</th>
+            <th style="padding: 10px; text-align: center;">Hurst</th>
+            <th style="padding: 10px; text-align: center;">ADX</th>
+            <th style="padding: 10px; text-align: center;">SMA Gap</th>
+            <th style="padding: 10px; text-align: center;">Vol%</th>
+            <th style="padding: 10px; text-align: center;">Avg Corr</th>
+            <th style="padding: 10px; text-align: center;">Status</th>
+        </tr>"""
+
+    monitor_table_header = """
+        <tr style="background: #2980b9; color: white;">
             <th style="padding: 10px; text-align: left;">Stock</th>
             <th style="padding: 10px; text-align: left;">Industry</th>
             <th style="padding: 10px; text-align: center;">Hurst</th>
@@ -99,6 +131,7 @@ def build_html(results: dict) -> str:
             <th style="padding: 10px; text-align: center;">ADX</th>
             <th style="padding: 10px; text-align: center;">SMA Gap</th>
             <th style="padding: 10px; text-align: left;">Reason</th>
+            <th style="padding: 10px; text-align: left;">Flags</th>
         </tr>"""
 
     # ── ADD section ───────────────────────────────────────────────────────────
@@ -122,6 +155,24 @@ def build_html(results: dict) -> str:
             ✅ ADD Recommendations
         </h2>
         <p style="color: #7f8c8d;">No new additions recommended this cycle. Market conditions may be choppy.</p>"""
+
+    # ── MONITOR section ───────────────────────────────────────────────────────
+    if monitors:
+        monitor_rows_html = "".join(monitor_row(s, i+1) for i, s in enumerate(monitors))
+        monitor_section = f"""
+        <h2 style="color: #3498db; border-left: 4px solid #3498db; padding-left: 12px;">
+            👁 MONITOR — Already in Golden Cross ({len(monitors)})
+        </h2>
+        <p style="color: #7f8c8d; font-size: 14px;">
+            These stocks already crossed before this screen ran — the system would miss
+            the current entry. Wait for the next death cross cycle before adding to the universe.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            {monitor_table_header}
+            {monitor_rows_html}
+        </table>"""
+    else:
+        monitor_section = ""
 
     # ── WATCH section ─────────────────────────────────────────────────────────
     if watches:
@@ -192,6 +243,7 @@ def build_html(results: dict) -> str:
     <div style="background: white; padding: 24px; border: 1px solid #ecf0f1; border-radius: 0 0 8px 8px;">
 
         {add_section}
+        {monitor_section}
         {watch_section}
         {remove_section}
 

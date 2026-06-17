@@ -46,10 +46,28 @@ ADX_THRESHOLD     = 25.0      # minimum ADX for TRENDING_STRONG
 ADX_DEGRADE       = 22.0      # existing stock flagged for removal below this
 MAX_CORR_AVG      = 0.60      # max avg correlation with existing universe
 MAX_CORR_PAIR     = 0.70      # max pairwise correlation
+MIN_LIQUIDITY     = 10_000_000  # ₹1 crore avg daily turnover (vol × price, 20-day)
+MAX_PRICE         = 15_000    # skip stocks above ₹15,000/share
 START_DATE        = "2023-01-01"
 END_DATE          = date.today().strftime("%Y-%m-%d")
 SMA_FAST          = 20
 SMA_SLOW          = 50
+DEGRADATION_TRACKER = _ROOT / "screener" / "degradation_tracker.json"
+
+# ── Degradation tracker ───────────────────────────────────────────────────────
+
+def load_degradation_tracker() -> dict:
+    try:
+        with open(DEGRADATION_TRACKER) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_degradation_tracker(tracker: dict) -> None:
+    with open(DEGRADATION_TRACKER, "w") as f:
+        json.dump(tracker, f, indent=2)
+
 
 # ── Metric functions ───────────────────────────────────────────────────────────
 
@@ -209,6 +227,16 @@ def run_screen() -> dict:
     trending_strong = []
     for ticker in candidates:
         df = data_cache[ticker]
+
+        # Price filter: too expensive to size correctly at current capital
+        last_price = df["close"].iloc[-1]
+        if last_price > MAX_PRICE:
+            continue
+
+        # Liquidity filter: skip illiquid stocks (avg daily turnover < ₹1 crore)
+        if df["volume"].tail(20).mean() * last_price < MIN_LIQUIDITY:
+            continue
+
         h  = compute_hurst(df["close"].values)
         if h <= HURST_THRESHOLD:
             continue
@@ -236,46 +264,87 @@ def run_screen() -> dict:
 
     print(f"[auto_screener] {len(trending_strong)} stocks passed all filters")
 
-    # ── Step 3: Rank and split into ADD vs WATCH ───────────────────────────────
-    # ADD: golden cross, sorted by gap proximity to 0 (freshest cross first)
-    # WATCH: death cross, sorted by gap closest to 0 (nearest to flipping)
-    adds   = sorted(
-        [s for s in trending_strong if s["cross"] == "GOLDEN"],
-        key=lambda x: x["gap"]   # lowest gap first = freshest cross
-    )
-    watches = sorted(
+    # ── Step 3: Split into ADD / MONITOR / WATCH ─────────────────────────────
+    # ADD:     death cross closest to golden flip (gap < 0, closest to 0). Top 5.
+    # MONITOR: golden cross already confirmed — missed entry, wait for next cycle. Top 5.
+    # WATCH:   remaining death cross stocks (positions 5–10 by gap proximity).
+    death_cross_sorted = sorted(
         [s for s in trending_strong if s["cross"] == "DEATH"],
         key=lambda x: -x["gap"]  # closest to 0 (least negative) first
     )
+    adds    = death_cross_sorted[:5]
+    watches = death_cross_sorted[5:10]
+
+    monitors = sorted(
+        [s for s in trending_strong if s["cross"] == "GOLDEN"],
+        key=lambda x: x["gap"]  # lowest gap first = freshest cross
+    )[:5]
 
     # ── Step 4: Check existing universe for regime degradation ────────────────
+    # Uses a persistent tracker: only recommend removal after 2 consecutive flags.
+    tracker   = load_degradation_tracker()
+    today_str = date.today().strftime("%Y-%m-%d")
+
+    # Open positions must close naturally — never force-remove them
+    try:
+        with open(PORTFOLIO_STATE) as f:
+            port_state = json.load(f)
+        positions = port_state.get("positions", {})
+    except Exception:
+        positions = {}
+
     removes = []
     for ticker in current_universe:
         if ticker not in data_cache:
             continue
-        df = data_cache[ticker]
-        h  = compute_hurst(df["close"].values)
-        a  = compute_adx(df)
+        df  = data_cache[ticker]
+        h   = compute_hurst(df["close"].values)
+        a   = compute_adx(df)
         gap = compute_sma_gap(df)
+
+        entry = tracker.get(ticker, {"consecutive_flags": 0, "last_flagged": None})
+
         if h < HURST_DEGRADE or a < ADX_DEGRADE:
-            removes.append({
-                "ticker": ticker,
-                "hurst":  round(h, 3),
-                "adx":    round(a, 1),
-                "gap":    round(gap, 2) if gap is not None else None,
-                "reason": f"H={h:.3f} < {HURST_DEGRADE}" if h < HURST_DEGRADE else f"ADX={a:.1f} < {ADX_DEGRADE}",
-            })
+            entry["consecutive_flags"] = entry.get("consecutive_flags", 0) + 1
+            entry["last_flagged"]      = today_str
+            tracker[ticker]            = entry
+
+            if entry["consecutive_flags"] >= 2:
+                if positions.get(ticker, {}).get("shares", 0) > 0:
+                    print(f"[auto_screener] {ticker} flagged for removal but has open position — skipping")
+                    continue
+
+                reason_parts = []
+                if h < HURST_DEGRADE:
+                    reason_parts.append(f"H={h:.3f} < {HURST_DEGRADE}")
+                if a < ADX_DEGRADE:
+                    reason_parts.append(f"ADX={a:.1f} < {ADX_DEGRADE}")
+
+                removes.append({
+                    "ticker":            ticker,
+                    "hurst":             round(h, 3),
+                    "adx":               round(a, 1),
+                    "gap":               round(gap, 2) if gap is not None else None,
+                    "reason":            " & ".join(reason_parts),
+                    "consecutive_flags": entry["consecutive_flags"],
+                })
+        else:
+            entry["consecutive_flags"] = 0
+            tracker[ticker]            = entry
+
+    save_degradation_tracker(tracker)
 
     return {
-        "adds":    adds[:5],     # top 5 ADD recommendations
-        "watches": watches[:5],  # top 5 WATCH recommendations
-        "removes": removes,
+        "adds":     adds,
+        "monitors": monitors,
+        "watches":  watches,
+        "removes":  removes,
         "meta": {
-            "run_date":        datetime.now().strftime("%Y-%m-%d %H:%M IST"),
-            "screened":        len(candidates),
-            "passed_filters":  len(trending_strong),
+            "run_date":         datetime.now().strftime("%Y-%m-%d %H:%M IST"),
+            "screened":         len(candidates),
+            "passed_filters":   len(trending_strong),
             "current_universe": current_universe,
-            "data_coverage":   len(data_cache),
+            "data_coverage":    len(data_cache),
         }
     }
 
@@ -294,15 +363,25 @@ if __name__ == "__main__":
         print("\n" + "="*70)
         print("DRY RUN — Report would be emailed to aaravpagarwal07@gmail.com")
         print("="*70)
-        print(f"\nADD recommendations: {len(results['adds'])}")
+
+        print(f"\nADD ({len(results['adds'])}) — death cross, closest to golden flip:")
         for s in results['adds']:
-            print(f"  {s['ticker']:<20} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%  Corr={s['avg_corr']}")
-        print(f"\nWATCH list: {len(results['watches'])}")
+            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%  Corr={s['avg_corr']}")
+
+        print(f"\nMONITOR ({len(results.get('monitors', []))}) — already in golden cross (missed entry, wait for next cycle):")
+        for s in results.get('monitors', []):
+            gap_str = f"+{s['gap']}%" if s['gap'] and s['gap'] > 0 else f"{s['gap']}%"
+            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={gap_str}  Corr={s['avg_corr']}")
+
+        print(f"\nWATCH ({len(results['watches'])}) — death cross, further from flip:")
         for s in results['watches']:
-            print(f"  {s['ticker']:<20} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%")
-        print(f"\nREMOVE recommendations: {len(results['removes'])}")
+            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%")
+
+        print(f"\nREMOVE ({len(results['removes'])}):")
         for s in results['removes']:
-            print(f"  {s['ticker']:<20} {s['reason']}")
+            flags = s.get('consecutive_flags', '?')
+            print(f"  {s['ticker']:<22} {s['reason']} — flagged {flags} consecutive screen(s)")
+
         print(f"\nMeta: {results['meta']}")
     else:
         send_report(results)
