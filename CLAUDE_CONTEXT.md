@@ -124,3 +124,14 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - Divergence detection added: flags stocks where 2yr and 80d windows disagree on cross direction
 - Step 6 verified: SIGNAL_LOOKBACK_DAYS == LOOKBACK_CALENDAR_DAYS == 120 ✅
 - Today's screen: 0 divergent stocks — short and long windows agree on all candidates
+
+### Fix 7: Simultaneous signal allocation — COMPLETED
+- Problem: when multiple BUY signals fire same day, list-order bias determined which stocks got capital
+- Fix: added two-phase pipeline — Phase 1 collects all BUY signals, Phase 2 allocates in rank order
+- Ranking weights: Hurst 40%, gap proximity 40%, volatility 20%
+- MAX_CONCURRENT_POSITIONS = 4 (conservative for ₹50,000 capital)
+- can_open_position() gates: position limit + cash availability check
+- RM exits are NEVER gated — always execute regardless of position count
+- Skipped signals logged to signal_log.csv with reason and rank score
+- Walk-forward: 17/20 unchanged (ranking only affects paper trading execution path)
+- Test verified: STOCK_C (91.4) → STOCK_A (85.2) → STOCK_B (62.1) correct sort order
