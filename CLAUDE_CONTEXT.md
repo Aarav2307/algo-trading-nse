@@ -115,3 +115,12 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - BOSCHLTD removed: walk-forward score 1/5 — low volatility compounder, not SMA crossover candidate
 - Both had 0 open positions at time of removal — clean exit
 - Universe now 12 stocks: TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO, CUMMINSIND, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
+
+### Fix 6: Data source mismatch — COMPLETED
+- Problem: screener used 2-year window for SMA gap, signal_runner uses 120-day window — different calculations
+- Fix: added compute_sma_gap_short() using last 120 calendar days, matching signal_runner exactly
+- Both gap_short (80-day) and gap_long (2-year) now shown in email and dry-run
+- cross classification now uses gap_short — what the trading system actually sees
+- Divergence detection added: flags stocks where 2yr and 80d windows disagree on cross direction
+- Step 6 verified: SIGNAL_LOOKBACK_DAYS == LOOKBACK_CALENDAR_DAYS == 120 ✅
+- Today's screen: 0 divergent stocks — short and long windows agree on all candidates
