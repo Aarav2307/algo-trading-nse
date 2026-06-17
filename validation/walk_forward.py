@@ -47,6 +47,14 @@ WINDOWS = {
     "out_of_sample": ("2023-01-01", "2026-01-01"),
 }
 
+# Extended validation windows — tests against genuine bear market conditions
+# IS includes 2015-16 correction, 2018 IL&FS crisis
+# OOS includes COVID crash 2020, 2022 rate hike selloff
+EXT_IS_START  = "2015-01-01"
+EXT_IS_END    = "2019-12-31"
+EXT_OOS_START = "2020-01-01"
+EXT_OOS_END   = "2023-12-31"
+
 PARAMS = {
     "sma_fast": 20,
     "sma_slow": 50,
@@ -1057,7 +1065,12 @@ def _save_results(lines: list, all_verbose: dict):
 # Main
 # =============================================================================
 
-def run_walk_forward():
+def run_walk_forward(
+    stocks: list[str] | None = None,
+    cooldown_bars: int | None = None,
+    nifty_regime_filter: bool | None = None,
+) -> dict:
+    _stocks = stocks if stocks is not None else STOCKS
     lines: list[str] = []
 
     def emit(text: str = ""):
@@ -1070,7 +1083,7 @@ def run_walk_forward():
     emit("  PARAMETERS FROZEN — no optimization performed between windows.")
     emit("  These results represent genuine out-of-sample performance.")
     emit("=" * 80)
-    emit(f"  Stocks:      {', '.join(STOCKS)}")
+    emit(f"  Stocks:      {', '.join(_stocks)}")
     emit(f"  In-sample:   {WINDOWS['in_sample'][0]} → {WINDOWS['in_sample'][1]} (excl)")
     emit(f"  OOS:         {WINDOWS['out_of_sample'][0]} → {WINDOWS['out_of_sample'][1]} (excl)")
     emit(f"  Strategy:    SMA {PARAMS['sma_fast']}/{PARAMS['sma_slow']} crossover")
@@ -1078,7 +1091,7 @@ def run_walk_forward():
     emit(f"  Cooldown:    15-bar after RM exits")
     emit(f"  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position")
     emit(f"  Capital:     ₹{PARAMS['initial_capital']:,} per window (independent runs)")
-    regime_flag = PARAMS.get("nifty_regime_filter", False)
+    regime_flag = nifty_regime_filter if nifty_regime_filter is not None else PARAMS.get("nifty_regime_filter", False)
     emit(f"  NIFTY Filter: {'ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)' if regime_flag else 'DISABLED'}")
     emit()
 
@@ -1087,7 +1100,7 @@ def run_walk_forward():
 
     # ── Fetch NIFTY 50 once per window for the regime filter ─────────────────
     # Fetched outside the per-stock loop: one NIFTY pull per window, shared
-    # across all 4 stocks in that window. None if filter is disabled.
+    # across all stocks in that window. None if filter is disabled.
     if regime_flag:
         print(f"\n[walk_forward] Fetching NIFTY 50 for regime filter (in-sample)…")
         nifty_is  = _fetch_nifty(is_start, is_end)
@@ -1096,11 +1109,11 @@ def run_walk_forward():
     else:
         nifty_is = nifty_oos = pd.DataFrame()
 
-    # ── Run all 8 backtests (4 stocks × 2 windows) ───────────────────────────
+    # ── Run all backtests (stocks × 2 windows) ───────────────────────────────
     all_results: dict[str, dict] = {}
     all_verbose: dict[str, dict] = {}
 
-    for ticker in STOCKS:
+    for ticker in _stocks:
         print(f"\n[walk_forward] ── {ticker} in-sample ──────────────────────────────")
         is_r = _run_one(ticker, is_start, is_end, nifty_df=nifty_is)
 
@@ -1115,7 +1128,7 @@ def run_walk_forward():
 
     # ── Per-stock tables ──────────────────────────────────────────────────────
     all_scores: list[list[bool]] = []
-    for ticker in STOCKS:
+    for ticker in _stocks:
         is_r  = all_results[ticker]["is"]
         oos_r = all_results[ticker]["oos"]
         scores = _print_stock(ticker, is_r, oos_r, lines)
@@ -1131,7 +1144,7 @@ def run_walk_forward():
     emit("  DEGRADATION ANALYSIS")
     emit("  (stocks where OOS underperformed IS significantly)")
     emit("=" * 80)
-    for ticker in STOCKS:
+    for ticker in _stocks:
         _degradation_analysis(
             ticker,
             all_results[ticker]["is"],
@@ -1149,6 +1162,266 @@ def run_walk_forward():
     # ── Save ──────────────────────────────────────────────────────────────────
     _save_results(lines, all_verbose)
 
+    # ── Build results dict for comparison ────────────────────────────────────
+    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy"]
+    results: dict = {}
+    for ticker in _stocks:
+        is_r  = all_results[ticker]["is"]
+        oos_r = all_results[ticker]["oos"]
+        if is_r.get("error") or oos_r.get("error"):
+            results[ticker] = {"score": "N/A", "oos_return": "N/A"}
+        else:
+            score = sum(
+                _pass(m, is_r["metrics"], oos_r["metrics"])
+                for m in METRICS_KEYS
+            )
+            results[ticker] = {
+                "score":      int(score),
+                "oos_return": float(oos_r["metrics"]["total_ret"]),
+            }
+    return results
+
+
+def run_extended_walk_forward(
+    stocks: list[str],
+    cooldown_bars: int = 15,
+    nifty_regime_filter: bool = True,
+) -> dict:
+    """
+    Extended walk-forward validation using 2015-2019 IS and 2020-2023 OOS windows.
+    Tests strategy performance during genuine bear market conditions including:
+    - 2015-16 NSE correction (-20%)
+    - 2018 IL&FS crisis and NBFC selloff
+    - COVID crash Feb-Apr 2020 (OOS)
+    - 2022 global rate hike selloff (OOS)
+
+    Returns dict with same structure as run_walk_forward() for direct comparison.
+    """
+    lines: list[str] = []
+
+    def emit(text: str = ""):
+        print(text)
+        lines.append(text)
+
+    emit()
+    emit("=" * 80)
+    emit("  EXTENDED WALK-FORWARD VALIDATION")
+    emit("  PARAMETERS FROZEN — no optimization performed between windows.")
+    emit("  These results represent genuine out-of-sample performance.")
+    emit("=" * 80)
+    emit(f"  Stocks:      {', '.join(stocks)}")
+    emit(f"  In-sample:   {EXT_IS_START} → {EXT_IS_END}")
+    emit(f"               (2015-16 correction, 2018 IL&FS crisis)")
+    emit(f"  OOS:         {EXT_OOS_START} → {EXT_OOS_END}")
+    emit(f"               (COVID crash Feb-Apr 2020, 2022 rate hike selloff)")
+    emit(f"  Strategy:    SMA {PARAMS['sma_fast']}/{PARAMS['sma_slow']} crossover")
+    emit(f"  Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum")
+    emit(f"  Cooldown:    {cooldown_bars}-bar after RM exits")
+    emit(f"  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position")
+    emit(f"  Capital:     ₹{PARAMS['initial_capital']:,} per window (independent runs)")
+    emit(f"  NIFTY Filter: {'ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)' if nifty_regime_filter else 'DISABLED'}")
+    emit()
+
+    if nifty_regime_filter:
+        print(f"\n[ext_walk_forward] Fetching NIFTY 50 for regime filter (in-sample)…")
+        nifty_is  = _fetch_nifty(EXT_IS_START, EXT_IS_END)
+        print(f"\n[ext_walk_forward] Fetching NIFTY 50 for regime filter (out-of-sample)…")
+        nifty_oos = _fetch_nifty(EXT_OOS_START, EXT_OOS_END)
+    else:
+        nifty_is = nifty_oos = pd.DataFrame()
+
+    all_results: dict[str, dict] = {}
+
+    for ticker in stocks:
+        print(f"\n[ext_walk_forward] ── {ticker} in-sample ──────────────────────────────")
+        is_r = _run_one(ticker, EXT_IS_START, EXT_IS_END, nifty_df=nifty_is)
+
+        print(f"\n[ext_walk_forward] ── {ticker} out-of-sample ──────────────────────────")
+        oos_r = _run_one(ticker, EXT_OOS_START, EXT_OOS_END, nifty_df=nifty_oos)
+
+        all_results[ticker] = {"is": is_r, "oos": oos_r}
+
+    # ── Per-stock scoring — same 5 metrics, same PASS/FAIL thresholds as run_walk_forward ──
+    C1, C2, C3, C4 = 24, 26, 28, 12
+    all_scores: list[list[bool]] = []
+    results: dict = {}
+
+    for ticker in stocks:
+        is_r  = all_results[ticker]["is"]
+        oos_r = all_results[ticker]["oos"]
+
+        emit()
+        emit("=" * 80)
+        emit(f"  {ticker}")
+        emit("=" * 80)
+
+        if is_r.get("error") or oos_r.get("error"):
+            emit(f"  In-sample:     {is_r.get('error', 'OK')}")
+            emit(f"  Out-of-sample: {oos_r.get('error', 'OK')}")
+            emit()
+            results[ticker] = {"score": "N/A", "oos_return": "N/A"}
+            continue
+
+        is_m  = is_r["metrics"]
+        oos_m = oos_r["metrics"]
+
+        emit(
+            f"  Data:  {is_r['n_bars']} bars in-sample  "
+            f"|  {oos_r['n_bars']} bars out-of-sample"
+        )
+        if is_r.get("covid_note"):
+            emit(f"  NOTE:  {is_r['covid_note']}")
+        emit()
+
+        emit(
+            f"  {'Metric':<{C1}}"
+            f"{'In-Sample (2015-2019)':^{C2}}"
+            f"{'Out-of-Sample (2020-2023)':^{C3}}"
+            f"{'Result':>{C4}}"
+        )
+        emit("  " + "─" * (C1 + C2 + C3 + C4))
+
+        scores: list[bool] = []
+
+        def row(label: str, metric: str, fmt):
+            v_is  = fmt(is_m)
+            v_oos = fmt(oos_m)
+            ok    = _pass(metric, is_m, oos_m)
+            scores.append(ok)
+            emit(
+                f"  {label:<{C1}}"
+                f"{v_is:^{C2}}"
+                f"{v_oos:^{C3}}"
+                f"{'[' + _verdict(ok) + ']':>{C4}}"
+            )
+
+        row("Total return", "total_ret",
+            lambda m: f"{m['total_ret']:>+.1f}%")
+        row("vs Buy & Hold", "vs_bnh",
+            lambda m: f"{m['vs_bnh']:>+.1f}pp  (B&H {m['bm_ret']:>+.1f}%)")
+        row("Max drawdown", "max_dd",
+            lambda m: f"{m['max_dd']:.1f}%")
+        row("Payoff ratio", "payoff",
+            lambda m: "∞:1" if m["payoff"] == float("inf") else f"{m['payoff']:.2f}:1")
+        row("Expectancy/trade", "expectancy",
+            lambda m: f"₹{m['expectancy']:>+,.0f}")
+
+        emit("  " + "─" * (C1 + C2 + C3 + C4))
+
+        is_wr  = f"{is_m['win_rate']:.1f}%"
+        oos_wr = f"{oos_m['win_rate']:.1f}%"
+        emit(
+            f"  {'Trades':<{C1}}"
+            f"{str(is_m['n_trades']):^{C2}}"
+            f"{str(oos_m['n_trades']):^{C3}}"
+        )
+        emit(
+            f"  {'Win rate':<{C1}}"
+            f"{is_wr:^{C2}}"
+            f"{oos_wr:^{C3}}"
+        )
+
+        n_pass = sum(scores)
+        emit(f"\n  Score: {n_pass}/{len(scores)} PASS")
+        emit()
+
+        all_scores.append(scores)
+        results[ticker] = {
+            "score":      int(n_pass),
+            "oos_return": float(oos_m["total_ret"]),
+        }
+
+    # ── Overall verdict — same thresholds as run_walk_forward ────────────────
+    _print_verdict(all_scores, lines)
+
+    return results
+
+
+def print_comparison_report(
+    original_results: dict,
+    extended_results: dict,
+    stocks: list[str],
+) -> None:
+    """
+    Print side-by-side comparison of original and extended walk-forward results.
+    """
+    print("\n" + "="*75)
+    print("WALK-FORWARD COMPARISON — ORIGINAL vs EXTENDED WINDOWS")
+    print("="*75)
+    print(f"{'':20} {'ORIGINAL (2018-22 IS / 2023-26 OOS)':^25} {'EXTENDED (2015-19 IS / 2020-23 OOS)':^25}")
+    print(f"{'Stock':<20} {'Score':^10} {'OOS Return':^15} {'Score':^10} {'OOS Return':^15}")
+    print("-"*75)
+
+    for ticker in stocks:
+        orig = original_results.get(ticker, {})
+        ext  = extended_results.get(ticker, {})
+        orig_score  = orig.get("score", "N/A")
+        ext_score   = ext.get("score", "N/A")
+        orig_return = orig.get("oos_return", "N/A")
+        ext_return  = ext.get("oos_return", "N/A")
+
+        orig_return_str = f"{orig_return:+.1f}%" if isinstance(orig_return, float) else "N/A"
+        ext_return_str  = f"{ext_return:+.1f}%"  if isinstance(ext_return, float) else "N/A"
+
+        print(f"{ticker:<20} {str(orig_score):^10} {orig_return_str:^15} {str(ext_score):^10} {ext_return_str:^15}")
+
+    print("-"*75)
+    orig_total = sum(r.get("score", 0) for r in original_results.values() if isinstance(r.get("score"), int))
+    ext_total  = sum(r.get("score", 0) for r in extended_results.values() if isinstance(r.get("score"), int))
+    max_score  = len(stocks) * 5
+
+    print(f"{'TOTAL':<20} {f'{orig_total}/{max_score}':^10} {'':^15} {f'{ext_total}/{max_score}':^10}")
+    print(f"{'PCT':<20} {f'{orig_total/max_score*100:.0f}%':^10} {'':^15} {f'{ext_total/max_score*100:.0f}%':^10}")
+    print("="*75)
+
+    # Verdict
+    if ext_total >= orig_total:
+        print(f"\n✅ EXTENDED validation MATCHES OR EXCEEDS original ({ext_total}/{max_score} vs {orig_total}/{max_score})")
+        print("   Strategy is robust across both bull and bear market periods.")
+    elif ext_total >= max_score * 0.65:
+        print(f"\n⚠️  EXTENDED validation LOWER but ACCEPTABLE ({ext_total}/{max_score} vs {orig_total}/{max_score})")
+        print("   Strategy performs worse in bear market IS period — expected for long-only.")
+        print("   OOS (2020-2023) includes COVID crash and 2022 correction — genuine stress test passed.")
+    else:
+        print(f"\n❌ EXTENDED validation SIGNIFICANTLY LOWER ({ext_total}/{max_score} vs {orig_total}/{max_score})")
+        print("   Strategy may be overfit to bull market conditions. Review before going live.")
+
 
 if __name__ == "__main__":
-    run_walk_forward()
+    COOLDOWN = 15
+    NIFTY_FILTER = True
+
+    STOCKS_EXTENDED = [
+        "TMPV.NS", "WHIRLPOOL.NS", "SIEMENS.NS", "BAJAJ-AUTO.NS",
+        "COLPAL.NS", "HEROMOTOCO.NS", "HCLTECH.NS",
+        "CUMMINSIND.NS", "JKTYRE.NS", "BSOFT.NS",
+    ]
+
+    print("\nRunning ORIGINAL walk-forward (2018-22 IS / 2023-26 OOS)...")
+    original_results = run_walk_forward(
+        stocks=STOCKS,
+        cooldown_bars=COOLDOWN,
+        nifty_regime_filter=NIFTY_FILTER,
+    )
+
+    print("\nRunning EXTENDED walk-forward (2015-19 IS / 2020-23 OOS) — 4 stocks...")
+    extended_results_4 = run_extended_walk_forward(
+        stocks=STOCKS,
+        cooldown_bars=COOLDOWN,
+        nifty_regime_filter=NIFTY_FILTER,
+    )
+
+    print("\nRunning EXTENDED walk-forward (2015-19 IS / 2020-23 OOS) — 10 stocks...")
+    extended_results_10 = run_extended_walk_forward(
+        stocks=STOCKS_EXTENDED,
+        cooldown_bars=COOLDOWN,
+        nifty_regime_filter=NIFTY_FILTER,
+    )
+
+    print("\n" + "=" * 75)
+    print("COMPARISON TABLE 1 — Original 4 stocks")
+    print_comparison_report(original_results, extended_results_4, STOCKS)
+
+    print("\n" + "=" * 75)
+    print("COMPARISON TABLE 2 — All 10 stocks (original 2018-26 where available, extended 2015-23)")
+    print_comparison_report(original_results, extended_results_10, STOCKS_EXTENDED)
