@@ -56,13 +56,12 @@ def run(
                              Cooldown and RM are NOT integrated in that path.
                              Kept for backward compatibility only.
         use_next_day_fills:  AMO-realistic fill mode. Signal is generated at
-                             day N's close; buy/sell fills at day N+1's open.
-                             Full cooldown, RM, and sizing integration included.
-                             RM exits (hard stop, chandelier, time stop) still
-                             execute at current close — they are protective and
-                             must not be deferred. Edge case: signal on the last
-                             bar falls back to close-fill so it is not silently
-                             dropped.
+                             day N's close; buy/sell/RM-exit fills at day N+1's
+                             open. Full cooldown, RM, and sizing integration
+                             included. RM exits are deferred via _pending_fill
+                             with type="rm_exit" so the simulation matches real
+                             AMO behaviour end-to-end. Edge case: last bar falls
+                             back to close-fill so no signal is silently dropped.
 
     Returns:
         equity_curve: DataFrame with columns [portfolio_value, benchmark_value,
@@ -106,9 +105,11 @@ def run(
 
     # Pending deferred action from the previous bar's signal (use_next_day_fills only).
     # None  → no pending action
-    # dict  → {"action": "buy",  "chandelier": float|None}   (from a +1 signal)
-    #          {"action": "sell", "reason":     str}          (from a -1 signal)
-    # RM exits never go through this dict — they always execute at the current close.
+    # dict  → {"action": "buy",  "chandelier": float|None}           (from a +1 signal)
+    #          {"action": "sell", "reason":     str}                  (from a -1 signal)
+    #          {"action": "sell", "type": "rm_exit", "reason": str}  (deferred RM exit)
+    # When use_next_day_fills=True, RM exits are also deferred to next day's open.
+    # Last-bar edge case always falls back to close-fill so no signal is silently dropped.
     _pending_fill = None
 
     portfolio_values  = []
@@ -193,14 +194,21 @@ def run(
                         )
 
             elif _action == "sell" and portfolio.shares_held > 0:
+                fill_type = _pending_fill.get("type", "strategy_exit")
                 portfolio.sell(date, row["open"], reason=_pending_fill["reason"])
                 if risk_manager is not None:
                     risk_manager.on_position_close()
-                # Strategy exits do not trigger cooldown — mirrors close-fill behaviour
+                # RM exits trigger cooldown even when deferred; strategy exits do not.
+                if fill_type == "rm_exit" and cooldown_tracker is not None:
+                    cooldown_tracker.trigger_cooldown(_pending_fill["reason"], date)
 
             _pending_fill = None
 
-        # ── ① Risk management (position open, close-fill mode only) ──────────
+        # ── ① Risk management ────────────────────────────────────────────────
+        # When use_next_day_fills=True: RM exits defer to tomorrow's open via
+        # _pending_fill (type="rm_exit"), exactly like strategy entries.
+        # Last-bar falls back to close-fill so no exit is silently lost.
+        # When use_next_day_fills=False (close-fill): execute at current close.
         if (risk_manager is not None
                 and portfolio.shares_held > 0
                 and not fill_on_next_open):
@@ -208,16 +216,30 @@ def run(
             exit_decision = risk_manager.check_exit(row, ohlcv_so_far)
 
             if exit_decision["should_exit"]:
-                portfolio.sell(
-                    date,
-                    exit_decision["exit_price"],
-                    reason=exit_decision["exit_reason"],
-                )
-                # Trigger cooldown ONLY for RM exits; strategy exits never touch cooldown.
-                if cooldown_tracker is not None:
-                    cooldown_tracker.trigger_cooldown(exit_decision["exit_reason"], date)
-
-                risk_manager.on_position_close()
+                _is_last_bar_rm = (i == n_bars - 1)
+                if use_next_day_fills and not _is_last_bar_rm:
+                    # Defer RM exit to tomorrow's open (AMO-realistic)
+                    _pending_fill = {
+                        "action": "sell",
+                        "type":   "rm_exit",
+                        "reason": exit_decision["exit_reason"],
+                    }
+                    fill_date = df.index[i + 1].date()
+                    print(
+                        f"  [AMO] {date.date()} | RM EXIT ({exit_decision['exit_reason']}) "
+                        f"deferred → fill at {fill_date} open"
+                    )
+                    # on_position_close() and cooldown are deferred to fill execution
+                else:
+                    # Close-fill mode or last bar: sell at current close immediately
+                    portfolio.sell(
+                        date,
+                        exit_decision["exit_price"],
+                        reason=exit_decision["exit_reason"],
+                    )
+                    if cooldown_tracker is not None:
+                        cooldown_tracker.trigger_cooldown(exit_decision["exit_reason"], date)
+                    risk_manager.on_position_close()
                 rm_exited = True
 
         # ── ② + ③ Strategy signal + cooldown gate (skip if RM exited) ────────

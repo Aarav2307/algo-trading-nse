@@ -43,6 +43,16 @@ AMO_CSV         = Path("paper_trading/amo_orders.csv")
 STATE_FILE      = Path("paper_trading/portfolio_state.json")
 TOKEN_FILE      = Path("auth/access_token.txt")
 
+# RM exit reasons — these come through in the AMO order's "notes" field.
+# When a SELL fills with one of these notes, we must also trigger cooldown
+# and clear the pending_rm_exit flag on the position.
+_RM_EXIT_NOTES  = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
+# Cooldown bars must match signal_runner.py COOLDOWN_BARS.
+# +1 offset: advance_cooldown() in the same evening's signal_runner absorbs one bar,
+# leaving exactly COOLDOWN_BARS days of suppression starting the next trading day.
+_COOLDOWN_BARS  = 15
+_COOLDOWN_BARS_WITH_OFFSET = _COOLDOWN_BARS + 1
+
 # ── IST offset ────────────────────────────────────────────────────────────────
 _IST = timedelta(hours=5, minutes=30)
 
@@ -129,18 +139,23 @@ def _update_csv_row(target_date: str, ticker: str, order_type: str,
     os.replace(tmp, str(AMO_CSV))
 
 
-def _update_portfolio_fill(ticker: str, order_type: str, shares: int,
-                           fill_price: float, fill_date: date) -> None:
+def _update_portfolio_fill(
+    ticker: str,
+    order_type: str,
+    shares: int,
+    fill_price: float,
+    fill_date: date,
+    exit_reason: str = "STRATEGY_SIGNAL",
+    is_rm_exit: bool = False,
+) -> None:
     """
     Update portfolio_state.json to reflect the actual next-day fill price.
 
-    For a BUY: recalculate entry_price with the actual open fill price
-               (slippage has already been accounted for in the limit price,
-               so we use the raw open as the fill here — the portfolio sizer
-               uses apply_slippage internally).
-    For a SELL: update cash and clear the position.
+    For a BUY: recalculate entry_price with the actual open fill price.
+    For a SELL: update cash, clear position, record trade with the correct
+                exit_reason. If is_rm_exit=True, also trigger cooldown and
+                clear the pending_rm_exit flag (set by yesterday's signal_runner).
 
-    This is a targeted JSON patch — only the affected position is changed.
     Uses atomic write to prevent state corruption on crash.
     """
     import json
@@ -184,7 +199,7 @@ def _update_portfolio_fill(ticker: str, order_type: str, shares: int,
 
         state["cash"] += proceeds
 
-        # Record in trade log
+        # Record in trade log with the actual exit reason
         entry_px  = pos["entry_price"]
         gross_pnl = (exec_price - entry_px) * shares
         net_pnl   = gross_pnl - cost
@@ -198,15 +213,25 @@ def _update_portfolio_fill(ticker: str, order_type: str, shares: int,
             "gross_pnl":   round(gross_pnl, 2),
             "net_pnl":     round(net_pnl, 2),
             "return_pct":  round((exec_price / entry_px - 1) * 100, 4),
-            "exit_reason": "STRATEGY_SIGNAL",
+            "exit_reason": exit_reason,
         })
         state["total_trades"] += 1
 
-        # Reset position
+        # Reset position — clears pending_rm_exit flag if set
         state["positions"][ticker] = {
             "shares": 0, "entry_price": 0.0, "entry_date": None,
             "highest_high_since_entry": 0.0, "bars_held": 0, "chandelier_stop": None,
         }
+
+        # Deferred RM exits: trigger cooldown now that the fill is confirmed.
+        # +1 offset: the evening signal_runner's advance_cooldown() absorbs one bar,
+        # leaving exactly _COOLDOWN_BARS days of buy suppression from tomorrow.
+        if is_rm_exit and "cooldown_state" in state and ticker in state["cooldown_state"]:
+            state["cooldown_state"][ticker] = {
+                "remaining_bars":   _COOLDOWN_BARS_WITH_OFFSET,
+                "last_exit_reason": exit_reason,
+            }
+            print(f"  [cooldown] {ticker} — {_COOLDOWN_BARS}-bar cooldown triggered ({exit_reason})")
 
     # Atomic write
     tmp = str(STATE_FILE) + ".tmp"
@@ -304,6 +329,10 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
             _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
             continue
 
+        # Detect deferred RM exits — notes field carries the exit reason
+        notes      = order.get("notes", "")
+        is_rm_exit = notes in _RM_EXIT_NOTES
+
         open_px = _fetch_open_price(ticker, today)
 
         if open_px is None:
@@ -318,27 +347,32 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
             filled = open_px >= limit_px
 
         gap_pct = (open_px - limit_px) / limit_px * 100
+        rm_tag  = f" [RM:{notes}]" if is_rm_exit else ""
 
         if filled:
             filled_count += 1
             status_tag = "✓ FILLED "
             detail = (
                 f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                f"| FILLED at ₹{open_px:,.2f}"
+                f"| FILLED at ₹{open_px:,.2f}{rm_tag}"
             )
             print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
 
             _update_csv_row(order_date, ticker, order_type,
                             "FILLED", str(round(open_px, 4)), today.isoformat())
             if apply_fills:
-                _update_portfolio_fill(ticker, order_type, shares, open_px, today)
+                _update_portfolio_fill(
+                    ticker, order_type, shares, open_px, today,
+                    exit_reason=notes if notes else "STRATEGY_SIGNAL",
+                    is_rm_exit=is_rm_exit,
+                )
 
         else:
             missed_count += 1
             status_tag = "✗ MISSED "
             detail = (
                 f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%"
+                f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%{rm_tag}"
             )
             print(f"  {status_tag}  {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
 

@@ -334,6 +334,25 @@ def _process_stock(
     close_px   = float(today_bar["close"])
     today_high = float(today_bar["high"])
 
+    # If an RM exit was deferred yesterday (AMO SELL queued, awaiting open fill),
+    # skip all processing for this ticker today. morning_fill_check.py will
+    # complete the close_position() call at tomorrow's open price.
+    if pos.get("pending_rm_exit"):
+        return {
+            "ticker":           ticker,
+            "signal":           "PENDING_RM_EXIT",
+            "close_price":      close_px,
+            "exec_price":       None,
+            "shares":           pos["shares"],
+            "reason":           f"RM exit pending ({pos.get('rm_exit_reason','?')}) — awaiting open fill",
+            "exit_reason":      pos.get("rm_exit_reason"),
+            "chandelier_stop":  pos.get("chandelier_stop"),
+            "bars_in_cooldown": portfolio.state["cooldown_state"][ticker]["remaining_bars"],
+            "sizing_info":      None,
+            "action_taken":     None,
+            "net_pnl":          None,
+        }
+
     # Template result — filled in as we go
     result = {
         "ticker":           ticker,
@@ -364,23 +383,27 @@ def _process_stock(
         result["chandelier_stop"] = chan_stop
 
         if exit_decision["should_exit"]:
-            # RM fires — sell at today's close (with slippage), trigger cooldown
-            exec_px  = apply_slippage(exit_decision["exit_price"], "sell")
-            net_pnl  = portfolio.close_position(ticker, exec_px, today_str, exit_decision["exit_reason"])
-            portfolio.trigger_cooldown(ticker, exit_decision["exit_reason"], COOLDOWN_BARS)
+            # Defer RM exit to tomorrow's open (AMO-realistic).
+            # Do NOT call close_position() or trigger_cooldown() now.
+            # Set a pending flag so tomorrow's run skips re-processing this stock.
+            # morning_fill_check.py will complete close_position() + cooldown at open.
+            shares_to_sell = pos["shares"]
+            exit_reason    = exit_decision["exit_reason"]
+
+            pos["pending_rm_exit"] = True
+            pos["rm_exit_reason"]  = exit_reason
             portfolio.record_weekly_signal("RISK_EXIT")
 
             result.update({
                 "signal":       "RISK_EXIT",
-                "exec_price":   exec_px,
-                "shares":       pos["shares"],  # read before close_position cleared it
-                "exit_reason":  exit_decision["exit_reason"],
-                "reason":       f"RM triggered: {exit_decision['exit_reason']}",
-                "net_pnl":      net_pnl,
+                "exec_price":   None,           # confirmed tomorrow at open
+                "shares":       shares_to_sell,
+                "exit_reason":  exit_reason,
+                "reason":       f"RM triggered: {exit_reason} — AMO SELL queued for tomorrow's open",
+                "net_pnl":      None,           # recorded tomorrow when fill confirms
                 "action_taken": (
-                    f"SELL {pos['shares']} shares @ ₹{exec_px:.2f} "
-                    f"[{exit_decision['exit_reason']}]  "
-                    f"net P&L ₹{net_pnl:>+,.0f}"
+                    f"RM EXIT PENDING ({exit_reason}) | "
+                    f"AMO SELL {shares_to_sell} shr @ close ₹{close_px:.2f} → fills tomorrow open"
                 ),
             })
             return result
