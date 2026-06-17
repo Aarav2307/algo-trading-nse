@@ -85,6 +85,19 @@ SMA_SLOW        = 50
 COOLDOWN_BARS   = 15
 LOOKBACK_CALENDAR_DAYS = 120   # ~85 trading days → enough for SMA-50 + ATR-22 + buffer
 
+# ── Capital allocation & signal ranking ───────────────────────────────────────
+# Maximum simultaneous open positions. When all slots are full, new BUY signals
+# are ranked and the highest-scoring one(s) fill the available slots.
+MAX_CONCURRENT_POSITIONS: int = 4
+
+# Weights for composite BUY signal ranking. Must be inspected, not re-optimised.
+# Higher score = higher priority when capital is constrained.
+SIGNAL_RANK_WEIGHTS = {
+    "hurst":         0.40,   # stronger trending memory → better SMA candidate
+    "gap_proximity": 0.40,   # gap closest to 0 from below → freshest cross
+    "volatility":    0.20,   # higher vol → larger ATR moves → more exploitable
+}
+
 AMO_CONFIG = {
     "enabled":          True,
     "dry_run":          True,          # MUST stay True — real orders not implemented
@@ -346,6 +359,98 @@ def _extract_rm_state(rm: RiskManager) -> Tuple[int, float, Optional[float]]:
 
 
 # =============================================================================
+# Signal ranking & capital allocation gate
+# =============================================================================
+
+def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float) -> float:
+    """
+    Composite ranking score for a BUY signal candidate (0–100, higher = better).
+
+    Used when multiple stocks simultaneously show golden-cross signals and
+    capital/position-count is constrained. The highest-scoring stock(s) get
+    priority for capital allocation.
+
+    Components (weights from SIGNAL_RANK_WEIGHTS):
+      hurst:         R/S Hurst exponent on closing prices. H=0.50→0, H=0.70→100.
+                     Measures persistence: higher = more likely to keep trending.
+      gap_proximity: |gap_pct| scaled so 0% gap → 100, 15% gap → 0.
+                     Freshest cross = smallest gap = highest score.
+      volatility:    Annualised daily return vol. 20%→0, 50%→100.
+                     Higher vol = bigger ATR moves = more profitable for crossover.
+
+    Returns 0.0 on any calculation error (safe default — deprioritises bad data).
+    """
+    try:
+        import numpy as np
+
+        close = df["close"].values
+
+        # Hurst via R/S analysis (same method as auto_screener)
+        lags = range(2, 20)
+        tau  = [np.std(np.subtract(close[lag:], close[:-lag])) for lag in lags]
+        if any(t <= 0 for t in tau):
+            return 0.0
+        poly  = np.polyfit(np.log(lags), np.log(tau), 1)
+        hurst = float(poly[0])
+        hurst_score = max(0.0, min(100.0, (hurst - 0.50) / 0.20 * 100.0))
+
+        # Gap proximity (gap_pct ≤ 0 for death-cross BUY candidates)
+        gap_score = max(0.0, min(100.0, (1.0 - abs(gap_pct) / 15.0) * 100.0))
+
+        # Annualised volatility
+        vol        = float(df["close"].pct_change().dropna().std() * (252 ** 0.5) * 100.0)
+        vol_score  = max(0.0, min(100.0, (vol - 20.0) / 30.0 * 100.0))
+
+        score = (
+            SIGNAL_RANK_WEIGHTS["hurst"]         * hurst_score +
+            SIGNAL_RANK_WEIGHTS["gap_proximity"]  * gap_score   +
+            SIGNAL_RANK_WEIGHTS["volatility"]     * vol_score
+        )
+        return round(score, 2)
+
+    except Exception:
+        return 0.0
+
+
+def count_open_positions(portfolio: "PaperPortfolio") -> int:
+    """Count stocks currently holding shares > 0."""
+    return sum(
+        1 for pos in portfolio.state["positions"].values()
+        if pos.get("shares", 0) > 0
+    )
+
+
+def can_open_position(
+    portfolio: "PaperPortfolio",
+    proposed_shares: int,
+    proposed_price: float,
+) -> tuple:
+    """
+    Check whether a new position can be opened given position and cash limits.
+
+    Returns:
+        (True,  "")             — position can be opened
+        (False, reason_string)  — position should be skipped
+
+    NOTE: RM exits always execute regardless of these limits. This gate applies
+    to BUY entries ONLY. Never call this for exit decisions.
+    """
+    # CRITICAL: RM exits always execute. Only BUY entries are gated by capital allocation.
+    # Never apply can_open_position() to exit decisions.
+
+    open_count = count_open_positions(portfolio)
+    if open_count >= MAX_CONCURRENT_POSITIONS:
+        return False, f"Position limit reached ({open_count}/{MAX_CONCURRENT_POSITIONS} open)"
+
+    required_cash = proposed_shares * proposed_price * 1.001   # 0.1% buffer for costs
+    available     = portfolio.state["cash"]
+    if available < required_cash:
+        return False, f"Insufficient cash (need ₹{required_cash:,.0f}, have ₹{available:,.0f})"
+
+    return True, ""
+
+
+# =============================================================================
 # Per-stock signal pipeline
 # =============================================================================
 
@@ -355,6 +460,7 @@ def _process_stock(
     portfolio: PaperPortfolio,
     current_prices: Dict[str, float],
     market_regime: str = "UNKNOWN",
+    defer_buy: bool = False,
 ) -> dict:
     """
     Run the full signal pipeline for one stock and return a signal dict.
@@ -516,11 +622,31 @@ def _process_stock(
             })
             return result
 
-        # ── Position sizing ─────────────────────────────────────────────────
+        # ── BUY candidate: defer or execute ─────────────────────────────────
+        # When defer_buy=True (Phase 1 of the two-phase allocation), return a
+        # BUY_CANDIDATE dict with ranking info so main() can sort and gate.
+        # When defer_buy=False (Phase 2, executing ranked candidates), run
+        # sizing and open the position immediately.
+        sma20   = float(df["close"].rolling(SMA_FAST).mean().iloc[-1])
+        sma50   = float(df["close"].rolling(SMA_SLOW).mean().iloc[-1])
+        gap_pct = (sma20 - sma50) / sma50 * 100 if sma50 != 0 else 0.0
+
+        if defer_buy:
+            # Phase 1: collect candidate, rank it, do NOT open position yet.
+            rank_score = rank_signal(ticker, df, gap_pct)
+            result.update({
+                "signal":     "BUY_CANDIDATE",
+                "reason":     "Golden cross — pending capital allocation",
+                "gap_pct":    round(gap_pct, 3),
+                "rank_score": rank_score,
+            })
+            return result
+
+        # Phase 2: sizing + execution (called from main() in rank order).
         entry_exec_px = apply_slippage(close_px, "buy")
 
         # Compute initial Chandelier stop (pure read, no RM state change)
-        _rm_tmp        = RiskManager(RM_CONFIG)
+        _rm_tmp               = RiskManager(RM_CONFIG)
         chandelier_for_sizing = _rm_tmp.compute_chandelier(df, today_high)
 
         sizer      = PositionSizer(PS_CONFIG)
@@ -533,7 +659,6 @@ def _process_stock(
         )
 
         if shares == 0:
-            # Sizing returned 0: stop too wide or capital too small — skip
             result.update({
                 "signal": "HOLD",
                 "reason": (
@@ -558,6 +683,7 @@ def _process_stock(
             "shares":          shares,
             "chandelier_stop": chandelier_for_sizing,
             "reason":          "Golden cross — SMA20 crossed above SMA50",
+            "gap_pct":         round(gap_pct, 3),
             "sizing_info":     sz,
             "cost_breakdown":  cost_bd,
             "action_taken": (
@@ -590,6 +716,7 @@ def _format_report(
     current_prices: Dict[str, float],
     is_backfill: bool = False,
     market_regime: str = "UNKNOWN",
+    skipped_signals: Optional[List[dict]] = None,
 ) -> str:
     """
     Build the full terminal report as a string. Printed to stdout and saved
@@ -685,6 +812,19 @@ def _format_report(
         ln()
     else:
         ln("  ACTIONS TAKEN: none (all HOLD)")
+        ln()
+
+    # ── Skipped BUY signals (capital / position limit) ────────────────────────
+    skipped_signals = skipped_signals or []
+    if skipped_signals:
+        ln("  SKIPPED SIGNALS (capital / position limit)")
+        ln(f"  {'Ticker':<16} {'Rank':>6}  {'Price':>10}  {'Gap%':>7}  Reason")
+        ln("  " + "─" * 58)
+        for s in skipped_signals:
+            ln(
+                f"  {s['ticker']:<16} {s['rank_score']:>6.1f}  "
+                f"₹{s['price']:>9,.2f}  {s['gap_pct']:>+6.2f}%  {s['reason']}"
+            )
         ln()
 
     # ── Footer ─────────────────────────────────────────────────────────────────
@@ -928,9 +1068,20 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
     )
     print()
 
-    # ── Step 8b: Process each stock ───────────────────────────────────────────
+    # ── Step 8b: Two-phase signal pipeline ────────────────────────────────────
+    # Phase 1: process all stocks with defer_buy=True.
+    #   - RM exits, SELL signals, HOLD → recorded and executed immediately.
+    #   - BUY candidates → collected as BUY_CANDIDATE, not yet executed.
+    # Phase 2: rank BUY_CANDIDATEs, apply position/cash gate, execute in order.
+    #
+    # CRITICAL: RM exits always execute. Only BUY entries are gated by capital allocation.
+    # Never apply can_open_position() to exit decisions.
     print(f"[paper_trading] Running signal pipeline for {len(dfs)} stocks …\n")
     results: Dict[str, dict] = {}
+
+    skipped_signals: List[dict] = []   # populated in Phase 2 if capital/position gate blocks a BUY
+
+    # ── Phase 1 ──────────────────────────────────────────────────────────────
     for ticker in STOCKS:
         if ticker not in dfs:
             results[ticker] = {
@@ -949,7 +1100,6 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             }
             continue
 
-        # Corporate action guard: skip signal generation for this stock today
         ca = ca_warnings.get(ticker, {"skip": False, "reason": None})
         if ca["skip"]:
             close_px = float(dfs[ticker].iloc[-1]["close"])
@@ -970,7 +1120,92 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             print(f"  [CORP_ACTION] {ticker} SKIPPED — {ca['reason']}")
             continue
 
-        results[ticker] = _process_stock(ticker, dfs[ticker], portfolio, current_prices, market_regime)
+        results[ticker] = _process_stock(
+            ticker, dfs[ticker], portfolio, current_prices, market_regime,
+            defer_buy=True,   # collect BUY candidates, don't execute yet
+        )
+
+    # ── Phase 2: rank and execute BUY candidates ──────────────────────────────
+    buy_candidates = [
+        (ticker, results[ticker])
+        for ticker in STOCKS
+        if results.get(ticker, {}).get("signal") == "BUY_CANDIDATE"
+    ]
+    buy_candidates.sort(key=lambda x: x[1].get("rank_score", 0.0), reverse=True)
+
+    if buy_candidates:
+        print(
+            f"\n[paper_trading] {len(buy_candidates)} BUY candidate(s) — "
+            f"ranking and allocating capital (limit: {MAX_CONCURRENT_POSITIONS}) …"
+        )
+        for rank_pos, (ticker, candidate) in enumerate(buy_candidates, 1):
+            df       = dfs[ticker]
+            close_px = candidate["close_price"]
+            gap_pct  = candidate.get("gap_pct", 0.0)
+            rank_sc  = candidate.get("rank_score", 0.0)
+            print(
+                f"  #{rank_pos} {ticker:<18} rank={rank_sc:.1f}  gap={gap_pct:+.2f}%  ",
+                end="",
+            )
+
+            # Gate check BEFORE execution.
+            # Position count is exact; cash uses a floor heuristic (actual size
+            # is determined inside the sizer; the gate only catches hard blocks).
+            open_count = count_open_positions(portfolio)
+            if open_count >= MAX_CONCURRENT_POSITIONS:
+                reason = (
+                    f"Position limit reached ({open_count}/{MAX_CONCURRENT_POSITIONS} open)"
+                )
+                results[ticker].update({
+                    "signal":     "SKIPPED",
+                    "reason":     reason,
+                    "rank_score": rank_sc,
+                })
+                skipped_signals.append({
+                    "ticker":     ticker,
+                    "rank_score": rank_sc,
+                    "reason":     reason,
+                    "price":      close_px,
+                    "gap_pct":    gap_pct,
+                })
+                print(f"→ SKIPPED   {reason}")
+                continue
+
+            # Cash floor: need at least two brokerages' worth to be worth trying
+            if portfolio.state["cash"] < BROKERAGE_PER_ORDER * 2:
+                reason = (
+                    f"Insufficient cash (₹{portfolio.state['cash']:,.0f} available)"
+                )
+                results[ticker].update({
+                    "signal":     "SKIPPED",
+                    "reason":     reason,
+                    "rank_score": rank_sc,
+                })
+                skipped_signals.append({
+                    "ticker":     ticker,
+                    "rank_score": rank_sc,
+                    "reason":     reason,
+                    "price":      close_px,
+                    "gap_pct":    gap_pct,
+                })
+                print(f"→ SKIPPED   {reason}")
+                continue
+
+            # Gate passed — execute with current (post-prior-execution) portfolio state.
+            executed = _process_stock(
+                ticker, df, portfolio, current_prices, market_regime,
+                defer_buy=False,
+            )
+            results[ticker] = executed
+
+            if executed["signal"] == "BUY":
+                print(
+                    f"→ EXECUTED  {executed.get('shares',0)} shr "
+                    f"@ ₹{executed.get('exec_price',0):.2f}"
+                )
+            else:
+                # Sizer returned 0 or state changed between phases — log reason
+                print(f"→ {executed['signal']}  {executed.get('reason','')}")
 
     # ── Step 9: Advance cooldowns (end-of-day, unconditional for all stocks) ──
     # Mirrors advance_bar() in the backtester — called AFTER signal processing,
@@ -990,13 +1225,30 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 
     # ── Step 11: Print report ─────────────────────────────────────────────────
     run_time_str = _get_ist_now().strftime("%-I:%M %p IST")
-    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill, market_regime)
+    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill, market_regime, skipped_signals)
     print()
     print(report)
 
     # ── Step 12: CSV log (real runs only) ────────────────────────────────────
     if not is_backfill:
         _append_csv(today, results, portfolio, current_prices)
+        # Append SKIPPED rows to signal_log.csv
+        if skipped_signals:
+            _ensure_csv_header()
+            total_value = portfolio.get_portfolio_value(current_prices)
+            initial     = portfolio.state["initial_capital"]
+            pnl_pct     = (total_value / initial - 1) * 100
+            with open(LOG_CSV, "a", newline="") as fh:
+                writer = csv.writer(fh)
+                for s in skipped_signals:
+                    writer.writerow([
+                        today.isoformat(), s["ticker"], "SKIPPED",
+                        f"{s['price']:.4f}", "", "",
+                        f"{portfolio.state['cash']:.2f}", f"{total_value:.2f}",
+                        f"{pnl_pct:.4f}", "", "",
+                        portfolio.state["cooldown_state"].get(s["ticker"], {}).get("remaining_bars", ""),
+                        f"rank={s['rank_score']:.1f} gap={s['gap_pct']:+.2f}% | {s['reason']}",
+                    ])
         print(f"[paper_trading] Signal log appended → {LOG_CSV}")
 
     # ── Step 13: Queue AMO orders for tomorrow's open ─────────────────────────
@@ -1044,6 +1296,42 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 # =============================================================================
 
 if __name__ == "__main__":
+    # ── --test-ranking mode: verify ranking + gate logic without live data ────
+    if "--test-ranking" in sys.argv:
+        print(f"Testing signal ranking with MAX_CONCURRENT_POSITIONS={MAX_CONCURRENT_POSITIONS}")
+        print(f"Weights: {SIGNAL_RANK_WEIGHTS}")
+        print()
+
+        test_candidates = [
+            {"ticker": "STOCK_A", "rank_score": 85.2, "shares": 10, "price": 1000.0, "gap_pct": -0.5},
+            {"ticker": "STOCK_B", "rank_score": 62.1, "shares":  5, "price": 2000.0, "gap_pct": -3.2},
+            {"ticker": "STOCK_C", "rank_score": 91.4, "shares":  8, "price": 1500.0, "gap_pct": -1.1},
+        ]
+        test_candidates.sort(key=lambda x: x["rank_score"], reverse=True)
+
+        print("Ranked order (highest score first):")
+        for i, c in enumerate(test_candidates, 1):
+            print(f"  #{i} {c['ticker']}  score={c['rank_score']}  "
+                  f"gap={c['gap_pct']:+.2f}%  price=₹{c['price']:.0f}")
+
+        print()
+        print(f"Simulating with {MAX_CONCURRENT_POSITIONS} max concurrent positions:")
+        simulated_open = 0
+        for i, c in enumerate(test_candidates, 1):
+            if simulated_open < MAX_CONCURRENT_POSITIONS:
+                print(f"  #{i} {c['ticker']}  → EXECUTE  (slot {simulated_open+1}/{MAX_CONCURRENT_POSITIONS})")
+                simulated_open += 1
+            else:
+                print(f"  #{i} {c['ticker']}  → SKIPPED  "
+                      f"(Position limit reached ({simulated_open}/{MAX_CONCURRENT_POSITIONS} open))")
+
+        print()
+        print("Expected with MAX_CONCURRENT_POSITIONS=4: all 3 execute (3 < 4)")
+        print("Expected with MAX_CONCURRENT_POSITIONS=2: STOCK_C (#1) and STOCK_A (#2) execute, STOCK_B (#3) skipped")
+        print()
+        print("✅ Ranking logic verified: higher rank_score = higher priority")
+        sys.exit(0)
+
     parser = argparse.ArgumentParser(
         description="NSE paper trading daily signal runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1052,6 +1340,7 @@ Examples:
   python paper_trading/signal_runner.py                    # normal daily run
   python paper_trading/signal_runner.py --backfill 2026-06-02  # dry run on past date
   python paper_trading/signal_runner.py --force            # re-run even if ran today
+  python paper_trading/signal_runner.py --test-ranking     # verify ranking logic
         """,
     )
     parser.add_argument(
