@@ -23,7 +23,7 @@ import os
 import math
 import argparse
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -48,11 +48,16 @@ MAX_CORR_AVG      = 0.60      # max avg correlation with existing universe
 MAX_CORR_PAIR     = 0.70      # max pairwise correlation
 MIN_LIQUIDITY     = 10_000_000  # ₹1 crore avg daily turnover (vol × price, 20-day)
 MAX_PRICE         = 15_000    # skip stocks above ₹15,000/share
-START_DATE        = "2023-01-01"
-END_DATE          = date.today().strftime("%Y-%m-%d")
-SMA_FAST          = 20
-SMA_SLOW          = 50
-DEGRADATION_TRACKER = _ROOT / "screener" / "degradation_tracker.json"
+START_DATE           = "2023-01-01"
+END_DATE             = date.today().strftime("%Y-%m-%d")
+SMA_FAST             = 20
+SMA_SLOW             = 50
+DEGRADATION_TRACKER  = _ROOT / "screener" / "degradation_tracker.json"
+# Must match paper_trading/signal_runner.py LOOKBACK_CALENDAR_DAYS exactly.
+# The signal runner fetches this many calendar days of history when generating
+# entry/exit signals. Using the same window here ensures screener and live
+# system see the same SMA crossover picture.
+SIGNAL_LOOKBACK_DAYS: int = 120
 
 # ── Degradation tracker ───────────────────────────────────────────────────────
 
@@ -113,6 +118,33 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> float:
 def compute_sma_gap(df: pd.DataFrame) -> Optional[float]:
     """SMA20 vs SMA50 gap as % of SMA50. Positive = golden cross."""
     try:
+        close = df["close"]
+        sma20 = float(close.rolling(SMA_FAST).mean().iloc[-1])
+        sma50 = float(close.rolling(SMA_SLOW).mean().iloc[-1])
+        if sma50 == 0:
+            return None
+        return (sma20 - sma50) / sma50 * 100
+    except Exception:
+        return None
+
+
+def compute_sma_gap_short(ticker: str, lookback_days: int = SIGNAL_LOOKBACK_DAYS) -> Optional[float]:
+    """
+    Compute the SMA20/SMA50 gap using only the last `lookback_days` calendar
+    days — the exact same window paper_trading/signal_runner.py uses.
+
+    This is the gap the LIVE TRADING SYSTEM sees when it decides whether to
+    enter a position.  It can differ from compute_sma_gap() which uses the
+    full 2-year screener window and is used only for regime classification.
+
+    Returns None if the fetched data has fewer than 50 bars (SMA50 needs warmup).
+    """
+    end   = date.today().strftime("%Y-%m-%d")
+    start = (date.today() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+    try:
+        df = get_ohlcv(ticker, start, end)
+        if df is None or len(df) < SMA_SLOW:
+            return None
         close = df["close"]
         sma20 = float(close.rolling(SMA_FAST).mean().iloc[-1])
         sma50 = float(close.rolling(SMA_SLOW).mean().iloc[-1])
@@ -243,23 +275,38 @@ def run_screen() -> dict:
         a = compute_adx(df)
         if a <= ADX_THRESHOLD:
             continue
-        gap = compute_sma_gap(df)
+        gap_long  = compute_sma_gap(df)   # 2-year window: used for regime classification
+        gap_short = compute_sma_gap_short(ticker)  # 80-day window: what signal_runner sees
         vol = compute_vol(df)
         avg_corr, max_corr = compute_correlation(ticker, current_universe, data_cache)
 
         if avg_corr > MAX_CORR_AVG or max_corr > MAX_CORR_PAIR:
             continue
 
+        # Divergence: regime confirmed on 2-year data but cross direction differs
+        # on the 80-day window the live trading system will actually use.
+        divergent = (
+            gap_long  is not None and
+            gap_short is not None and
+            (gap_long > 0) != (gap_short > 0)
+        )
+
         trending_strong.append({
             "ticker":    ticker,
             "industry":  nifty500.get(ticker, "Unknown"),
             "hurst":     round(h, 3),
             "adx":       round(a, 1),
-            "gap":       round(gap, 2) if gap is not None else None,
+            # Legacy key kept for backward compatibility with emailer/removes
+            "gap":       round(gap_long, 2) if gap_long is not None else None,
+            "gap_long":  round(gap_long,  2) if gap_long  is not None else None,
+            "gap_short": round(gap_short, 2) if gap_short is not None else None,
+            "divergent": divergent,
             "vol":       round(vol, 1),
             "avg_corr":  round(avg_corr, 3),
             "max_corr":  round(max_corr, 3),
-            "cross":     "GOLDEN" if (gap is not None and gap > 0) else "DEATH",
+            # Cross direction determined by the SHORT window — this is what matters
+            # for ADD/MONITOR categorisation since the system acts on the short window.
+            "cross":     "GOLDEN" if (gap_short is not None and gap_short > 0) else "DEATH",
         })
 
     print(f"[auto_screener] {len(trending_strong)} stocks passed all filters")
@@ -364,18 +411,30 @@ if __name__ == "__main__":
         print("DRY RUN — Report would be emailed to aaravpagarwal07@gmail.com")
         print("="*70)
 
-        print(f"\nADD ({len(results['adds'])}) — death cross, closest to golden flip:")
+        print(f"\nADD ({len(results['adds'])}) — death cross on 80-day window, closest to golden flip:")
         for s in results['adds']:
-            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%  Corr={s['avg_corr']}")
+            divflag = "  ⚠ DIVERGENT (2yr=GOLDEN, 80d=DEATH — verify)" if s.get('divergent') else ""
+            print(
+                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
+                f"  Corr={s['avg_corr']}{divflag}"
+            )
 
-        print(f"\nMONITOR ({len(results.get('monitors', []))}) — already in golden cross (missed entry, wait for next cycle):")
+        print(f"\nMONITOR ({len(results.get('monitors', []))}) — golden cross on 80-day window (missed entry, wait for next cycle):")
         for s in results.get('monitors', []):
-            gap_str = f"+{s['gap']}%" if s['gap'] and s['gap'] > 0 else f"{s['gap']}%"
-            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={gap_str}  Corr={s['avg_corr']}")
+            divflag = "  ⚠ DIVERGENT (2yr=DEATH, 80d=GOLDEN — verify)" if s.get('divergent') else ""
+            print(
+                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                f"  Gap-Short=+{s['gap_short']}%  Gap-Long={'+' if (s['gap_long'] or 0) > 0 else ''}{s['gap_long']}%"
+                f"  Corr={s['avg_corr']}{divflag}"
+            )
 
-        print(f"\nWATCH ({len(results['watches'])}) — death cross, further from flip:")
+        print(f"\nWATCH ({len(results['watches'])}) — death cross on 80-day window, further from flip:")
         for s in results['watches']:
-            print(f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}  Gap={s['gap']}%")
+            print(
+                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
+            )
 
         print(f"\nREMOVE ({len(results['removes'])}):")
         for s in results['removes']:

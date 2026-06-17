@@ -41,19 +41,30 @@ def build_html(results: dict) -> str:
 
     # ── Helper: stock row ─────────────────────────────────────────────────────
     def add_row(s: dict, rank: int) -> str:
-        gap_str   = f"+{s['gap']}%" if s['gap'] and s['gap'] > 0 else f"{s['gap']}%"
-        cross_col = "#27ae60" if s.get("cross") == "GOLDEN" else "#e74c3c"
-        cross_lbl = "🟢 GOLDEN CROSS" if s.get("cross") == "GOLDEN" else "🔴 DEATH CROSS"
+        gap_short   = s.get("gap_short")
+        gap_long    = s.get("gap_long")
+        divergent   = s.get("divergent", False)
+        cross_col   = "#27ae60" if s.get("cross") == "GOLDEN" else "#e74c3c"
+        cross_lbl   = "🟢 GOLDEN (80d)" if s.get("cross") == "GOLDEN" else "🔴 DEATH (80d)"
+        short_str   = f"{gap_short:+.2f}%" if gap_short is not None else "N/A"
+        long_str    = f"{gap_long:+.2f}%"  if gap_long  is not None else "N/A"
+        row_bg      = "background: #fef9e7;" if divergent else ""
+        status_cell = (
+            '<td style="padding: 10px; color: #e67e22; font-weight: bold;">⚠️ DIVERGENT — verify</td>'
+            if divergent else
+            f'<td style="padding: 10px; font-size: 12px; color: {cross_col};">{cross_lbl}</td>'
+        )
         return f"""
-        <tr style="border-bottom: 1px solid #ecf0f1;">
+        <tr style="border-bottom: 1px solid #ecf0f1; {row_bg}">
             <td style="padding: 10px; font-weight: bold; color: #2c3e50;">#{rank} {s['ticker']}</td>
             <td style="padding: 10px; color: #7f8c8d;">{s['industry']}</td>
             <td style="padding: 10px; text-align: center;">{s['hurst']}</td>
             <td style="padding: 10px; text-align: center;">{s['adx']}</td>
-            <td style="padding: 10px; text-align: center; color: {cross_col}; font-weight: bold;">{gap_str}</td>
+            <td style="padding: 10px; text-align: center; color: {cross_col}; font-weight: bold;">{short_str}</td>
+            <td style="padding: 10px; text-align: center; color: #7f8c8d;">{long_str}</td>
             <td style="padding: 10px; text-align: center;">{s['vol']}%</td>
             <td style="padding: 10px; text-align: center;">{s['avg_corr']}</td>
-            <td style="padding: 10px; font-size: 12px; color: {cross_col};">{cross_lbl}</td>
+            {status_cell}
         </tr>"""
 
     def watch_row(s: dict, rank: int) -> str:
@@ -71,17 +82,28 @@ def build_html(results: dict) -> str:
         </tr>"""
 
     def monitor_row(s: dict, rank: int) -> str:
-        gap_str = f"+{s['gap']}%" if s.get("gap") and s["gap"] > 0 else f"{s.get('gap', 0)}%"
+        gap_short  = s.get("gap_short")
+        gap_long   = s.get("gap_long")
+        divergent  = s.get("divergent", False)
+        short_str  = f"{gap_short:+.2f}%" if gap_short is not None else "N/A"
+        long_str   = f"{gap_long:+.2f}%"  if gap_long  is not None else "N/A"
+        row_bg     = "background: #fef9e7;" if divergent else ""
+        status_cell = (
+            '<td style="padding: 10px; color: #e67e22; font-weight: bold;">⚠️ DIVERGENT — verify</td>'
+            if divergent else
+            '<td style="padding: 10px; font-size: 12px; color: #3498db;">👁 IN CROSS (80d)</td>'
+        )
         return f"""
-        <tr style="border-bottom: 1px solid #ecf0f1;">
+        <tr style="border-bottom: 1px solid #ecf0f1; {row_bg}">
             <td style="padding: 10px; font-weight: bold; color: #2c3e50;">#{rank} {s['ticker']}</td>
             <td style="padding: 10px; color: #7f8c8d;">{s['industry']}</td>
             <td style="padding: 10px; text-align: center;">{s['hurst']}</td>
             <td style="padding: 10px; text-align: center;">{s['adx']}</td>
-            <td style="padding: 10px; text-align: center; color: #27ae60; font-weight: bold;">{gap_str}</td>
+            <td style="padding: 10px; text-align: center; color: #27ae60; font-weight: bold;">{short_str}</td>
+            <td style="padding: 10px; text-align: center; color: #7f8c8d;">{long_str}</td>
             <td style="padding: 10px; text-align: center;">{s['vol']}%</td>
             <td style="padding: 10px; text-align: center;">{s['avg_corr']}</td>
-            <td style="padding: 10px; font-size: 12px; color: #3498db;">👁 IN CROSS</td>
+            {status_cell}
         </tr>"""
 
     def remove_row(s: dict) -> str:
@@ -106,7 +128,8 @@ def build_html(results: dict) -> str:
             <th style="padding: 10px; text-align: left;">Industry</th>
             <th style="padding: 10px; text-align: center;">Hurst</th>
             <th style="padding: 10px; text-align: center;">ADX</th>
-            <th style="padding: 10px; text-align: center;">SMA Gap</th>
+            <th style="padding: 10px; text-align: center;">Gap (80d)</th>
+            <th style="padding: 10px; text-align: center;">Gap (2yr)</th>
             <th style="padding: 10px; text-align: center;">Vol%</th>
             <th style="padding: 10px; text-align: center;">Avg Corr</th>
             <th style="padding: 10px; text-align: center;">Status</th>
@@ -118,7 +141,8 @@ def build_html(results: dict) -> str:
             <th style="padding: 10px; text-align: left;">Industry</th>
             <th style="padding: 10px; text-align: center;">Hurst</th>
             <th style="padding: 10px; text-align: center;">ADX</th>
-            <th style="padding: 10px; text-align: center;">SMA Gap</th>
+            <th style="padding: 10px; text-align: center;">Gap (80d)</th>
+            <th style="padding: 10px; text-align: center;">Gap (2yr)</th>
             <th style="padding: 10px; text-align: center;">Vol%</th>
             <th style="padding: 10px; text-align: center;">Avg Corr</th>
             <th style="padding: 10px; text-align: center;">Status</th>
@@ -137,6 +161,15 @@ def build_html(results: dict) -> str:
     # ── ADD section ───────────────────────────────────────────────────────────
     if adds:
         add_rows_html = "".join(add_row(s, i+1) for i, s in enumerate(adds))
+        divergence_note = (
+            """<p style="color: #e67e22; font-size: 13px; background: #fef9e7; padding: 10px;
+                border-left: 3px solid #e67e22; margin-bottom: 20px;">
+                ⚠️ <strong>DIVERGENT stocks</strong>: Regime confirmed on 2-year data but the SMA cross
+                direction differs on the 80-day window the trading system actually uses for entry signals.
+                Verify current price action before adding these stocks to the universe.
+            </p>"""
+            if any(s.get("divergent") for s in adds) else ""
+        )
         add_section = f"""
         <h2 style="color: #27ae60; border-left: 4px solid #27ae60; padding-left: 12px;">
             ✅ ADD Recommendations ({len(adds)})
@@ -145,10 +178,16 @@ def build_html(results: dict) -> str:
             These stocks pass all filters: TRENDING_STRONG regime, H &gt; 0.55, ADX &gt; 25,
             correlation safe, and are currently in or near a golden cross.
         </p>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
             {stock_table_header}
             {add_rows_html}
-        </table>"""
+        </table>
+        <p style="color: #7f8c8d; font-size: 12px; margin-bottom: 30px;">
+            <strong>Gap (80d)</strong> = SMA gap over the last 120 calendar days — what the live trading
+            system sees. &nbsp;
+            <strong>Gap (2yr)</strong> = SMA gap over the full screener window — used for regime classification only.
+        </p>
+        {divergence_note}"""
     else:
         add_section = """
         <h2 style="color: #27ae60; border-left: 4px solid #27ae60; padding-left: 12px;">

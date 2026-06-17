@@ -1,7 +1,7 @@
 {
   "TMPV.NS": {
-    "consecutive_flags": 1,
-    "last_flagged": "2026-06-17"
+    "consecutive_flags": 2,
+    "last_flagged": "2026-06-18"
   },
   "WHIRLPOOL.NS": {
     "consecutive_flags": 0,
@@ -16,8 +16,8 @@
     "last_flagged": null
   },
   "CUMMINSIND.NS": {
-    "consecutive_flags": 1,
-    "last_flagged": "2026-06-17"
+    "consecutive_flags": 2,
+    "last_flagged": "2026-06-18"
   },
   "HCLTECH.NS": {
     "consecutive_flags": 0,
@@ -36,6 +36,18 @@
     "last_flagged": null
   },
   "HEROMOTOCO.NS": {
+    "consecutive_flags": 0,
+    "last_flagged": null
+  },
+  "NEWGEN.NS": {
+    "consecutive_flags": 0,
+    "last_flagged": null
+  },
+  "JKTYRE.NS": {
+    "consecutive_flags": 0,
+    "last_flagged": null
+  },
+  "BSOFT.NS": {
     "consecutive_flags": 0,
     "last_flagged": null
   }
