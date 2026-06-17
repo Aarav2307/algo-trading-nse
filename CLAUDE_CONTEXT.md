@@ -102,3 +102,10 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - 25 bars marginal +1 point but within statistical noise
 - Side finding: BOSCHLTD scored 1/5 — low vol compounder, not SMA crossover candidate, flag for removal
 - Side finding: ANURAS has insufficient history for validation — monitor carefully
+
+### Fix 4: Transaction costs — COMPLETED
+- Old model: brokerage ₹20 + STT 0.025% + slippage 0.05% = ₹45 per ₹1,00,000 round-trip
+- New model: added SEBI fee 0.0001%, NSE exchange 0.00335%, GST 18% on brokerage, stamp duty 0.015% buy-side
+- New total: ₹94.09 per ₹1,00,000 round-trip — old model understated by 2x
+- Walk-forward: 17/20 unchanged — strategy survives realistic costs
+- OOS returns dipped 0.1-0.3pp per stock, within rounding on PASS thresholds
