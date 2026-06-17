@@ -144,3 +144,15 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - SIEMENS consistent 3/5 underperformer across both windows — flag for removal
 - NEWGEN and ANURAS excluded: insufficient history (listed 2018 and post-2019)
 - Conclusion: strategy is genuinely robust across bull and bear market periods
+
+### Fix 9: AMO verification in morning fill check — COMPLETED
+- Problem: paper trading assumed fills based on open price; live trading needs actual Zerodha confirmation
+- Fix: added LIVE_TRADING_MODE flag (default False) to morning_fill_check.py
+- When True: queries kite.orders() for actual order status (COMPLETE/REJECTED/CANCELLED)
+- When False: existing simulation logic unchanged — no paper trading regression
+- Added _check_circuit_breaker(): flags orders where open moved >19% from prev close
+- Added _fetch_live_order_status(): queries Zerodha API with graceful fallback to simulation
+- Added REJECTED/CANCELLED section in morning report requiring manual attention
+- order_id column added to amo_orders.csv via _ensure_csv_header() migration
+- LIVE_TRADING_MODE = False confirmed via assertion test
+- To activate for live trading: set LIVE_TRADING_MODE = True in morning_fill_check.py
