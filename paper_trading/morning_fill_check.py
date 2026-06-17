@@ -177,7 +177,7 @@ def _update_portfolio_fill(
     if order_type == "BUY":
         # Entry price = slippage-adjusted open (mirrors portfolio.buy() internals)
         exec_price  = apply_slippage(fill_price, "buy")
-        cost        = transaction_costs(exec_price, shares, "buy")
+        cost        = transaction_costs(exec_price, shares, "buy")["total"]
         total_spent = shares * exec_price + cost
 
         state["cash"]              -= total_spent
@@ -194,7 +194,7 @@ def _update_portfolio_fill(
             print(f"  WARN: {ticker} has no shares to sell — skipping update.")
             return
         exec_price = apply_slippage(fill_price, "sell")
-        cost       = transaction_costs(exec_price, shares, "sell")
+        cost       = transaction_costs(exec_price, shares, "sell")["total"]
         proceeds   = shares * exec_price - cost
 
         state["cash"] += proceeds

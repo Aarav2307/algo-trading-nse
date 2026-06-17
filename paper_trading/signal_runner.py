@@ -53,7 +53,7 @@ from engine.risk_manager import RiskManager
 from paper_trading.paper_portfolio import PaperPortfolio
 from strategies.sma_crossover import generate_signals
 from engine.order_manager import AMOOrderManager
-from utils.costs import apply_slippage, transaction_costs, BROKERAGE_PER_ORDER
+from utils.costs import apply_slippage, transaction_costs, BROKERAGE_PER_ORDER, format_cost_breakdown
 from utils.market_calendar import is_trading_day, next_trading_day
 
 
@@ -474,10 +474,10 @@ def _process_stock(
 
     # SELL: strategy exit (death cross while in position, no cooldown triggered)
     if today_signal == -1 and pos["shares"] > 0:
-        exec_px = apply_slippage(close_px, "sell")
-        shares  = pos["shares"]
-        net_pnl = portfolio.close_position(ticker, exec_px, today_str, "STRATEGY_SIGNAL")
-        # Strategy exits do NOT trigger cooldown (mirrors backtester behaviour)
+        exec_px  = apply_slippage(close_px, "sell")
+        shares   = pos["shares"]
+        cost_bd  = transaction_costs(exec_px, shares, "sell")
+        net_pnl  = portfolio.close_position(ticker, exec_px, today_str, "STRATEGY_SIGNAL")
         portfolio.record_weekly_signal("SELL")
 
         result.update({
@@ -487,6 +487,7 @@ def _process_stock(
             "exit_reason":  "STRATEGY_SIGNAL",
             "reason":       "Death cross — SMA20 crossed below SMA50",
             "net_pnl":      net_pnl,
+            "cost_breakdown": cost_bd,
             "action_taken": (
                 f"SELL {shares} shares @ ₹{exec_px:.2f} "
                 f"[STRATEGY_SIGNAL]  net P&L ₹{net_pnl:>+,.0f}"
@@ -552,7 +553,7 @@ def _process_stock(
         )
         portfolio.record_weekly_signal("BUY")
 
-        cost = transaction_costs(entry_exec_px, shares, "buy")
+        cost_bd = transaction_costs(entry_exec_px, shares, "buy")
         result.update({
             "signal":          "BUY",
             "exec_price":      entry_exec_px,
@@ -560,9 +561,10 @@ def _process_stock(
             "chandelier_stop": chandelier_for_sizing,
             "reason":          "Golden cross — SMA20 crossed above SMA50",
             "sizing_info":     sz,
+            "cost_breakdown":  cost_bd,
             "action_taken": (
                 f"BUY  {shares} shares @ ₹{entry_exec_px:.2f} | "
-                f"cost ₹{cost:.0f} | "
+                f"cost ₹{cost_bd['total']:.0f} | "
                 f"risk ₹{sz.get('risk_amount', 0):,.0f} "
                 f"({sz.get('stop_source', '?')}) [{sz.get('binding', '?')}]"
             ),
@@ -675,11 +677,13 @@ def _format_report(
         ln()
 
     # ── Actions taken ─────────────────────────────────────────────────────────
-    actions = [r["action_taken"] for r in results.values() if r.get("action_taken")]
-    if actions:
+    action_results = [r for r in results.values() if r.get("action_taken")]
+    if action_results:
         ln("  ACTIONS TAKEN")
-        for act in actions:
-            ln(f"  ✓ {act}")
+        for r in action_results:
+            ln(f"  ✓ {r['action_taken']}")
+            if r.get("cost_breakdown"):
+                ln(f"    Cost breakdown: {format_cost_breakdown(r['cost_breakdown'])}")
         ln()
     else:
         ln("  ACTIONS TAKEN: none (all HOLD)")

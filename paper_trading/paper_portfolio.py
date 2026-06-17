@@ -152,7 +152,7 @@ class PaperPortfolio:
             chandelier_stop: initial Chandelier stop level (None if ATR data insufficient)
             entry_high:      today bar's high — seeds the highest_high tracker
         """
-        cost        = transaction_costs(exec_price, shares, "buy")
+        cost        = transaction_costs(exec_price, shares, "buy")["total"]
         total_spent = shares * exec_price + cost
 
         if total_spent > self.state["cash"]:
@@ -195,7 +195,7 @@ class PaperPortfolio:
         shares     = pos["shares"]
         entry_px   = pos["entry_price"]
 
-        cost       = transaction_costs(exec_price, shares, "sell")
+        cost       = transaction_costs(exec_price, shares, "sell")["total"]
         proceeds   = shares * exec_price - cost
         self.state["cash"] += proceeds
 

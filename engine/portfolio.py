@@ -59,7 +59,7 @@ class Portfolio:
         if shares == 0:
             return
 
-        cost        = transaction_costs(exec_price, shares, "buy")
+        cost        = transaction_costs(exec_price, shares, "buy")["total"]
         total_spent = shares * exec_price + cost
 
         # Safety guard: position sizer subtracts brokerage, so this should
@@ -68,7 +68,7 @@ class Portfolio:
             shares = max(0, int((self.cash - cost) / exec_price))
             if shares == 0:
                 return
-            cost        = transaction_costs(exec_price, shares, "buy")
+            cost        = transaction_costs(exec_price, shares, "buy")["total"]
             total_spent = shares * exec_price + cost
 
         self.cash        -= total_spent
@@ -97,7 +97,7 @@ class Portfolio:
             return  # nothing to sell
 
         exec_price = apply_slippage(close_price, "sell")
-        cost = transaction_costs(exec_price, self.shares_held, "sell")
+        cost = transaction_costs(exec_price, self.shares_held, "sell")["total"]
         proceeds = self.shares_held * exec_price - cost
 
         self.cash += proceeds
