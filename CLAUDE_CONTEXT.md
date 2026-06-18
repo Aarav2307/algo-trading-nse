@@ -156,3 +156,16 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - order_id column added to amo_orders.csv via _ensure_csv_header() migration
 - LIVE_TRADING_MODE = False confirmed via assertion test
 - To activate for live trading: set LIVE_TRADING_MODE = True in morning_fill_check.py
+
+### Fix 12: Degradation tracker integrity — COMPLETED
+- Problem: tracker had no protection against corruption, server restarts, stale entries, or non-consecutive flags
+- Fix: full integrity system with 4 protections:
+  1. Atomic writes (write to .tmp then rename — no partial writes)
+  2. Backup chain (degradation_tracker.backup.json always has previous good version)
+  3. Corrupt file recovery (saves .corrupt_DATE.json backup, starts fresh)
+  4. Schema v1→v2 migration (adds last_screen_date, flag_history fields)
+- Stale entry cleanup: stocks removed from universe auto-deleted from tracker
+- Consecutive gap check: if last screen > 5 days ago, reset counter (not truly consecutive)
+- Open position guard: never recommends REMOVE if shares > 0
+- All 4 integrity tests passed: empty file, corrupt file, save/reload, backup existence
+- v1→v2 migration ran automatically on first dry-run: 13 entries migrated, BOSCHLTD cleaned up
