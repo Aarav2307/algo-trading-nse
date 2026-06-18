@@ -174,3 +174,12 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - TMPV: already exited via Chandelier stop Jun 17, 0 shares at removal
 - CUMMINSIND: never generated entry signal after being added, 0 shares at removal
 - Universe now 10 stocks: WHIRLPOOL, SIEMENS, BAJAJ-AUTO, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
+
+### Minimum Absolute OOS Return Metric — COMPLETED (Jun 18)
+- Problem: strategy losing money could pass validation if OOS lost less than IS
+- Fix: added 6th walk-forward metric — OOS total return must be ≥+4% cumulative to PASS
+- Updated _pass() with "min_abs_oos_ret" case, row() calls in both WF functions, METRICS_KEYS list
+- Max score updated from 20→24 (4 stocks × 6 metrics), validation threshold 17/24
+- Unit tests confirmed: SIEMENS +0.1% FAIL, WHIRLPOOL +3.5% FAIL, TMPV +9.2% PASS, BAJAJ-AUTO +13.5% PASS
+- New overall score: 19/24 (79%) — SYSTEM VALIDATED
+- WHIRLPOOL and SIEMENS correctly penalised — confirms existing flag for future removal
