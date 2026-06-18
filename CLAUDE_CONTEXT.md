@@ -169,3 +169,9 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - Open position guard: never recommends REMOVE if shares > 0
 - All 4 integrity tests passed: empty file, corrupt file, save/reload, backup existence
 - v1→v2 migration ran automatically on first dry-run: 13 entries migrated, BOSCHLTD cleaned up
+
+### Fix 11: Remove TMPV and CUMMINSIND — COMPLETED
+- Both flagged by degradation tracker for 2 consecutive screens (H < 0.52)
+- TMPV: already exited via Chandelier stop Jun 17, 0 shares at removal
+- CUMMINSIND: never generated entry signal after being added, 0 shares at removal
+- Universe now 10 stocks: WHIRLPOOL, SIEMENS, BAJAJ-AUTO, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
