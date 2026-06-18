@@ -126,10 +126,40 @@ SENSITIVITY_UNIVERSE    = [                   # all 10 current trading universe 
 
 
 # =============================================================================
+# Parameter helpers
+# =============================================================================
+
+def _merge_params(base: dict, overrides: dict) -> dict:
+    """
+    Merge a flat override dict into a deep copy of the nested PARAMS structure.
+
+    Flat override keys supported:
+        sma_fast, sma_slow                          → top-level
+        atr_period, atr_multiplier, hard_stop_pct,
+        max_bars_held                               → risk_management
+        risk_per_trade                              → position_sizing.risk_per_trade_pct
+        max_position                                → position_sizing.max_position_pct
+    """
+    import copy
+    p = copy.deepcopy(base)
+    for key in ("sma_fast", "sma_slow", "initial_capital"):
+        if key in overrides:
+            p[key] = overrides[key]
+    for key in ("atr_period", "atr_multiplier", "hard_stop_pct", "max_bars_held"):
+        if key in overrides:
+            p["risk_management"][key] = overrides[key]
+    if "risk_per_trade" in overrides:
+        p["position_sizing"]["risk_per_trade_pct"] = overrides["risk_per_trade"]
+    if "max_position" in overrides:
+        p["position_sizing"]["max_position_pct"] = overrides["max_position"]
+    return p
+
+
+# =============================================================================
 # Single-window backtest
 # =============================================================================
 
-def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None) -> dict:
+def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None, params: dict = None) -> dict:
     """
     Fetch data and run one full backtest for ticker in [start, end).
     Kite_fetcher prints progress to stdout (intentional — shows loading).
@@ -158,13 +188,15 @@ def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None) -
     if n_bars < MIN_BARS:
         return {"error": f"INSUFFICIENT DATA — {n_bars} bars (need ≥ {MIN_BARS})"}
 
-    signals      = generate_signals(df, PARAMS["sma_fast"], PARAMS["sma_slow"])
-    risk_manager = RiskManager(PARAMS["risk_management"])
-    cooldown     = CooldownTracker(PARAMS["cooldown"])
-    sizer        = PositionSizer(PARAMS["position_sizing"])
-    portfolio    = Portfolio(PARAMS["initial_capital"])
+    p = _merge_params(PARAMS, params) if params is not None else PARAMS
 
-    regime_active = PARAMS.get("nifty_regime_filter", False)
+    signals      = generate_signals(df, p["sma_fast"], p["sma_slow"])
+    risk_manager = RiskManager(p["risk_management"])
+    cooldown     = CooldownTracker(p["cooldown"])
+    sizer        = PositionSizer(p["position_sizing"])
+    portfolio    = Portfolio(p["initial_capital"])
+
+    regime_active = p.get("nifty_regime_filter", False)
 
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -329,6 +361,9 @@ def _pass(name: str, is_m: dict, oos_m: dict) -> bool:
     if name == "expectancy":
         return oos_m["expectancy"] > 0
 
+    if name == "min_abs_oos_ret":
+        return oos_m["total_ret"] >= 4.0
+
     return False
 
 
@@ -424,6 +459,9 @@ def _print_stock(
     row("Expectancy/trade", "expectancy",
         lambda m: f"₹{m['expectancy']:>+,.0f}")
 
+    row("Min OOS return", "min_abs_oos_ret",
+        lambda m: f"{m['total_ret']:>+.1f}%")
+
     emit("  " + "─" * (C1 + C2 + C3 + C4))
 
     # ── Supplementary (unscored) ─────────────────────────────────────────────
@@ -470,17 +508,17 @@ def _print_verdict(all_scores: list[list[bool]], lines: list):
     emit("  OVERALL SYSTEM VERDICT")
     emit("=" * 80)
     emit(f"  Total score: {n_pass}/{n_total} PASS  ({pct:.0f}%)")
-    emit(f"  (Max possible: 20 = 4 stocks × 5 metrics; "
+    emit(f"  (Max possible: 24 = 4 stocks × 6 metrics; "
          f"stocks with data errors are excluded)")
     emit()
 
-    if n_pass >= 14:
+    if n_pass >= 17:
         verdict = "SYSTEM VALIDATED"
         detail  = (
             "Parameters are robust across both windows. "
             "Safe to proceed to paper trading."
         )
-    elif n_pass >= 10:
+    elif n_pass >= 12:
         verdict = "PARTIALLY VALIDATED"
         detail  = (
             "System shows real edge but has weaknesses. "
@@ -496,7 +534,7 @@ def _print_verdict(all_scores: list[list[bool]], lines: list):
     emit(f"  Verdict:     {verdict}")
     emit(f"  Implication: {detail}")
     emit()
-    emit("  Thresholds: ≥14/20 → VALIDATED | 10-13 → PARTIAL | <10 → NOT VALIDATED")
+    emit("  Thresholds: ≥17/24 → VALIDATED | 12-16 → PARTIAL | <12 → NOT VALIDATED")
 
 
 def _degradation_analysis(
@@ -573,7 +611,7 @@ def _degradation_analysis(
 
     n_pass = sum(
         _pass(m, is_m, oos_m)
-        for m in ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy"]
+        for m in ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
     )
 
     emit(f"\n  {ticker}:")
@@ -897,7 +935,7 @@ def _cooldown_sensitivity(lines: list) -> None:
     # ── Step 3: Run all backtests ─────────────────────────────────────────────
     # Structure: cd_results[cooldown] = {n_pass, n_total, n_stocks,
     #                                    total_trades, avg_return, per_stock}
-    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy"]
+    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
     cd_results: dict[int, dict] = {}
 
     for cd in SENSITIVITY_COOLDOWNS:
@@ -1069,7 +1107,9 @@ def run_walk_forward(
     stocks: list[str] | None = None,
     cooldown_bars: int | None = None,
     nifty_regime_filter: bool | None = None,
+    params: dict = None,
 ) -> dict:
+    p = _merge_params(PARAMS, params) if params is not None else PARAMS
     _stocks = stocks if stocks is not None else STOCKS
     lines: list[str] = []
 
@@ -1086,12 +1126,12 @@ def run_walk_forward(
     emit(f"  Stocks:      {', '.join(_stocks)}")
     emit(f"  In-sample:   {WINDOWS['in_sample'][0]} → {WINDOWS['in_sample'][1]} (excl)")
     emit(f"  OOS:         {WINDOWS['out_of_sample'][0]} → {WINDOWS['out_of_sample'][1]} (excl)")
-    emit(f"  Strategy:    SMA {PARAMS['sma_fast']}/{PARAMS['sma_slow']} crossover")
+    emit(f"  Strategy:    SMA {p['sma_fast']}/{p['sma_slow']} crossover")
     emit(f"  Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum")
     emit(f"  Cooldown:    15-bar after RM exits")
     emit(f"  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position")
-    emit(f"  Capital:     ₹{PARAMS['initial_capital']:,} per window (independent runs)")
-    regime_flag = nifty_regime_filter if nifty_regime_filter is not None else PARAMS.get("nifty_regime_filter", False)
+    emit(f"  Capital:     ₹{p['initial_capital']:,} per window (independent runs)")
+    regime_flag = nifty_regime_filter if nifty_regime_filter is not None else p.get("nifty_regime_filter", False)
     emit(f"  NIFTY Filter: {'ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)' if regime_flag else 'DISABLED'}")
     emit()
 
@@ -1115,10 +1155,10 @@ def run_walk_forward(
 
     for ticker in _stocks:
         print(f"\n[walk_forward] ── {ticker} in-sample ──────────────────────────────")
-        is_r = _run_one(ticker, is_start, is_end, nifty_df=nifty_is)
+        is_r = _run_one(ticker, is_start, is_end, nifty_df=nifty_is, params=params)
 
         print(f"\n[walk_forward] ── {ticker} out-of-sample ──────────────────────────")
-        oos_r = _run_one(ticker, oos_start, oos_end, nifty_df=nifty_oos)
+        oos_r = _run_one(ticker, oos_start, oos_end, nifty_df=nifty_oos, params=params)
 
         all_results[ticker] = {"is": is_r, "oos": oos_r}
         all_verbose[ticker] = {
@@ -1163,7 +1203,7 @@ def run_walk_forward(
     _save_results(lines, all_verbose)
 
     # ── Build results dict for comparison ────────────────────────────────────
-    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy"]
+    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
     results: dict = {}
     for ticker in _stocks:
         is_r  = all_results[ticker]["is"]
@@ -1186,6 +1226,7 @@ def run_extended_walk_forward(
     stocks: list[str],
     cooldown_bars: int = 15,
     nifty_regime_filter: bool = True,
+    params: dict = None,
 ) -> dict:
     """
     Extended walk-forward validation using 2015-2019 IS and 2020-2023 OOS windows.
@@ -1197,6 +1238,7 @@ def run_extended_walk_forward(
 
     Returns dict with same structure as run_walk_forward() for direct comparison.
     """
+    p = _merge_params(PARAMS, params) if params is not None else PARAMS
     lines: list[str] = []
 
     def emit(text: str = ""):
@@ -1214,11 +1256,11 @@ def run_extended_walk_forward(
     emit(f"               (2015-16 correction, 2018 IL&FS crisis)")
     emit(f"  OOS:         {EXT_OOS_START} → {EXT_OOS_END}")
     emit(f"               (COVID crash Feb-Apr 2020, 2022 rate hike selloff)")
-    emit(f"  Strategy:    SMA {PARAMS['sma_fast']}/{PARAMS['sma_slow']} crossover")
+    emit(f"  Strategy:    SMA {p['sma_fast']}/{p['sma_slow']} crossover")
     emit(f"  Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum")
     emit(f"  Cooldown:    {cooldown_bars}-bar after RM exits")
     emit(f"  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position")
-    emit(f"  Capital:     ₹{PARAMS['initial_capital']:,} per window (independent runs)")
+    emit(f"  Capital:     ₹{p['initial_capital']:,} per window (independent runs)")
     emit(f"  NIFTY Filter: {'ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)' if nifty_regime_filter else 'DISABLED'}")
     emit()
 
@@ -1234,14 +1276,14 @@ def run_extended_walk_forward(
 
     for ticker in stocks:
         print(f"\n[ext_walk_forward] ── {ticker} in-sample ──────────────────────────────")
-        is_r = _run_one(ticker, EXT_IS_START, EXT_IS_END, nifty_df=nifty_is)
+        is_r = _run_one(ticker, EXT_IS_START, EXT_IS_END, nifty_df=nifty_is, params=params)
 
         print(f"\n[ext_walk_forward] ── {ticker} out-of-sample ──────────────────────────")
-        oos_r = _run_one(ticker, EXT_OOS_START, EXT_OOS_END, nifty_df=nifty_oos)
+        oos_r = _run_one(ticker, EXT_OOS_START, EXT_OOS_END, nifty_df=nifty_oos, params=params)
 
         all_results[ticker] = {"is": is_r, "oos": oos_r}
 
-    # ── Per-stock scoring — same 5 metrics, same PASS/FAIL thresholds as run_walk_forward ──
+    # ── Per-stock scoring — same 6 metrics, same PASS/FAIL thresholds as run_walk_forward ──
     C1, C2, C3, C4 = 24, 26, 28, 12
     all_scores: list[list[bool]] = []
     results: dict = {}
@@ -1306,6 +1348,9 @@ def run_extended_walk_forward(
         row("Expectancy/trade", "expectancy",
             lambda m: f"₹{m['expectancy']:>+,.0f}")
 
+        row("Min OOS return", "min_abs_oos_ret",
+            lambda m: f"{m['total_ret']:>+.1f}%")
+
         emit("  " + "─" * (C1 + C2 + C3 + C4))
 
         is_wr  = f"{is_m['win_rate']:.1f}%"
@@ -1329,6 +1374,7 @@ def run_extended_walk_forward(
         results[ticker] = {
             "score":      int(n_pass),
             "oos_return": float(oos_m["total_ret"]),
+            "oos_trades": int(oos_m["n_trades"]),
         }
 
     # ── Overall verdict — same thresholds as run_walk_forward ────────────────
@@ -1368,7 +1414,7 @@ def print_comparison_report(
     print("-"*75)
     orig_total = sum(r.get("score", 0) for r in original_results.values() if isinstance(r.get("score"), int))
     ext_total  = sum(r.get("score", 0) for r in extended_results.values() if isinstance(r.get("score"), int))
-    max_score  = len(stocks) * 5
+    max_score  = len(stocks) * 6
 
     print(f"{'TOTAL':<20} {f'{orig_total}/{max_score}':^10} {'':^15} {f'{ext_total}/{max_score}':^10}")
     print(f"{'PCT':<20} {f'{orig_total/max_score*100:.0f}%':^10} {'':^15} {f'{ext_total/max_score*100:.0f}%':^10}")
@@ -1385,6 +1431,193 @@ def print_comparison_report(
     else:
         print(f"\n❌ EXTENDED validation SIGNIFICANTLY LOWER ({ext_total}/{max_score} vs {orig_total}/{max_score})")
         print("   Strategy may be overfit to bull market conditions. Review before going live.")
+
+
+def run_parameter_stability_test(
+    stocks: list[str],
+    cooldown_bars: int = 15,
+    nifty_regime_filter: bool = True,
+) -> list[dict]:
+    """
+    Test strategy robustness across a grid of SMA and ATR multiplier parameters.
+
+    Tests 9 combinations:
+        SMA pairs:       (15,40), (20,50), (25,60)
+        ATR multipliers: 2.5, 3.0, 3.5
+
+    Each combination runs the extended walk-forward (2015-19 IS / 2020-23 OOS)
+    on all qualifying stocks to use the more conservative stress-test window.
+
+    Returns list of dicts, one per combination, sorted by total score descending.
+    """
+    import copy
+
+    # Base PARAMS — start from the validated config
+    BASE_PARAMS = {
+        "sma_fast":       20,
+        "sma_slow":       50,
+        "atr_period":     22,
+        "atr_multiplier": 3.0,
+        "hard_stop_pct":  -0.20,
+        "max_bars_held":  60,
+        "risk_per_trade": 0.015,
+        "max_position":   0.20,
+    }
+
+    SMA_PAIRS  = [(15, 40), (20, 50), (25, 60)]
+    ATR_MULTIS = [2.5, 3.0, 3.5]
+
+    results = []
+    total_combinations = len(SMA_PAIRS) * len(ATR_MULTIS)
+    current = 0
+
+    for sma_fast, sma_slow in SMA_PAIRS:
+        for atr_multi in ATR_MULTIS:
+            current += 1
+            test_params = copy.deepcopy(BASE_PARAMS)
+            test_params["sma_fast"]       = sma_fast
+            test_params["sma_slow"]       = sma_slow
+            test_params["atr_multiplier"] = atr_multi
+
+            label       = f"SMA({sma_fast}/{sma_slow}) ATR×{atr_multi}"
+            is_baseline = (sma_fast == 20 and sma_slow == 50 and atr_multi == 3.0)
+
+            print(f"\n[{current}/{total_combinations}] Testing {label}{'  ← BASELINE' if is_baseline else ''}...")
+
+            try:
+                wf_results = run_extended_walk_forward(
+                    stocks=stocks,
+                    cooldown_bars=cooldown_bars,
+                    nifty_regime_filter=nifty_regime_filter,
+                    params=test_params,
+                )
+
+                # Compute total score and average OOS return
+                total_score = sum(
+                    r.get("score", 0) for r in wf_results.values()
+                    if isinstance(r.get("score"), int)
+                )
+                max_score = len(stocks) * 6
+
+                oos_returns = [
+                    r.get("oos_return", 0) for r in wf_results.values()
+                    if isinstance(r.get("oos_return"), float)
+                ]
+                avg_oos_return = sum(oos_returns) / len(oos_returns) if oos_returns else 0.0
+
+                # Count trades across all stocks
+                total_trades = sum(
+                    r.get("oos_trades", 0) for r in wf_results.values()
+                    if isinstance(r.get("oos_trades"), int)
+                )
+
+                results.append({
+                    "label":          label,
+                    "sma_fast":       sma_fast,
+                    "sma_slow":       sma_slow,
+                    "atr_multiplier": atr_multi,
+                    "total_score":    total_score,
+                    "max_score":      max_score,
+                    "pct":            round(total_score / max_score * 100, 1),
+                    "avg_oos_return": round(avg_oos_return, 2),
+                    "total_trades":   total_trades,
+                    "is_baseline":    is_baseline,
+                    "per_stock":      {
+                        ticker: {
+                            "score":      r.get("score", 0),
+                            "oos_return": r.get("oos_return", 0),
+                        }
+                        for ticker, r in wf_results.items()
+                    }
+                })
+
+                print(f"  Score: {total_score}/{max_score} ({total_score/max_score*100:.0f}%)  Avg OOS: {avg_oos_return:+.1f}%  Trades: {total_trades}")
+
+            except Exception as e:
+                print(f"  ERROR: {e}")
+                results.append({
+                    "label":          label,
+                    "sma_fast":       sma_fast,
+                    "sma_slow":       sma_slow,
+                    "atr_multiplier": atr_multi,
+                    "total_score":    0,
+                    "max_score":      len(stocks) * 6,
+                    "pct":            0.0,
+                    "avg_oos_return": 0.0,
+                    "total_trades":   0,
+                    "is_baseline":    is_baseline,
+                    "per_stock":      {},
+                    "error":          str(e),
+                })
+
+    # Sort by total score descending, then avg OOS return descending
+    results.sort(key=lambda x: (x["total_score"], x["avg_oos_return"]), reverse=True)
+    return results
+
+
+def print_parameter_stability_report(results: list[dict], stocks: list[str]) -> None:
+    """Print formatted parameter stability comparison table."""
+
+    max_score = results[0]["max_score"] if results else len(stocks) * 6
+
+    print("\n" + "="*85)
+    print("PARAMETER STABILITY TEST — SMA pairs × ATR multipliers (Extended WF: 2015-19 IS / 2020-23 OOS)")
+    print("="*85)
+    print(f"{'Config':<28} {'Score':^10} {'%':^8} {'Avg OOS':^12} {'Trades':^8} {'Note'}")
+    print("-"*85)
+
+    for r in results:
+        baseline_marker = " ← CURRENT" if r["is_baseline"] else ""
+        error_marker    = " ERROR" if "error" in r else ""
+        print(f"{r['label']:<28} {r['total_score']:^4}/{r['max_score']:<4} {r['pct']:^8.0f}% {r['avg_oos_return']:^+12.1f}% {r['total_trades']:^8}{baseline_marker}{error_marker}")
+
+    print("="*85)
+
+    # Find baseline result
+    baseline = next((r for r in results if r["is_baseline"]), None)
+    best     = results[0] if results else None
+    worst    = results[-1] if results else None
+
+    if baseline and best and worst:
+        score_range = best["total_score"] - worst["total_score"]
+        print(f"\nBaseline SMA(20/50) ATR×3.0: {baseline['total_score']}/{baseline['max_score']} ({baseline['pct']:.0f}%)")
+        print(f"Best config:  {best['label']} — {best['total_score']}/{best['max_score']} ({best['pct']:.0f}%)")
+        print(f"Worst config: {worst['label']} — {worst['total_score']}/{worst['max_score']} ({worst['pct']:.0f}%)")
+        print(f"Score range across all 9 configs: {score_range} points")
+
+        print("\nVERDICT:")
+        if score_range <= 4:
+            print(f"✅ ROBUST — score range of {score_range} points across all configs is tight.")
+            print("   Strategy edge is not parameter-dependent. Safe to deploy.")
+        elif score_range <= 8:
+            print(f"⚠️  MODERATE — score range of {score_range} points. Some parameter sensitivity.")
+            print("   Current config is acceptable but monitor for regime changes.")
+        else:
+            print(f"❌ FRAGILE — score range of {score_range} points. High parameter sensitivity.")
+            print("   Strategy may be overfit to SMA(20/50). Review before going live.")
+
+        # Check if baseline is near the top
+        baseline_rank = next((i+1 for i, r in enumerate(results) if r["is_baseline"]), None)
+        if baseline_rank:
+            print(f"\nBaseline ranks #{baseline_rank} of {len(results)} configs tested.")
+            if baseline_rank <= 3:
+                print("✅ Baseline is in top 3 — not cherry-picked from a sharp peak.")
+            else:
+                print("⚠️  Better configs exist — consider whether to update parameters.")
+
+    # Per-stock breakdown for baseline vs best
+    if baseline and best and not baseline["is_baseline"] == best["is_baseline"]:
+        print(f"\nPer-stock comparison: Baseline vs Best ({best['label']})")
+        print(f"{'Stock':<20} {'Baseline Score':^15} {'Best Score':^15} {'Baseline OOS':^15} {'Best OOS':^15}")
+        print("-"*80)
+        for ticker in stocks:
+            b_score    = baseline["per_stock"].get(ticker, {}).get("score", "N/A")
+            best_score = best["per_stock"].get(ticker, {}).get("score", "N/A")
+            b_oos      = baseline["per_stock"].get(ticker, {}).get("oos_return", 0)
+            best_oos   = best["per_stock"].get(ticker, {}).get("oos_return", 0)
+            b_oos_str    = f"{b_oos:+.1f}%" if isinstance(b_oos, float) else "N/A"
+            best_oos_str = f"{best_oos:+.1f}%" if isinstance(best_oos, float) else "N/A"
+            print(f"{ticker:<20} {str(b_score):^15} {str(best_score):^15} {b_oos_str:^15} {best_oos_str:^15}")
 
 
 if __name__ == "__main__":
@@ -1425,3 +1658,17 @@ if __name__ == "__main__":
     print("\n" + "=" * 75)
     print("COMPARISON TABLE 2 — All 10 stocks (original 2018-26 where available, extended 2015-23)")
     print_comparison_report(original_results, extended_results_10, STOCKS_EXTENDED)
+
+    # ── Parameter stability test ───────────────────────────────────────────────
+    print("\n" + "="*85)
+    print("Running parameter stability test (9 configs × extended walk-forward)...")
+    print("This will take several minutes — 9 full walk-forward runs.")
+    print("="*85)
+
+    stability_results = run_parameter_stability_test(
+        stocks=STOCKS_EXTENDED,  # use all 10 qualifying stocks
+        cooldown_bars=COOLDOWN,
+        nifty_regime_filter=NIFTY_FILTER,
+    )
+
+    print_parameter_stability_report(stability_results, STOCKS_EXTENDED)

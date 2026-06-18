@@ -1,4 +1,4 @@
-Walk-Forward Validation — generated 2026-06-18 04:55:59
+Walk-Forward Validation — generated 2026-06-18 14:01:16
 
 
 ================================================================================
@@ -30,12 +30,13 @@ Walk-Forward Validation — generated 2026-06-18 04:55:59
   Max drawdown                      -8.2%                      -6.3%                  [PASS]
   Payoff ratio                      2.48:1                     2.46:1                 [PASS]
   Expectancy/trade                  ₹+581                     ₹+1,047                 [PASS]
+  Min OOS return                    +10.0%                     +9.2%                  [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
   Trades                              18                         9              
   Win rate                          44.4%                      55.6%            
   Ret/DD score                       1.22                       1.44            
 
-  Score: 4/5 PASS
+  Score: 5/6 PASS
 
 
 ================================================================================
@@ -51,12 +52,13 @@ Walk-Forward Validation — generated 2026-06-18 04:55:59
   Max drawdown                      -3.9%                      -3.2%                  [PASS]
   Payoff ratio                      1.63:1                     1.94:1                 [PASS]
   Expectancy/trade                   ₹-9                       ₹+320                  [PASS]
+  Min OOS return                    -0.6%                      +3.5%                  [FAIL]
   ──────────────────────────────────────────────────────────────────────────────────────────
   Trades                              16                         12             
   Win rate                          37.5%                      50.0%            
   Ret/DD score                      -0.15                       1.09            
 
-  Score: 5/5 PASS
+  Score: 5/6 PASS
 
 
 ================================================================================
@@ -72,12 +74,13 @@ Walk-Forward Validation — generated 2026-06-18 04:55:59
   Max drawdown                      -5.4%                      -7.3%                  [PASS]
   Payoff ratio                      0.96:1                     1.89:1                 [PASS]
   Expectancy/trade                   ₹+26                      ₹+121                  [PASS]
+  Min OOS return                    -0.0%                      +1.2%                  [FAIL]
   ──────────────────────────────────────────────────────────────────────────────────────────
   Trades                              19                         13             
   Win rate                          52.6%                      38.5%            
   Ret/DD score                      -0.00                       0.17            
 
-  Score: 4/5 PASS
+  Score: 4/6 PASS
 
 
 ================================================================================
@@ -93,24 +96,25 @@ Walk-Forward Validation — generated 2026-06-18 04:55:59
   Max drawdown                      -6.0%                      -2.1%                  [PASS]
   Payoff ratio                      2.34:1                     5.00:1                 [PASS]
   Expectancy/trade                   ₹+84                     ₹+1,197                 [PASS]
+  Min OOS return                    +1.0%                      +13.5%                 [PASS]
   ──────────────────────────────────────────────────────────────────────────────────────────
   Trades                              18                         11             
   Win rate                          33.3%                      72.7%            
   Ret/DD score                       0.17                       6.55            
 
-  Score: 4/5 PASS
+  Score: 5/6 PASS
 
 
 ================================================================================
   OVERALL SYSTEM VERDICT
 ================================================================================
-  Total score: 17/20 PASS  (85%)
-  (Max possible: 20 = 4 stocks × 5 metrics; stocks with data errors are excluded)
+  Total score: 19/24 PASS  (79%)
+  (Max possible: 24 = 4 stocks × 6 metrics; stocks with data errors are excluded)
 
   Verdict:     SYSTEM VALIDATED
   Implication: Parameters are robust across both windows. Safe to proceed to paper trading.
 
-  Thresholds: ≥14/20 → VALIDATED | 10-13 → PARTIAL | <10 → NOT VALIDATED
+  Thresholds: ≥17/24 → VALIDATED | 12-16 → PARTIAL | <12 → NOT VALIDATED
 
 ================================================================================
   DEGRADATION ANALYSIS
@@ -177,25 +181,25 @@ Walk-Forward Validation — generated 2026-06-18 04:55:59
 
         Cooldown      Stocks            WF Score        OOS Trades      Avg Trade Return
   ────────────────────────────────────────────────────────────────────────────────────────
-         10 bars           9        34/45  (76%)                92              +4.81%
-         15 bars           9        33/45  (73%)                84              +4.39%  ← baseline
-         20 bars           9        31/45  (69%)                82              +4.25%
-         25 bars           9        34/45  (76%)                77              +4.75%
+         10 bars           9        41/54  (76%)                92              +4.81%
+         15 bars           9        39/54  (72%)                84              +4.39%  ← baseline
+         20 bars           9        37/54  (69%)                82              +4.25%
+         25 bars           9        39/54  (72%)                77              +4.75%
 
   ────────────────────────────────────────────────────────────────────────────────────────
   Per-stock detail at baseline cooldown (15 bars):
 
   Stock                      IS Return    OOS Return     Score     IS Trades      OOS Trades
   ──────────────────────────────────────────────────────────────────────────────────────────────
-  TMPV.NS                        +10.0%          +9.2%       4/5            18               9
+  TMPV.NS                        +10.0%          +9.2%       5/5            18               9
   WHIRLPOOL.NS                    -0.6%          +3.5%       5/5            16              12
   SIEMENS.NS                      -0.0%          +1.2%       4/5            19              13
-  BAJAJ-AUTO.NS                   +1.0%         +13.5%       4/5            18              11
-  CUMMINSIND.NS                   -0.2%         +13.5%       4/5            16               9
-  HCLTECH.NS                      +0.2%          +4.9%       3/5            21               8
+  BAJAJ-AUTO.NS                   +1.0%         +13.5%       5/5            18              11
+  CUMMINSIND.NS                   -0.2%         +13.5%       5/5            16               9
+  HCLTECH.NS                      +0.2%          +4.9%       4/5            21               8
   BOSCHLTD.NS                     +3.1%          -2.3%       1/5            11               3
-  COLPAL.NS                       -3.4%         +10.4%       4/5            18               9
-  HEROMOTOCO.NS                   -7.5%         +10.9%       4/5            16              10
+  COLPAL.NS                       -3.4%         +10.4%       5/5            18               9
+  HEROMOTOCO.NS                   -7.5%         +10.9%       5/5            16              10
 
   SKIPPED STOCKS:
   ✗  ANURAS.NS              — total 1184 bars < 1250
