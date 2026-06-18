@@ -1,39 +1,35 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-06-16
+Last updated: 2026-06-18
 
 ## Current Trading Universe (10 stocks)
-TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
+WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
 
-## Universe Addition History
+## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
-- Added Jun 12: CUMMINSIND (H=0.559, ADX=27.3), HCLTECH (H=0.614, ADX=26.3)
-- Added Jun 16: BOSCHLTD (H=0.576, fresh golden cross), COLPAL (H=0.569, fresh golden cross), ANURAS (H=0.608, fresh golden cross), HEROMOTOCO (H=0.572, death cross -2.84%)
+- Added Jun 12: CUMMINSIND, HCLTECH
+- Added Jun 16: BOSCHLTD, COLPAL, ANURAS, HEROMOTOCO
+- Added Jun 17: NEWGEN, JKTYRE, BSOFT, RPOWER
+- Removed Jun 17: RPOWER (governance risk), BOSCHLTD (walk-forward 1/5)
+- Removed Jun 18: TMPV (Hurst degraded H=0.468, 2 consecutive screens), CUMMINSIND (Hurst degraded H=0.472)
 
-## Watchlist (not yet added)
-- BHEL.NS: H=0.558, ADX=22.8, UNCLASSIFIED — re-check in 3-4 weeks
-- AUBANK: Gap=-0.76%, close to golden cross
-- PFIZER: Gap=-2.66%, low vol quality pharma
+## Paper Trading Status (as of 2026-06-18)
+- Started: 2026-06-02 (15 trading days)
+- Portfolio: Rs98,143 (-1.86%)
+- Cash: Rs76,954
+- Open positions: SIEMENS (-0.3%), BAJAJ-AUTO (-2.5%)
+- Completed trades: 2 (WHIRLPOOL -Rs188 Jun 3, TMPV -Rs1,297 Jun 17 Chandelier stop)
+- All new stocks (HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT) waiting for golden cross entry
 
-## SMA Gap Status (as of Jun 16)
-- CUMMINSIND: already in golden cross before we added it — waiting for fresh cross
-- HCLTECH: death cross -6.60% — waiting
-- BOSCHLTD: golden cross +1.05% — will enter soon
-- COLPAL: golden cross +0.36% — will enter soon
-- ANURAS: golden cross +0.32% — will enter soon
-- HEROMOTOCO: death cross -2.84% — waiting
-
-## Paper Trading Status (as of 2026-06-16)
-- Started: 2026-06-02
-- Portfolio: Rs99,221 (-0.78%)
-- Cash: Rs61,073
-- Open positions: TMPV (+0.7%), SIEMENS (-2.6%), BAJAJ-AUTO (-3.3%)
-- WHIRLPOOL: CLOSED since Jun 3 (BUY + SELL same day via strategy signal, -Rs188). No open position. No cooldown. Will re-enter on next golden cross.
-- Completed trades: 1 (WHIRLPOOL intraday exit Jun 3, -Rs188)
+## Walk-Forward Validation Results
+- Original (2018-22 IS / 2023-26 OOS): 17/20 (85%) — SYSTEM VALIDATED
+- Extended (2015-19 IS / 2020-23 OOS): 37/50 (74%) — SYSTEM VALIDATED
+- Both windows include genuine bear market conditions
+- All stocks delivered positive OOS returns through COVID crash and 2022 selloff
 
 ## Infrastructure
 - AWS Lightsail Mumbai: ubuntu@13.205.133.169
 - SSH key: ~/.ssh/LightsailDefaultKey-ap-south-1.pem
-- Cron: 15 10 * * 1-5 (3:45 PM IST), 50 3 * * 1-5 (9:20 AM IST)
+- Cron: 15 10 * * 1-5 (3:45 PM IST signal run), 50 3 * * 1-5 (9:20 AM IST morning fill check), 30 12 * * 0,3 (6 PM IST Wed+Sun screener)
 - Server path: /home/ubuntu/algo-trading/
 - Local path: /Users/aaravagarwal/algo-trading/
 - Python on server: python3 (not python)
@@ -46,31 +42,34 @@ TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOS
 - bars_held=0 mid-day is normal — updates at 3:45 PM signal run
 - morning_fill_check.py and corporate_actions.py are fully dynamic
 - Check logs at: ~/algo-trading/paper_trading/logs/YYYY-MM-DD.log
+- Screener logs at: ~/algo-trading/paper_trading/logs/screen_YYYY-MM-DD.log
+- Screener now uses dynamic NIFTY 500 (504 stocks) — no hardcoded universe
+- ADD recommendations = death cross stocks closest to golden flip (system will catch entry)
+- MONITOR = already in golden cross — wait for next cycle before adding
+- Divergence detection: flags stocks where 2yr and 80d SMA windows disagree
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
-- Wait for 20-25 days clean paper trading data (currently at ~10 days)
+- Wait for 6 months clean paper trading data (currently at ~15 days)
 - Flip PAPER_TRADING_MODE=False in signal_runner.py
+- Set LIVE_TRADING_MODE=True in morning_fill_check.py
 - Disable dry-run in engine/order_manager.py
 - Reset portfolio_state.json with real capital
 - Archive current paper trading logs before reset
-- Recalibrate position sizer — BAJAJ-AUTO at Rs10,000+ needs >Rs50,000 capital
-
-## Correlation Results (Jun 16)
-- All pairs < 0.70 (safe)
-- Highest pair: HEROMOTOCO/BAJAJ-AUTO r=0.53 (both two-wheelers, acceptable)
-- Best diversifiers: ANURAS (avg r=0.11), COLPAL (avg r=0.19)
+- MAX_CONCURRENT_POSITIONS=4 already set for Rs50,000 capital
+- Position sizer calibrated for Rs50,000 — BAJAJ-AUTO at Rs10,000+ uses ~20% cap per trade
 
 ## System Limitations
-- No news/merger monitoring — only scheduled NSE ex-dates
+- No news/merger monitoring — corporate_actions.py only checks scheduled NSE ex-dates
 - No F&O support (future project)
-- Screener sector map only covers original 73 stocks — new stocks show as Unknown
+- ANURAS has insufficient walk-forward history (listed post-2019) — monitor carefully
+- HEROMOTOCO weak in extended walk-forward (2/5) — flag for future removal
+- SIEMENS consistent 3/5 underperformer — flag for future removal when position closes
+- NEWGEN listed Jan 2018 — only 226 IS bars, excluded from extended walk-forward
 
-## Screener Universe (updated Jun 16)
-- sma_screener.py and regime_classifier.py now dynamically fetch NIFTY 500 (504 stocks) from NSE
-- Falls back to hardcoded 73-stock list if NSE fetch fails
-- Both screeners automatically use the expanded universe on every run
-- sector map covers all major NSE industries via _INDUSTRY_TO_SECTOR mapping
+## Stocks Flagged for Future Removal (when positions close)
+- SIEMENS: 3/5 in both original and extended walk-forward — consistent underperformer
+- HEROMOTOCO: 2/5 in extended walk-forward — weak payoff and expectancy
 
 ## Quant Research Fixes (Jun 17)
 ### Fix 1: Exit pricing bias — COMPLETED

@@ -10,11 +10,11 @@ Automated end-of-day swing trading system for NSE India equity markets. Built en
 
 Currently in paper trading phase with walk-forward validated backtesting results across 8 years of NSE data.
 
-**Current universe (10 stocks):** TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
+**Current universe (10 stocks):** WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
 
 **Screener universe:** Dynamic NIFTY 500 (504 stocks) fetched live from NSE.
 
-**Current universe (10 stocks):** TMPV.NS, WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, CUMMINSIND.NS, HCLTECH.NS, BOSCHLTD.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS
+**Current universe (10 stocks):** WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
 
 ---
 
@@ -153,6 +153,8 @@ The most important test: run identical parameters on a completely independent ou
 | WHIRLPOOL.NS  | +1.8%     | +4.3%      | −4.3%     | −3.0%      | **4/5** |
 | SIEMENS.NS    | +7.0%     | +2.0%      | −6.1%     | −7.9%      | **3/5** |
 | BAJAJ-AUTO.NS | +1.6%     | +14.4%     | −4.9%     | −3.1%      | **4/5** |
+
+> **Updated validation (Jun 2026):** Extended walk-forward (2015-19 IS / 2020-23 OOS) across 10 stocks scores **37/50 (74%)** — strategy validated through COVID crash and 2022 rate hike selloff.
 
 - OOS returns are **positive on all 4 stocks** — no strategy collapse on unseen data
 - OOS drawdowns are **equal to or better than** in-sample on 3/4 stocks
