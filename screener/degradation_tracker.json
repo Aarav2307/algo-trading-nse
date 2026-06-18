@@ -1,54 +1,84 @@
 {
-  "TMPV.NS": {
-    "consecutive_flags": 2,
-    "last_flagged": "2026-06-18"
-  },
-  "WHIRLPOOL.NS": {
+  "ANURAS.NS": {
     "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "SIEMENS.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
   },
   "BAJAJ-AUTO.NS": {
     "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "CUMMINSIND.NS": {
-    "consecutive_flags": 2,
-    "last_flagged": "2026-06-18"
-  },
-  "HCLTECH.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "BOSCHLTD.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "COLPAL.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "ANURAS.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "HEROMOTOCO.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "NEWGEN.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
-  },
-  "JKTYRE.NS": {
-    "consecutive_flags": 0,
-    "last_flagged": null
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
   },
   "BSOFT.NS": {
     "consecutive_flags": 0,
-    "last_flagged": null
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "COLPAL.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "CUMMINSIND.NS": {
+    "consecutive_flags": 2,
+    "flag_history": [
+      "2026-06-18"
+    ],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "HCLTECH.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "HEROMOTOCO.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "JKTYRE.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "NEWGEN.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "SIEMENS.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "TMPV.NS": {
+    "consecutive_flags": 2,
+    "flag_history": [
+      "2026-06-18"
+    ],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "WHIRLPOOL.NS": {
+    "consecutive_flags": 0,
+    "flag_history": [],
+    "last_flagged": "2026-06-18",
+    "last_screen_date": "2026-06-18"
+  },
+  "_meta": {
+    "created": "2026-06-18",
+    "last_screen_date": "2026-06-18",
+    "screen_count": 1,
+    "version": "2"
   }
 }

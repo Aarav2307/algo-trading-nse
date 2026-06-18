@@ -62,16 +62,171 @@ SIGNAL_LOOKBACK_DAYS: int = 120
 # ── Degradation tracker ───────────────────────────────────────────────────────
 
 def load_degradation_tracker() -> dict:
+    """
+    Load degradation tracker from JSON with full integrity checking.
+
+    Integrity checks performed:
+    1. File exists and is valid JSON
+    2. Each stock entry has all required fields
+    3. consecutive_flags is non-negative integer
+    4. Dates are valid ISO format strings
+    5. _meta section exists with required fields
+
+    If file is missing: returns empty valid tracker (not an error)
+    If file is corrupt: logs warning, returns empty valid tracker, saves backup of corrupt file
+    If file has old schema (version < 2): migrates to new schema automatically
+
+    Returns always-valid tracker dict — never raises exceptions.
+    """
+    import shutil
+    from datetime import datetime
+
+    def empty_tracker() -> dict:
+        return {
+            "_meta": {
+                "last_screen_date": date.today().isoformat(),
+                "screen_count": 0,
+                "created": date.today().isoformat(),
+                "version": "2",
+            }
+        }
+
+    def valid_stock_entry(entry: dict) -> bool:
+        """Check if a stock entry has all required fields with correct types."""
+        required = ["consecutive_flags", "last_flagged", "last_screen_date", "flag_history"]
+        if not all(k in entry for k in required):
+            return False
+        if not isinstance(entry["consecutive_flags"], int) or entry["consecutive_flags"] < 0:
+            return False
+        if not isinstance(entry["flag_history"], list):
+            return False
+        for date_field in ["last_flagged", "last_screen_date"]:
+            try:
+                datetime.strptime(entry[date_field], "%Y-%m-%d")
+            except (ValueError, TypeError):
+                return False
+        return True
+
+    def migrate_v1_entry(ticker: str, old_entry: dict) -> dict:
+        """Migrate old schema (consecutive_flags + last_flagged only) to new schema."""
+        last_flagged = old_entry.get("last_flagged", date.today().isoformat())
+        consecutive  = old_entry.get("consecutive_flags", 0)
+        if not last_flagged:
+            last_flagged = date.today().isoformat()
+        return {
+            "consecutive_flags": consecutive,
+            "last_flagged":      last_flagged,
+            "last_screen_date":  last_flagged,  # best guess for old entries
+            "flag_history":      [last_flagged] if consecutive > 0 else [],
+        }
+
+    if not DEGRADATION_TRACKER.exists():
+        print("[tracker] No tracker file found — starting fresh")
+        return empty_tracker()
+
+    # Attempt to load existing file
     try:
         with open(DEGRADATION_TRACKER) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+            raw = f.read().strip()
+
+        if not raw:
+            print("[tracker] WARNING: tracker file is empty — starting fresh")
+            return empty_tracker()
+
+        tracker = json.loads(raw)
+
+        if not isinstance(tracker, dict):
+            raise ValueError("Tracker root is not a dict")
+
+    except (json.JSONDecodeError, ValueError) as e:
+        # File is corrupt — save backup and start fresh
+        backup_path = DEGRADATION_TRACKER.with_suffix(
+            f".corrupt_{date.today().isoformat()}.json"
+        )
+        shutil.copy2(DEGRADATION_TRACKER, backup_path)
+        print(f"[tracker] WARNING: tracker file corrupt ({e})")
+        print(f"[tracker] Backup saved to {backup_path}")
+        print(f"[tracker] Starting fresh tracker")
+        return empty_tracker()
+
+    # Ensure _meta section exists
+    if "_meta" not in tracker:
+        tracker["_meta"] = {
+            "last_screen_date": date.today().isoformat(),
+            "screen_count":     0,
+            "created":          date.today().isoformat(),
+            "version":          "1",  # mark as old schema
+        }
+
+    # Migrate old schema entries to new schema
+    needs_migration = tracker["_meta"].get("version", "1") != "2"
+    if needs_migration:
+        print(f"[tracker] Migrating tracker from schema v{tracker['_meta'].get('version','1')} to v2")
+        for ticker in list(tracker.keys()):
+            if ticker == "_meta":
+                continue
+            entry = tracker[ticker]
+            if not valid_stock_entry(entry):
+                tracker[ticker] = migrate_v1_entry(ticker, entry)
+        tracker["_meta"]["version"] = "2"
+        print(f"[tracker] Migration complete — {len(tracker) - 1} stock entries migrated")
+
+    # Validate each stock entry — fix any invalid entries
+    invalid_tickers = []
+    for ticker, entry in tracker.items():
+        if ticker == "_meta":
+            continue
+        if not valid_stock_entry(entry):
+            print(f"[tracker] WARNING: invalid entry for {ticker} — resetting to zero")
+            invalid_tickers.append(ticker)
+
+    for ticker in invalid_tickers:
+        tracker[ticker] = {
+            "consecutive_flags": 0,
+            "last_flagged":      date.today().isoformat(),
+            "last_screen_date":  date.today().isoformat(),
+            "flag_history":      [],
+        }
+
+    return tracker
 
 
 def save_degradation_tracker(tracker: dict) -> None:
-    with open(DEGRADATION_TRACKER, "w") as f:
-        json.dump(tracker, f, indent=2)
+    """
+    Save degradation tracker to JSON with backup protection.
+
+    Always creates a backup of the previous version before overwriting.
+    Backup is saved as degradation_tracker.backup.json and overwritten
+    each time (only one backup kept — the previous good version).
+
+    Never raises exceptions — logs errors but continues.
+    """
+    import shutil
+
+    # Update _meta before saving
+    tracker.setdefault("_meta", {})
+    tracker["_meta"]["last_screen_date"] = date.today().isoformat()
+    tracker["_meta"]["screen_count"]     = tracker["_meta"].get("screen_count", 0) + 1
+    tracker["_meta"]["version"]          = "2"
+
+    # Create backup of existing file before overwriting
+    backup_path = DEGRADATION_TRACKER.with_name("degradation_tracker.backup.json")
+    if DEGRADATION_TRACKER.exists():
+        try:
+            shutil.copy2(DEGRADATION_TRACKER, backup_path)
+        except Exception as e:
+            print(f"[tracker] WARNING: could not create backup: {e}")
+
+    # Write new tracker atomically (write to temp file, then rename)
+    tmp_path = DEGRADATION_TRACKER.with_suffix(".tmp")
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(tracker, f, indent=2, sort_keys=True)
+        tmp_path.rename(DEGRADATION_TRACKER)
+    except Exception as e:
+        print(f"[tracker] ERROR: could not save tracker: {e}")
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 # ── Metric functions ───────────────────────────────────────────────────────────
@@ -328,58 +483,100 @@ def run_screen() -> dict:
     )[:5]
 
     # ── Step 4: Check existing universe for regime degradation ────────────────
-    # Uses a persistent tracker: only recommend removal after 2 consecutive flags.
     tracker   = load_degradation_tracker()
-    today_str = date.today().strftime("%Y-%m-%d")
+    today_str = date.today().isoformat()
 
-    # Open positions must close naturally — never force-remove them
-    try:
-        with open(PORTFOLIO_STATE) as f:
-            port_state = json.load(f)
-        positions = port_state.get("positions", {})
-    except Exception:
-        positions = {}
+    # Clean stale tracker entries — remove stocks no longer in universe
+    stale_tickers = [t for t in tracker if t != "_meta" and t not in current_universe]
+    for ticker in stale_tickers:
+        print(f"[tracker] Removing stale entry for {ticker} (no longer in universe)")
+        del tracker[ticker]
 
     removes = []
     for ticker in current_universe:
         if ticker not in data_cache:
             continue
+
         df  = data_cache[ticker]
         h   = compute_hurst(df["close"].values)
         a   = compute_adx(df)
         gap = compute_sma_gap(df)
 
-        entry = tracker.get(ticker, {"consecutive_flags": 0, "last_flagged": None})
+        # Check if open position exists — never recommend removal for open positions
+        try:
+            with open(PORTFOLIO_STATE) as f:
+                port_state = json.load(f)
+            has_open_position = port_state["positions"].get(ticker, {}).get("shares", 0) > 0
+        except Exception:
+            has_open_position = False
 
-        if h < HURST_DEGRADE or a < ADX_DEGRADE:
-            entry["consecutive_flags"] = entry.get("consecutive_flags", 0) + 1
-            entry["last_flagged"]      = today_str
-            tracker[ticker]            = entry
+        # Determine if this stock is degraded
+        is_degraded = (h < HURST_DEGRADE or a < ADX_DEGRADE)
 
-            if entry["consecutive_flags"] >= 2:
-                if positions.get(ticker, {}).get("shares", 0) > 0:
-                    print(f"[auto_screener] {ticker} flagged for removal but has open position — skipping")
-                    continue
+        # Get or create tracker entry for this stock
+        if ticker not in tracker:
+            tracker[ticker] = {
+                "consecutive_flags": 0,
+                "last_flagged":      today_str,
+                "last_screen_date":  today_str,
+                "flag_history":      [],
+            }
 
-                reason_parts = []
-                if h < HURST_DEGRADE:
-                    reason_parts.append(f"H={h:.3f} < {HURST_DEGRADE}")
-                if a < ADX_DEGRADE:
-                    reason_parts.append(f"ADX={a:.1f} < {ADX_DEGRADE}")
+        entry = tracker[ticker]
+        last_screen = entry.get("last_screen_date", today_str)
 
+        # Check if last screen was more than 5 days ago
+        # If so, this is not a consecutive flag — reset counter
+        try:
+            from datetime import datetime as dt
+            days_since_last_screen = (dt.strptime(today_str, "%Y-%m-%d") -
+                                       dt.strptime(last_screen, "%Y-%m-%d")).days
+        except Exception:
+            days_since_last_screen = 0
+
+        if days_since_last_screen > 5 and entry["consecutive_flags"] > 0:
+            print(f"[tracker] {ticker}: resetting consecutive flags — last screen was {days_since_last_screen} days ago (not consecutive)")
+            entry["consecutive_flags"] = 0
+            entry["flag_history"]      = []
+
+        # Update tracker based on current health
+        if is_degraded:
+            entry["consecutive_flags"] += 1
+            entry["last_flagged"]       = today_str
+            # Add to flag history (keep last 10 only)
+            entry["flag_history"].append(today_str)
+            entry["flag_history"] = entry["flag_history"][-10:]
+        else:
+            # Stock is healthy — reset counter
+            if entry["consecutive_flags"] > 0:
+                print(f"[tracker] {ticker}: regime healthy again — resetting consecutive flags from {entry['consecutive_flags']} to 0")
+            entry["consecutive_flags"] = 0
+            entry["flag_history"]      = []
+
+        # Update last_screen_date regardless of health
+        entry["last_screen_date"] = today_str
+
+        # Only recommend REMOVE if:
+        # 1. Flagged for 2+ consecutive screens
+        # 2. No open position
+        if entry["consecutive_flags"] >= 2:
+            if has_open_position:
+                print(f"[tracker] {ticker}: would REMOVE but has open position — skipping (will re-evaluate after close)")
+            else:
+                reason = f"H={h:.3f} < {HURST_DEGRADE}" if h < HURST_DEGRADE else f"ADX={a:.1f} < {ADX_DEGRADE}"
                 removes.append({
                     "ticker":            ticker,
                     "hurst":             round(h, 3),
                     "adx":               round(a, 1),
                     "gap":               round(gap, 2) if gap is not None else None,
-                    "reason":            " & ".join(reason_parts),
+                    "reason":            reason,
                     "consecutive_flags": entry["consecutive_flags"],
+                    "flag_history":      entry["flag_history"],
                 })
-        else:
-            entry["consecutive_flags"] = 0
-            tracker[ticker]            = entry
 
+    # Save tracker with all updates — must happen before return
     save_degradation_tracker(tracker)
+    print(f"[tracker] Saved — {len([k for k in tracker if k != '_meta'])} stocks tracked, screen #{tracker['_meta']['screen_count']}")
 
     return {
         "adds":     adds,
