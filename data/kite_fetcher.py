@@ -22,12 +22,54 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 from kiteconnect import KiteConnect
+from kiteconnect.exceptions import TokenException
 
 load_dotenv()
 
 _AUTH_DIR  = Path(__file__).parent.parent / "auth"
 _TOKEN_FILE = _AUTH_DIR / "access_token.txt"
 _CACHE_FILE = _AUTH_DIR / "nse_instruments.json"
+
+
+def _auto_refresh_token(max_retries: int = 1) -> bool:
+    """
+    Automatically refresh the Kite Connect token by running auto_login.py.
+    Called when a TokenException is caught during any Kite API call.
+
+    Returns True if refresh succeeded, False if it failed.
+    Never raises exceptions — logs errors and returns False.
+
+    Works on both server (automated TOTP) and local machine (same TOTP secret in .env).
+    """
+    import subprocess
+    import sys
+
+    print("[kite_fetcher] Token expired — attempting automatic refresh via auto_login.py...")
+
+    try:
+        result = subprocess.run(
+            [sys.executable, "auth/auto_login.py"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=Path(__file__).parent.parent,
+        )
+
+        if result.returncode == 0:
+            print("[kite_fetcher] ✅ Token refreshed successfully")
+            return True
+        else:
+            print(f"[kite_fetcher] ❌ Token refresh failed (exit code {result.returncode})")
+            if result.stderr:
+                print(f"[kite_fetcher] Error: {result.stderr.strip()[:200]}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("[kite_fetcher] ❌ Token refresh timed out after 30 seconds")
+        return False
+    except Exception as e:
+        print(f"[kite_fetcher] ❌ Token refresh error: {e}")
+        return False
 
 
 def _load_kite() -> KiteConnect:
@@ -76,7 +118,23 @@ def _get_instrument_token(kite: KiteConnect, symbol: str) -> int:
             pass  # corrupt cache — fall through to fresh fetch
 
     print("[kite_fetcher] Fetching NSE instrument list from Kite...")
-    instruments = kite.instruments("NSE")
+    try:
+        instruments = kite.instruments("NSE")
+    except TokenException:
+        if _auto_refresh_token():
+            kite = _load_kite()
+            try:
+                instruments = kite.instruments("NSE")
+            except Exception as retry_exc:
+                raise ConnectionError(
+                    f"Kite token refreshed but instrument list fetch failed: {retry_exc}"
+                ) from retry_exc
+        else:
+            raise ConnectionError(
+                "Kite session expired and auto-refresh failed. "
+                "Run auth/auto_login.py manually to get a fresh token."
+            )
+
     token_map = {
         inst["tradingsymbol"]: inst["instrument_token"]
         for inst in instruments
@@ -114,8 +172,22 @@ def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
     try:
         kite = _load_kite()
         instrument_token = _get_instrument_token(kite, symbol)
-    except (FileNotFoundError, ValueError, EnvironmentError):
+    except (FileNotFoundError, ValueError, EnvironmentError, ConnectionError):
         raise
+    except TokenException as exc:
+        if _auto_refresh_token():
+            try:
+                kite = _load_kite()
+                instrument_token = _get_instrument_token(kite, symbol)
+            except Exception as retry_exc:
+                raise ConnectionError(
+                    f"Kite session refresh succeeded but instrument lookup failed for '{symbol}': {retry_exc}"
+                ) from retry_exc
+        else:
+            raise ConnectionError(
+                "Kite session expired and auto-refresh failed. "
+                "Run auth/auto_login.py manually to get a fresh token."
+            ) from exc
     except Exception as exc:
         if "Invalid session" in str(exc) or "token" in str(exc).lower():
             raise ConnectionError(
@@ -134,6 +206,25 @@ def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
             to_date=to_dt,
             interval="day",
         )
+    except TokenException as exc:
+        if _auto_refresh_token():
+            try:
+                kite = _load_kite()
+                records = kite.historical_data(
+                    instrument_token=instrument_token,
+                    from_date=from_dt,
+                    to_date=to_dt,
+                    interval="day",
+                )
+            except Exception as retry_exc:
+                raise ConnectionError(
+                    f"Kite session refresh succeeded but retry failed for '{symbol}': {retry_exc}"
+                ) from retry_exc
+        else:
+            raise ConnectionError(
+                "Kite session expired and auto-refresh failed. "
+                "Run auth/auto_login.py manually to get a fresh token."
+            ) from exc
     except Exception as exc:
         if "Invalid session" in str(exc) or "token" in str(exc).lower():
             raise ConnectionError(
