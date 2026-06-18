@@ -183,3 +183,12 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Unit tests confirmed: SIEMENS +0.1% FAIL, WHIRLPOOL +3.5% FAIL, TMPV +9.2% PASS, BAJAJ-AUTO +13.5% PASS
 - New overall score: 19/24 (79%) — SYSTEM VALIDATED
 - WHIRLPOOL and SIEMENS correctly penalised — confirms existing flag for future removal
+
+### Auto Token Refresh — COMPLETED (Jun 18)
+- Problem: Kite token expires midnight IST daily, requiring manual kite_login.py locally
+- Fix: added _auto_refresh_token() to data/kite_fetcher.py
+- When TokenException caught: runs auth/auto_login.py as subprocess, retries API call once
+- Works on both server (automated TOTP) and local machine (same .env TOTP secret)
+- Zero manual intervention needed — fully transparent to all callers
+- Side fix: .env was missing newline between ZERODHA_TOTP_SECRET and SENDGRID_API_KEY — TOTP was 118 chars instead of 32, causing pyotp failures. Fixed on both local and server.
+- Tested: expired token → auto-refresh → retry → 12 bars loaded ✅
