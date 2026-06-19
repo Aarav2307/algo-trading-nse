@@ -236,3 +236,12 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - BUY duplicates also caught by pending_buy=False guard from Finding #1 fix
 - Unit tests: 2/2 passed (duplicate removed, non-duplicate preserved, most recent kept)
 - Walk-forward: 19/24 unchanged
+
+### Finding #5 Fix: Trade P&L inflated by buy-side costs — COMPLETED (Jun 20)
+- Problem: net_pnl in trade log only subtracted sell-side costs; buy-side costs (~Rs25 per Rs100k) were deducted from cash but not from net_pnl
+- Fix: added entry_cost field to position dict, stored at open_position() and confirm_buy_fill()
+- close_position() and morning_fill_check now compute: net_pnl = gross_pnl - sell_cost - entry_cost
+- entry_cost added to trade log dict for full transparency
+- Migration: existing positions get entry_cost=0.0 (conservative — won't retroactively fix old trades)
+- Unit test: Rs-36.44 (old) → Rs-61.89 (new) — Rs25.45 overstatement eliminated ✅
+- Walk-forward: 19/24 unchanged
