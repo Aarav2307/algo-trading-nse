@@ -220,3 +220,11 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Signal_runner calls verify_holiday_coverage() at startup and warns if any missing
 - All 8 holiday tests passed ✅
 - Note: Aug 15 2026 is Saturday — weekend guard makes holiday entry redundant but harmless
+
+### Finding #6 Fix: Auth check kills before auto-refresh — COMPLETED (Jun 19)
+- Problem: _check_auth() called sys.exit(1) on stale token before kite_fetcher auto-refresh could help
+- Fix: replaced sys.exit(1) with _attempt_auto_refresh() — runs auto_login.py as subprocess
+- sys.exit(1) only fires if auto-refresh also fails (true unrecoverable error)
+- Tested: 10-hour-old token → auto-refresh → _check_auth completes cleanly ✅
+- Walk-forward: 19/24 unchanged
+- Combined with kite_fetcher auto-refresh: token expiry is now fully transparent everywhere
