@@ -432,13 +432,19 @@ def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float) -> float:
 
         close = df["close"].values
 
-        # Hurst via R/S analysis (same method as auto_screener)
-        lags = range(2, 20)
-        tau  = [np.std(np.subtract(close[lag:], close[:-lag])) for lag in lags]
-        if any(t <= 0 for t in tau):
-            return 0.0
-        poly  = np.polyfit(np.log(lags), np.log(tau), 1)
-        hurst = float(poly[0])
+        # Compute Hurst on log prices (not raw prices) — removes price-level bias
+        if len(close) < 20:
+            hurst = 0.5
+        else:
+            log_prices = np.log(close)
+            lags = range(2, 20)
+            tau = [np.std(np.subtract(log_prices[lag:], log_prices[:-lag])) for lag in lags]
+            if any(t <= 0 for t in tau):
+                hurst = 0.5
+            else:
+                poly  = np.polyfit(np.log(list(lags)), np.log(tau), 1)
+                hurst = float(poly[0])
+
         hurst_score = max(0.0, min(100.0, (hurst - 0.50) / 0.20 * 100.0))
 
         # Gap proximity (gap_pct ≤ 0 for death-cross BUY candidates)
