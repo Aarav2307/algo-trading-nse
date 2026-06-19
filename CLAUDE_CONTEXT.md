@@ -262,3 +262,12 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Fix: both sort keys changed to gap_short with None guard
 - Unit test confirmed: STOCK_B (gap_short=-0.5%) now correctly ranks above STOCK_A (gap_short=-8.0%)
 - ADD list now correctly predicts which stocks will cross soonest in live trading
+
+### Finding #7 Fix: Hurst computed on prices not returns — COMPLETED (Jun 20)
+- Problem: auto_screener.py and signal_runner.py computed Hurst on raw prices (non-stationary, biased upward); regime_classifier.py correctly used log returns
+- Fix: both now use log returns — np.diff(np.log(close)) — matching regime_classifier.py exactly
+- Calibration: log-return Hurst is 0.05-0.11 lower than raw-price Hurst for same stocks
+- Thresholds recalibrated: HURST_THRESHOLD 0.55→0.48, HURST_DEGRADE 0.52→0.45
+- Random walk verification: H=0.469 (no upward bias confirmed)
+- ADD/MONITOR/WATCH lists now show H values 0.48-0.53 (correctly calibrated)
+- Walk-forward: 17/24 unchanged
