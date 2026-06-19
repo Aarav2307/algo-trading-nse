@@ -256,3 +256,9 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Added run_rolling_live_check(): 90-day early warning system
 - Rolling check (last 300 days): 6 HEALTHY, 4 WARNING (WHIRLPOOL, SIEMENS, COLPAL, BSOFT), 0 CRITICAL
 - Run walk_forward.py quarterly to keep validation current
+
+### Finding #4 Fix: ADD list sorted by wrong gap — COMPLETED (Jun 20)
+- Problem: ADD/MONITOR lists sorted by gap_long (2-year window) but signal_runner uses gap_short (80-day)
+- Fix: both sort keys changed to gap_short with None guard
+- Unit test confirmed: STOCK_B (gap_short=-0.5%) now correctly ranks above STOCK_A (gap_short=-8.0%)
+- ADD list now correctly predicts which stocks will cross soonest in live trading
