@@ -202,3 +202,21 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - MISSED BUY AMOs call cancel_pending_buy() — position reset to flat, stock re-eligible for signals
 - Unit tests: 3/3 passed (no cash deduction on queue, correct deduction on confirm, cancel resets)
 - Walk-forward: 19/24 unchanged — no regression
+
+### Finding #2 Fix: Orphaned RM SELL position — COMPLETED (Jun 19)
+- Problem: MISSED RM SELL AMO left position stuck with pending_rm_exit=True forever
+- Fix: morning_fill_check re-queues SELL AMO at updated limit (today close × 0.995) after MISS
+- Max 3 requeues before CRITICAL alert for manual intervention
+- RM check_exit() continues running during pending_rm_exit — stops remain active
+- New methods: requeue_rm_sell() in paper_portfolio.py
+- New fields: rm_sell_requeue_count in position dict (migration runs on load)
+- Unit tests: 3/3 passed
+
+### Finding #3 Fix: Missing NSE holidays — COMPLETED (Jun 19)
+- Problem: Jan-May 2026 holidays deleted from market_calendar.py causing wrong trading day checks
+- Fix: restored all 2026 holidays (Republic Day, Holi, Good Friday, Ambedkar Jayanti, Maharashtra Day)
+- Added NEVER REMOVE comment to holiday list — no performance reason to delete past holidays
+- Added verify_holiday_coverage() — checks 4 fixed annual holidays at startup
+- Signal_runner calls verify_holiday_coverage() at startup and warns if any missing
+- All 8 holiday tests passed ✅
+- Note: Aug 15 2026 is Saturday — weekend guard makes holiday entry redundant but harmless
