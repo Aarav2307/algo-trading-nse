@@ -24,20 +24,35 @@ from typing import List
 # =============================================================================
 
 NSE_HOLIDAYS_2026: List[date] = [
-    # Remaining holidays from June 2026 onwards.
-    # Source: NSE official circular, verified June 2026.
-    # Past holidays (Jan–May) removed — the system only makes future decisions.
-    # Update this list every December using the official NSE circular at nseindia.com
-    date(2026, 6, 26),   # Muharram
+    # IMPORTANT: NEVER remove past holidays from this list.
+    # The _HOLIDAY_SET lookup is O(1) — there is no performance reason to purge entries.
+    # Removing past holidays causes is_trading_day() to incorrectly return True
+    # for known market closure dates, breaking corporate action danger windows,
+    # next_trading_day() calculations, and walk-forward bar counts.
+    #
+    # Source: NSE India official holiday circular
+    # Verify lunar calendar holidays (Holi, Eid, Diwali) against:
+    # https://www.nseindia.com/resources/exchange-communication-holidays
+
+    # ── Jan–May (restored — previously and incorrectly removed) ──────────────
+    date(2026, 1, 26),   # Republic Day
+    date(2026, 2, 26),   # Maha Shivaratri
+    date(2026, 3, 25),   # Holi
+    date(2026, 4, 3),    # Good Friday
+    date(2026, 4, 14),   # Dr. Ambedkar Jayanti
+    date(2026, 4, 30),   # Shri Ram Navami (tentative — verify against NSE circular)
+    date(2026, 5, 1),    # Maharashtra Day / Labour Day
+
+    # ── Jun–Dec ───────────────────────────────────────────────────────────────
+    date(2026, 6, 26),   # Muharram (verified Jun 2026)
+    date(2026, 8, 15),   # Independence Day (falls on Saturday — in set for completeness)
     date(2026, 8, 27),   # Ganesh Chaturthi
     date(2026, 10, 2),   # Gandhi Jayanti
-    date(2026, 10, 20),  # Diwali Laxmi Puja
-    date(2026, 10, 21),  # Diwali Balipratipada
-    date(2026, 11, 5),   # Gurunanak Jayanti
+    date(2026, 10, 20),  # Diwali Laxmi Pujan (verify — changes yearly)
+    date(2026, 10, 21),  # Diwali Balipratipada (verify)
+    date(2026, 11, 5),   # Guru Nanak Jayanti
     date(2026, 12, 25),  # Christmas
 ]
-# NOTE: Diwali Laxmi Pujan (Nov 8) falls on a Sunday — Muhurat trading only, not a full closure.
-# NOTE: Independence Day (Aug 15) falls on a Saturday — no weekday closure needed.
 
 NSE_HOLIDAYS_2027: List[date] = []  # Populate before December 2026
 
@@ -113,6 +128,36 @@ def get_trading_days_between(start: date, end: date) -> List[date]:
             result.append(current)
         current += timedelta(days=1)
     return result
+
+
+def verify_holiday_coverage(year: int) -> list:
+    """
+    Check that known fixed NSE holidays for a given year are in the holiday set.
+    Returns list of warning strings for any missing fixed holidays.
+    Used as a sanity check — call at startup in signal_runner.py.
+
+    Fixed holidays (same date every year):
+    - Jan 26: Republic Day
+    - Aug 15: Independence Day
+    - Oct 2:  Gandhi Jayanti
+    - Dec 25: Christmas
+
+    Weekends are skipped — if a fixed holiday falls on Saturday/Sunday, the
+    weekday() check in is_trading_day() already handles it correctly.
+    """
+    warnings = []
+    fixed_holidays = {
+        date(year, 1, 26): "Republic Day",
+        date(year, 8, 15): "Independence Day",
+        date(year, 10, 2): "Gandhi Jayanti",
+        date(year, 12, 25): "Christmas",
+    }
+    for d, name in fixed_holidays.items():
+        if d.weekday() >= 5:
+            continue   # falls on weekend — weekday guard handles it, no entry needed
+        if d not in _HOLIDAY_SET:
+            warnings.append(f"WARNING: {name} ({d}) is not in NSE holiday calendar")
+    return warnings
 
 
 def count_trading_days_since(d: date) -> int:

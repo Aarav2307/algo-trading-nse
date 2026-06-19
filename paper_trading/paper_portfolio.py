@@ -77,10 +77,16 @@ class PaperPortfolio:
                     "last_exit_reason": None,
                 }
 
-        # Migrate existing positions to add pending_buy field if missing
+        # Migrate existing positions to add new fields if missing
         for pos in self.state["positions"].values():
             if "pending_buy" not in pos:
                 pos["pending_buy"] = False
+            if "pending_rm_exit" not in pos:
+                pos["pending_rm_exit"] = False
+            if "rm_exit_reason" not in pos:
+                pos["rm_exit_reason"] = None
+            if "rm_sell_requeue_count" not in pos:
+                pos["rm_sell_requeue_count"] = 0
 
     def save(self) -> None:
         """
@@ -134,6 +140,9 @@ class PaperPortfolio:
             "bars_held":                0,      # trading bars held (incremented by RM check_exit)
             "chandelier_stop":          None,   # None = -inf (not yet computed by ATR)
             "pending_buy":              False,  # True when AMO BUY queued but not yet filled
+            "pending_rm_exit":          False,  # True when RM exit AMO queued but not yet filled
+            "rm_exit_reason":           None,   # "HARD_STOP" | "CHANDELIER" | "TIME_STOP"
+            "rm_sell_requeue_count":    0,      # times RM SELL AMO was requeued after MISS
         }
 
     # ── Position management ────────────────────────────────────────────────────
@@ -222,6 +231,54 @@ class PaperPortfolio:
         if not pos.get("pending_buy", False):
             return  # nothing to cancel
         self.state["positions"][ticker] = self._blank_position()
+
+    def requeue_rm_sell(self, ticker: str, new_limit_price: float, today_str: str) -> None:
+        """
+        Re-queue an RM exit SELL AMO after a previous attempt was MISSED.
+        Keeps pending_rm_exit=True and increments the requeue counter.
+        Called by morning_fill_check when a SELL AMO is MISSED.
+
+        Does NOT clear pending_rm_exit — position remains flagged until closed.
+        Does NOT touch cash — cash only changes when position actually closes.
+
+        Args:
+            ticker:          stock ticker
+            new_limit_price: updated limit price based on today's close
+            today_str:       today's date in YYYY-MM-DD format
+        """
+        MAX_RM_SELL_REQUEUES = 3
+
+        pos = self.state["positions"][ticker]
+
+        if not pos.get("pending_rm_exit", False):
+            raise ValueError(
+                f"requeue_rm_sell called for {ticker} but pending_rm_exit=False. "
+                f"Only call this after a confirmed MISSED RM SELL."
+            )
+
+        if pos["shares"] <= 0:
+            raise ValueError(
+                f"requeue_rm_sell called for {ticker} but shares={pos['shares']}. "
+                f"Cannot requeue sell on flat position."
+            )
+
+        pos["rm_sell_requeue_count"] = pos.get("rm_sell_requeue_count", 0) + 1
+
+        if pos["rm_sell_requeue_count"] > MAX_RM_SELL_REQUEUES:
+            print(
+                f"  🚨 CRITICAL: {ticker} RM SELL has been requeued "
+                f"{pos['rm_sell_requeue_count']} times without filling."
+            )
+            print(f"  🚨 MANUAL ACTION REQUIRED: Check position in Zerodha dashboard immediately.")
+            print(f"  🚨 Possible circuit breaker or liquidity issue.")
+
+        # pending_rm_exit stays True — position not closed yet
+        # The new AMO order is logged by the caller via AMOOrderManager
+        print(
+            f"  [portfolio] {ticker}: RM SELL requeued (attempt #{pos['rm_sell_requeue_count']}) "
+            f"— new limit ₹{new_limit_price:.2f} for {today_str}"
+        )
+        self.save()
 
     def confirm_buy_fill(
         self,

@@ -47,6 +47,10 @@ TOKEN_FILE      = Path("auth/access_token.txt")
 # When a SELL fills with one of these notes, we must also trigger cooldown
 # and clear the pending_rm_exit flag on the position.
 _RM_EXIT_NOTES  = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
+
+# AMO limit buffer — must match signal_runner.py AMO_CONFIG["limit_buffer_pct"]
+_AMO_LIMIT_BUFFER = 0.005   # 0.5% buffer below close for SELL AMO requeue
+_AMO_ORDER_LOG    = Path("paper_trading/amo_orders.csv")
 # Cooldown bars must match signal_runner.py COOLDOWN_BARS.
 # +1 offset: advance_cooldown() in the same evening's signal_runner absorbs one bar,
 # leaving exactly COOLDOWN_BARS days of suppression starting the next trading day.
@@ -125,6 +129,24 @@ def _fetch_prev_close(ticker: str, today: date) -> float:
         return float(df["close"].iloc[-1])
     except Exception:
         return 0.0
+
+
+def _fetch_close_price(ticker: str, today: date) -> Optional[float]:
+    """
+    Fetch today's closing price for ticker from Kite.
+    Used when requeueing a missed RM SELL AMO — the new limit is based on today's close.
+    Returns None if data is unavailable.
+    """
+    try:
+        start = today.isoformat()
+        end   = (today + timedelta(days=1)).isoformat()
+        df    = get_ohlcv(ticker, start, end)
+        if df is None or df.empty:
+            return None
+        return float(df["close"].iloc[-1])
+    except Exception as exc:
+        print(f"  WARN: Could not fetch {ticker} close — {exc}")
+        return None
 
 
 def _fetch_live_order_status(order_id: str, kite) -> dict:
@@ -622,14 +644,56 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
 
             _update_csv_row(order_date, ticker, order_type, "MISSED", "", "")
 
-            # Missed BUY AMO: cancel the pending_buy so position returns to flat.
-            # Without this, signal_runner would see pending_buy=True indefinitely
-            # and skip the stock forever.
             if apply_fills and order_type == "BUY":
+                # Missed BUY AMO: cancel pending_buy so position returns to flat.
+                # Without this, signal_runner would see pending_buy=True indefinitely.
                 _portfolio.load()
                 _portfolio.cancel_pending_buy(ticker)
                 _portfolio.save()
                 print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
+
+            elif apply_fills and order_type == "SELL" and is_rm_exit:
+                # Missed RM SELL AMO: re-queue for tomorrow's open at an updated limit.
+                # Without a requeue, signal_runner sees pending_rm_exit=True forever and
+                # never runs the RM — the position becomes orphaned with no active stop.
+                today_close = _fetch_close_price(ticker, today)
+
+                if today_close is not None:
+                    new_limit = round(today_close * (1 - _AMO_LIMIT_BUFFER), 2)
+
+                    # Log new SELL AMO to amo_orders.csv for tomorrow's fill check
+                    from engine.order_manager import AMOOrderManager
+                    _amo_cfg = {
+                        "enabled":          True,
+                        "dry_run":          True,
+                        "limit_buffer_pct": _AMO_LIMIT_BUFFER,
+                        "order_log_file":   str(_AMO_ORDER_LOG),
+                    }
+                    amo = AMOOrderManager(_amo_cfg)
+                    amo.place_sell_amo(
+                        ticker=ticker,
+                        shares=shares,
+                        signal_price=today_close,
+                        order_date=today,
+                        notes=notes + " [REQUEUED]",
+                    )
+
+                    # Update portfolio state: increment requeue counter, keep pending_rm_exit=True
+                    _portfolio.load()
+                    _portfolio.requeue_rm_sell(ticker, new_limit, today.isoformat())
+
+                    print(
+                        f"  ⚠️  REQUEUED: {ticker} RM SELL → new AMO SELL limit ₹{new_limit:.2f} "
+                        f"for tomorrow's open"
+                    )
+                    print(
+                        f"  ⚠️  Original MISSED: open ₹{open_px:.2f} vs limit ₹{limit_px:.2f}"
+                    )
+                else:
+                    print(
+                        f"  ERROR [{ticker}]: RM SELL MISSED but could not fetch today's close "
+                        f"for requeue. MANUAL ACTION REQUIRED: check position in Zerodha dashboard."
+                    )
 
     print()
     parts = [f"{filled_count} FILLED", f"{missed_count} MISSED"]

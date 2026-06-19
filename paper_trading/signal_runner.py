@@ -54,7 +54,7 @@ from paper_trading.paper_portfolio import PaperPortfolio
 from strategies.sma_crossover import generate_signals
 from engine.order_manager import AMOOrderManager
 from utils.costs import apply_slippage, transaction_costs, BROKERAGE_PER_ORDER, format_cost_breakdown
-from utils.market_calendar import is_trading_day, next_trading_day
+from utils.market_calendar import is_trading_day, next_trading_day, verify_holiday_coverage
 
 
 # =============================================================================
@@ -501,22 +501,33 @@ def _process_stock(
             "net_pnl":          None,
         }
 
-    # If an RM exit was deferred yesterday (AMO SELL queued, awaiting open fill),
-    # skip all processing for this ticker today. morning_fill_check.py will
-    # complete the close_position() call at tomorrow's open price.
+    # If an RM exit AMO is pending morning fill confirmation, continue running the
+    # RM check so stops remain active and the chandelier ratchets correctly.
+    # Do NOT run strategy signals or allow new entries.
+    # If the SELL was MISSED (morning_fill_check requeued it), the RM keeps
+    # tracking the position until the requeued AMO fills the next morning.
     if pos.get("pending_rm_exit"):
+        rm            = _restore_rm(pos)
+        exit_decision = rm.check_exit(today_bar, df)
+        bars_held, highest_high, chan_stop = _extract_rm_state(rm)
+        portfolio.update_rm_state(ticker, bars_held, highest_high, chan_stop)
+
         return {
             "ticker":           ticker,
             "signal":           "PENDING_RM_EXIT",
             "close_price":      close_px,
             "exec_price":       None,
             "shares":           pos["shares"],
-            "reason":           f"RM exit pending ({pos.get('rm_exit_reason','?')}) — awaiting open fill",
+            "reason":           (
+                f"AMO SELL pending fill ({pos.get('rm_exit_reason','?')}) "
+                f"— chandelier ₹{chan_stop:.2f}" if chan_stop else
+                f"AMO SELL pending fill ({pos.get('rm_exit_reason','?')})"
+            ),
             "exit_reason":      pos.get("rm_exit_reason"),
-            "chandelier_stop":  pos.get("chandelier_stop"),
+            "chandelier_stop":  chan_stop,
             "bars_in_cooldown": portfolio.state["cooldown_state"][ticker]["remaining_bars"],
             "sizing_info":      None,
-            "action_taken":     None,
+            "action_taken":     "Awaiting morning fill confirmation — RM stops remain active",
             "net_pnl":          None,
         }
 
@@ -995,6 +1006,13 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
         print(f"\n[paper_trading] BACKFILL DRY RUN for {today} — state will NOT be saved.")
     else:
         today = date.today()
+
+    # ── Holiday calendar integrity check ─────────────────────────────────────
+    _cal_warnings = verify_holiday_coverage(today.year)
+    for _w in _cal_warnings:
+        print(f"[market_calendar] {_w}")
+    if _cal_warnings:
+        print("[market_calendar] Update utils/market_calendar.py before going live.")
 
     # ── Step 1: Market day check ──────────────────────────────────────────────
     if not is_backfill:
