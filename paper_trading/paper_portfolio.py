@@ -77,6 +77,11 @@ class PaperPortfolio:
                     "last_exit_reason": None,
                 }
 
+        # Migrate existing positions to add pending_buy field if missing
+        for pos in self.state["positions"].values():
+            if "pending_buy" not in pos:
+                pos["pending_buy"] = False
+
     def save(self) -> None:
         """
         Atomically save portfolio state to JSON.
@@ -128,6 +133,7 @@ class PaperPortfolio:
             "highest_high_since_entry": 0.0,   # highest high bar since position opened
             "bars_held":                0,      # trading bars held (incremented by RM check_exit)
             "chandelier_stop":          None,   # None = -inf (not yet computed by ATR)
+            "pending_buy":              False,  # True when AMO BUY queued but not yet filled
         }
 
     # ── Position management ────────────────────────────────────────────────────
@@ -171,6 +177,97 @@ class PaperPortfolio:
         pos["highest_high_since_entry"] = entry_high
         pos["bars_held"]                = 0
         pos["chandelier_stop"]          = chandelier_stop   # None serialises to JSON null
+
+    def queue_pending_buy(
+        self,
+        ticker: str,
+        shares: int,
+        provisional_price: float,
+        today_str: str,
+    ) -> None:
+        """
+        Mark a position as having a pending BUY AMO order queued.
+        Does NOT deduct cash or open the position.
+        Cash will be deducted when morning_fill_check confirms the fill.
+
+        Args:
+            ticker:            stock ticker
+            shares:            number of shares ordered
+            provisional_price: slippage-adjusted close price (for display only)
+            today_str:         signal date in YYYY-MM-DD format
+        """
+        pos = self.state["positions"][ticker]
+
+        if pos["shares"] > 0 and not pos.get("pending_buy", False):
+            raise ValueError(
+                f"queue_pending_buy called for {ticker} but position already open "
+                f"({pos['shares']} shares). Cannot queue a BUY on an existing position."
+            )
+
+        pos["pending_buy"]              = True
+        pos["shares"]                   = shares           # store intended shares for display
+        pos["entry_price"]              = provisional_price # provisional — overwritten at fill
+        pos["entry_date"]               = today_str
+        pos["highest_high_since_entry"] = 0.0
+        pos["bars_held"]                = 0
+        pos["chandelier_stop"]          = None
+        # Do NOT deduct cash here — cash is deducted at fill time in morning_fill_check
+
+    def cancel_pending_buy(self, ticker: str) -> None:
+        """
+        Cancel a pending BUY (e.g. AMO order missed or cancelled).
+        Resets position back to flat without touching cash.
+        """
+        pos = self.state["positions"][ticker]
+        if not pos.get("pending_buy", False):
+            return  # nothing to cancel
+        self.state["positions"][ticker] = self._blank_position()
+
+    def confirm_buy_fill(
+        self,
+        ticker: str,
+        actual_exec_price: float,
+        actual_shares: int,
+        fill_date: str,
+        ohlcv_history,   # reserved for future RM seeding; pass None
+    ) -> None:
+        """
+        Confirm a pending BUY AMO order was filled at actual_exec_price.
+        Deducts cash exactly once at the actual open-price fill.
+        Updates entry_price to the actual fill price.
+
+        Args:
+            ticker:             stock ticker
+            actual_exec_price:  slippage-adjusted open fill price
+            actual_shares:      shares actually filled (should match pending)
+            fill_date:          fill date in YYYY-MM-DD format
+            ohlcv_history:      reserved; pass None
+        """
+        pos = self.state["positions"][ticker]
+
+        if not pos.get("pending_buy", False):
+            raise ValueError(
+                f"confirm_buy_fill called for {ticker} but no pending_buy flag set."
+            )
+
+        cost        = transaction_costs(actual_exec_price, actual_shares, "buy")["total"]
+        total_spent = actual_shares * actual_exec_price + cost
+
+        if total_spent > self.state["cash"]:
+            raise ValueError(
+                f"Insufficient cash to confirm BUY fill for {ticker}: "
+                f"need ₹{total_spent:,.2f} but have ₹{self.state['cash']:,.2f}"
+            )
+
+        self.state["cash"] -= total_spent
+
+        pos["pending_buy"]              = False
+        pos["shares"]                   = actual_shares
+        pos["entry_price"]              = actual_exec_price
+        pos["entry_date"]               = fill_date
+        pos["highest_high_since_entry"] = 0.0  # seeded on first check_exit call
+        pos["bars_held"]                = 0
+        pos["chandelier_stop"]          = None
 
     def close_position(
         self,
@@ -318,7 +415,9 @@ class PaperPortfolio:
         """
         mtm = 0.0
         for ticker, pos in self.state["positions"].items():
-            if pos["shares"] > 0:
+            # Exclude pending_buy positions: cash not yet deducted, so adding
+            # their MTM value would double-count the capital.
+            if pos["shares"] > 0 and not pos.get("pending_buy", False):
                 price = current_prices.get(ticker, pos["entry_price"])
                 mtm  += pos["shares"] * price
         return self.state["cash"] + mtm

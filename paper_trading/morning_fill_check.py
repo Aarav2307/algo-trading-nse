@@ -330,11 +330,14 @@ def _update_portfolio_fill(
     fill_date: date,
     exit_reason: str = "STRATEGY_SIGNAL",
     is_rm_exit: bool = False,
+    portfolio_obj=None,   # PaperPortfolio instance — required for BUY fills
 ) -> None:
     """
     Update portfolio_state.json to reflect the actual next-day fill price.
 
-    For a BUY: recalculate entry_price with the actual open fill price.
+    For a BUY: calls portfolio_obj.confirm_buy_fill() which deducts cash exactly
+               once at the actual open fill price (fixing the double-deduction bug
+               where signal_runner previously deducted at close and here at open).
     For a SELL: update cash, clear position, record trade with the correct
                 exit_reason. If is_rm_exit=True, also trigger cooldown and
                 clear the pending_rm_exit flag (set by yesterday's signal_runner).
@@ -345,6 +348,46 @@ def _update_portfolio_fill(
     import math
     from utils.costs import apply_slippage, transaction_costs
 
+    if order_type == "BUY":
+        if portfolio_obj is None:
+            print(f"  ERROR [{ticker}]: BUY fill requires portfolio_obj — cannot process.")
+            return
+
+        exec_price = apply_slippage(fill_price, "buy")
+
+        # Reload fresh state from JSON before modifying (other SELL fills may have
+        # already written since portfolio_obj was first loaded).
+        portfolio_obj.load()
+
+        # Guard: pending_buy must be True — if not, fill was already processed
+        pos_check = portfolio_obj.state["positions"].get(ticker, {})
+        if not pos_check.get("pending_buy", False):
+            print(
+                f"  WARN [{ticker}]: BUY fill received but pending_buy=False "
+                f"— already processed? Skipping."
+            )
+            return
+
+        # Confirm fill: deducts cash exactly once at the actual open-price fill.
+        # This is the ONLY cash deduction for this BUY — signal_runner no longer
+        # deducts cash when queuing the AMO (queue_pending_buy does not touch cash).
+        try:
+            portfolio_obj.confirm_buy_fill(
+                ticker=ticker,
+                actual_exec_price=exec_price,
+                actual_shares=shares,
+                fill_date=fill_date.isoformat(),
+                ohlcv_history=None,
+            )
+        except ValueError as e:
+            print(f"  ERROR [{ticker}]: confirm_buy_fill failed: {e}")
+            return
+
+        # confirm_buy_fill() already saved state atomically — nothing more to do.
+        print(f"  [portfolio] {STATE_FILE} updated (BUY fill confirmed for {ticker}).")
+        return
+
+    # ── SELL path: direct raw-state update ──────────────────────────────────
     if not STATE_FILE.exists():
         print(f"  WARN: {STATE_FILE} not found — cannot update portfolio state.")
         return
@@ -357,22 +400,7 @@ def _update_portfolio_fill(
         print(f"  WARN: {ticker} not in portfolio state — skipping update.")
         return
 
-    if order_type == "BUY":
-        # Entry price = slippage-adjusted open (mirrors portfolio.buy() internals)
-        exec_price  = apply_slippage(fill_price, "buy")
-        cost        = transaction_costs(exec_price, shares, "buy")["total"]
-        total_spent = shares * exec_price + cost
-
-        state["cash"]              -= total_spent
-        pos["shares"]               = shares
-        pos["entry_price"]          = exec_price
-        pos["entry_date"]           = fill_date.isoformat()
-        pos["highest_high_since_entry"] = fill_price   # seeded at open
-        pos["bars_held"]            = 0
-        # chandelier_stop will be set by RM on first check_exit call
-        pos["chandelier_stop"]      = None
-
-    elif order_type == "SELL":
+    if order_type == "SELL":
         if pos["shares"] <= 0:
             print(f"  WARN: {ticker} has no shares to sell — skipping update.")
             return
@@ -400,10 +428,11 @@ def _update_portfolio_fill(
         })
         state["total_trades"] += 1
 
-        # Reset position — clears pending_rm_exit flag if set
+        # Reset position — clears pending_rm_exit and pending_buy flags if set
         state["positions"][ticker] = {
             "shares": 0, "entry_price": 0.0, "entry_date": None,
-            "highest_high_since_entry": 0.0, "bars_held": 0, "chandelier_stop": None,
+            "highest_high_since_entry": 0.0, "bars_held": 0,
+            "chandelier_stop": None, "pending_buy": False,
         }
 
         # Deferred RM exits: trigger cooldown now that the fill is confirmed.
@@ -444,6 +473,14 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
         print("[morning_fill_check] Paper trading mode — simulating fills from open price")
 
     today = check_date or date.today()
+
+    # ── Load PaperPortfolio for BUY fill confirmation ──────────────────────────
+    # Required for confirm_buy_fill() and cancel_pending_buy(). Instantiate with
+    # empty tickers list — load() reads tickers from the existing state file.
+    from paper_trading.paper_portfolio import PaperPortfolio
+    _portfolio = PaperPortfolio([], str(STATE_FILE), 100_000.0)
+    if STATE_FILE.exists():
+        _portfolio.load()
 
     # ── Trading day guard ──────────────────────────────────────────────────────
     # AMO orders only fill on trading days. If today is a weekend or NSE holiday,
@@ -556,6 +593,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                     ticker, order_type, shares, open_px, today,
                     exit_reason=notes if notes else "STRATEGY_SIGNAL",
                     is_rm_exit=is_rm_exit,
+                    portfolio_obj=_portfolio,
                 )
 
         elif result["status"] in ("REJECTED", "CANCELLED"):
@@ -564,6 +602,12 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
             if result["circuit_flag"]:
                 print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
             _update_csv_row(order_date, ticker, order_type, result["status"], "", "")
+            # Cancelled BUY AMO: reset the pending_buy flag so position returns to flat
+            if apply_fills and order_type == "BUY":
+                _portfolio.load()
+                _portfolio.cancel_pending_buy(ticker)
+                _portfolio.save()
+                print(f"  [{ticker}]: BUY AMO {result['status']} — pending_buy cancelled")
 
         else:
             missed_count += 1
@@ -576,8 +620,16 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
                 print(f"  ⚠️  Verify position manually in Zerodha dashboard")
 
-            _update_csv_row(order_date, ticker, order_type,
-                            "MISSED", "", "")
+            _update_csv_row(order_date, ticker, order_type, "MISSED", "", "")
+
+            # Missed BUY AMO: cancel the pending_buy so position returns to flat.
+            # Without this, signal_runner would see pending_buy=True indefinitely
+            # and skip the stock forever.
+            if apply_fills and order_type == "BUY":
+                _portfolio.load()
+                _portfolio.cancel_pending_buy(ticker)
+                _portfolio.save()
+                print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
 
     print()
     parts = [f"{filled_count} FILLED", f"{missed_count} MISSED"]

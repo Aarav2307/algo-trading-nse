@@ -482,6 +482,25 @@ def _process_stock(
     close_px   = float(today_bar["close"])
     today_high = float(today_bar["high"])
 
+    # If a BUY AMO is pending morning fill confirmation, skip all processing.
+    # The position has not actually been opened yet — cash not deducted.
+    # morning_fill_check.py will call confirm_buy_fill() at the open price.
+    if pos.get("pending_buy", False):
+        return {
+            "ticker":           ticker,
+            "signal":           "PENDING_BUY",
+            "close_price":      close_px,
+            "exec_price":       pos.get("entry_price"),   # provisional close price
+            "shares":           pos["shares"],
+            "reason":           "AMO BUY pending morning fill confirmation",
+            "exit_reason":      None,
+            "chandelier_stop":  None,
+            "bars_in_cooldown": portfolio.state["cooldown_state"][ticker]["remaining_bars"],
+            "sizing_info":      None,
+            "action_taken":     None,
+            "net_pnl":          None,
+        }
+
     # If an RM exit was deferred yesterday (AMO SELL queued, awaiting open fill),
     # skip all processing for this ticker today. morning_fill_check.py will
     # complete the close_position() call at tomorrow's open price.
@@ -667,26 +686,32 @@ def _process_stock(
             })
             return result
 
-        # ── Execute buy ──────────────────────────────────────────────────────
-        portfolio.open_position(
-            ticker, shares, entry_exec_px, today_str,
-            chandelier_for_sizing, today_high,
+        # ── Queue AMO BUY — do NOT open position or deduct cash yet ─────────
+        # Cash is deducted when morning_fill_check confirms the fill at open price.
+        # This prevents the double-cash-deduction bug (signal_runner at close
+        # price + morning_fill_check at open price = two deductions).
+        portfolio.queue_pending_buy(
+            ticker=ticker,
+            shares=shares,
+            provisional_price=entry_exec_px,  # close price, for display only
+            today_str=today_str,
         )
         portfolio.record_weekly_signal("BUY")
 
-        cost_bd = transaction_costs(entry_exec_px, shares, "buy")
+        limit_px = round(close_px * (1 + AMO_CONFIG["limit_buffer_pct"]), 2)
+        cost_bd  = transaction_costs(entry_exec_px, shares, "buy")
         result.update({
-            "signal":          "BUY",
-            "exec_price":      entry_exec_px,
+            "signal":          "BUY_QUEUED",
+            "exec_price":      entry_exec_px,   # provisional close price
             "shares":          shares,
             "chandelier_stop": chandelier_for_sizing,
-            "reason":          "Golden cross — SMA20 crossed above SMA50",
+            "reason":          "Golden cross — AMO BUY queued for tomorrow's open",
             "gap_pct":         round(gap_pct, 3),
             "sizing_info":     sz,
             "cost_breakdown":  cost_bd,
             "action_taken": (
-                f"BUY  {shares} shares @ ₹{entry_exec_px:.2f} | "
-                f"cost ₹{cost_bd['total']:.0f} | "
+                f"AMO BUY queued: {shares} shr @ limit ₹{limit_px:.2f} "
+                f"[fill pending tomorrow open] | "
                 f"risk ₹{sz.get('risk_amount', 0):,.0f} "
                 f"({sz.get('stop_source', '?')}) [{sz.get('binding', '?')}]"
             ),
@@ -1260,7 +1285,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
         sig    = r.get("signal")
         shares = r.get("shares", 0)
         price  = r.get("close_price", 0.0)
-        if sig == "BUY" and shares > 0:
+        if sig == "BUY_QUEUED" and shares > 0:
             order = amo.place_buy_amo(ticker, shares, price, today,
                                       notes=f"chan={r.get('chandelier_stop','?')}")
             amo_orders.append(order)
