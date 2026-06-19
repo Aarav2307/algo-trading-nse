@@ -15,7 +15,7 @@ Requires a fresh Kite access token: run auth/kite_login.py first.
 import io
 import sys
 from contextlib import redirect_stdout
-from datetime import datetime
+from datetime import date as _date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -41,10 +41,14 @@ from strategies.sma_crossover import generate_signals
 STOCKS = ["TMPV.NS", "WHIRLPOOL.NS", "SIEMENS.NS", "BAJAJ-AUTO.NS"]
 
 # In-sample:     2018-01-01 → 2022-12-31  (exclusive end = 2023-01-01)
-# Out-of-sample: 2023-01-01 → 2025-12-31  (exclusive end = 2026-01-01)
+# OOS end date is dynamic — always extends to today so validation includes
+# all available live performance data. IS window is fixed (2018-2023).
+# Re-run walk_forward.py quarterly to keep validation current.
+_TODAY = _date.today().strftime("%Y-%m-%d")
+
 WINDOWS = {
     "in_sample":     ("2018-01-01", "2023-01-01"),
-    "out_of_sample": ("2023-01-01", "2026-01-01"),
+    "out_of_sample": ("2023-01-01", _TODAY),        # dynamic — extends to today
 }
 
 # Extended validation windows — tests against genuine bear market conditions
@@ -425,7 +429,7 @@ def _print_stock(
     emit(
         f"  {'Metric':<{C1}}"
         f"{'In-Sample (2018-2022)':^{C2}}"
-        f"{'Out-of-Sample (2023-2025)':^{C3}}"
+        f"{'Out-of-Sample (2023-'+_TODAY[:4]+')':^{C3}}"
         f"{'Result':>{C4}}"
     )
     emit("  " + "─" * (C1 + C2 + C3 + C4))
@@ -1433,6 +1437,144 @@ def print_comparison_report(
         print("   Strategy may be overfit to bull market conditions. Review before going live.")
 
 
+def run_rolling_live_check(
+    stocks: list[str],
+    lookback_days: int = 300,
+    nifty_regime_filter: bool = True,
+    params: dict = None,
+) -> dict:
+    """
+    Rolling live performance check — tests strategy on the most recent
+    `lookback_days` calendar days of data as an early warning system.
+
+    Default: 300 calendar days (~210 trading bars), which exceeds MIN_BARS=200
+    so _run_one() can compute all indicators (SMA-50 + ATR-22 + buffer).
+    Reduce only if you extend _run_one() to accept a lower minimum.
+
+    This is NOT a walk-forward validation. It has no IS/OOS split.
+    Its purpose is to detect strategy degradation in live conditions
+    by checking if recent performance is significantly negative.
+
+    Thresholds (deliberately lenient — this is an early warning, not validation):
+        HEALTHY:  total_ret >= -5%  AND  expectancy > 0
+        WARNING:  total_ret < -5%   OR   expectancy <= 0
+        CRITICAL: total_ret < -15%
+
+    Returns dict with per-stock results and overall health status.
+    """
+    from datetime import timedelta
+
+    end_date   = _date.today().strftime("%Y-%m-%d")
+    start_date = (_date.today() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+
+    print(f"\n[live_check] Rolling performance check: {start_date} → {end_date} ({lookback_days} days)")
+
+    p = _merge_params(PARAMS, params) if params is not None else PARAMS
+
+    try:
+        nifty_df = _fetch_nifty(start_date, end_date)
+    except Exception as e:
+        print(f"[live_check] WARNING: Could not fetch NIFTY data: {e}")
+        nifty_df = None
+
+    results = {}
+    for ticker in stocks:
+        try:
+            r = _run_one(
+                ticker, start_date, end_date,
+                nifty_df=nifty_df,
+                params=params,
+            )
+            if r.get("error"):
+                results[ticker] = {"status": "ERROR", "error": r["error"]}
+                continue
+
+            m = r["metrics"]
+            total_ret  = m.get("total_ret", 0.0)
+            expectancy = m.get("expectancy", 0.0)
+            n_trades   = m.get("n_trades", 0)
+
+            if total_ret < -15.0:
+                status = "CRITICAL"
+            elif total_ret < -5.0 or expectancy <= 0:
+                status = "WARNING"
+            else:
+                status = "HEALTHY"
+
+            results[ticker] = {
+                "status":     status,
+                "total_ret":  round(total_ret, 2),
+                "expectancy": round(expectancy, 2),
+                "n_trades":   n_trades,
+                "n_bars":     r.get("n_bars", 0),
+            }
+
+        except Exception as e:
+            results[ticker] = {"status": "ERROR", "error": str(e)}
+
+    return {
+        "results":       results,
+        "start_date":    start_date,
+        "end_date":      end_date,
+        "lookback_days": lookback_days,
+    }
+
+
+def print_rolling_live_report(live_results: dict) -> None:
+    """Print formatted rolling live performance report."""
+    results    = live_results["results"]
+    start_date = live_results["start_date"]
+    end_date   = live_results["end_date"]
+    days       = live_results["lookback_days"]
+
+    print("\n" + "="*70)
+    print(f"ROLLING LIVE PERFORMANCE CHECK — last {days} calendar days (~{days*5//7} trading bars)")
+    print(f"Period: {start_date} → {end_date}")
+    print("="*70)
+    print(f"{'Stock':<22} {'Status':<12} {'Return':^10} {'Expectancy':^12} {'Trades':^8}")
+    print("-"*70)
+
+    statuses = []
+    for ticker, r in results.items():
+        if r["status"] == "ERROR":
+            print(f"{ticker:<22} {'ERROR':<12} {'N/A':^10} {'N/A':^12} {'N/A':^8}")
+            print(f"  Error: {r.get('error', 'unknown')}")
+            continue
+
+        status     = r["status"]
+        total_ret  = r["total_ret"]
+        expectancy = r["expectancy"]
+        n_trades   = r["n_trades"]
+        statuses.append(status)
+
+        icon = "✅" if status == "HEALTHY" else ("⚠️ " if status == "WARNING" else "🚨")
+        print(
+            f"{ticker:<22} {icon} {status:<10} "
+            f"{total_ret:^+10.1f}% {expectancy:^+12.0f}  {n_trades:^8}"
+        )
+
+    print("="*70)
+
+    if not statuses:
+        print("No results — insufficient data for live check.")
+        return
+
+    if any(s == "CRITICAL" for s in statuses):
+        print("🚨 OVERALL: CRITICAL — one or more stocks showing severe live degradation.")
+        print("   Review strategy immediately before going live with real capital.")
+    elif any(s == "WARNING" for s in statuses):
+        print("⚠️  OVERALL: WARNING — some stocks showing negative recent performance.")
+        print("   Monitor closely. Consider reducing position sizes.")
+    else:
+        print("✅ OVERALL: HEALTHY — recent performance within acceptable range.")
+
+    n_healthy  = statuses.count("HEALTHY")
+    n_warning  = statuses.count("WARNING")
+    n_critical = statuses.count("CRITICAL")
+    print(f"   {n_healthy} HEALTHY | {n_warning} WARNING | {n_critical} CRITICAL")
+    print("="*70)
+
+
 def run_parameter_stability_test(
     stocks: list[str],
     cooldown_bars: int = 15,
@@ -1658,6 +1800,18 @@ if __name__ == "__main__":
     print("\n" + "=" * 75)
     print("COMPARISON TABLE 2 — All 10 stocks (original 2018-26 where available, extended 2015-23)")
     print_comparison_report(original_results, extended_results_10, STOCKS_EXTENDED)
+
+    # ── Rolling live performance check ────────────────────────────────────────
+    print("\n" + "="*70)
+    print("Running rolling live performance check (last 90 days)...")
+    print("="*70)
+
+    live_results = run_rolling_live_check(
+        stocks=STOCKS_EXTENDED,
+        lookback_days=300,   # ~210 trading bars, above MIN_BARS=200
+        nifty_regime_filter=NIFTY_FILTER,
+    )
+    print_rolling_live_report(live_results)
 
     # ── Parameter stability test ───────────────────────────────────────────────
     print("\n" + "="*85)
