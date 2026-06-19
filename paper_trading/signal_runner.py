@@ -155,17 +155,61 @@ def _get_ist_now() -> datetime:
 def _check_auth() -> None:
     """
     Verify the Kite access token exists and is less than 8 hours old.
-    Kite tokens expire daily at midnight IST; 8h is a conservative ceiling
-    that prevents stale tokens from the previous session.
+    Kite tokens expire daily at midnight IST; 8h is a conservative ceiling.
 
-    Exits with error if token is missing or too old.
+    If token is missing or stale, attempts automatic refresh via auto_login.py
+    before failing. This allows manual runs without requiring a prior manual
+    token refresh, matching the server's automated behavior.
+
+    Exits with error only if:
+    1. Token is missing AND auto-refresh fails
+    2. Token is stale AND auto-refresh fails
     """
-    if not TOKEN_FILE.exists():
-        print(f"\nERROR: {TOKEN_FILE} not found.")
-        print("  Run auth/kite_login.py first to generate a fresh access token.")
-        sys.exit(1)
+    def _attempt_auto_refresh(reason: str) -> bool:
+        """
+        Run auth/auto_login.py as subprocess to refresh the Kite token.
+        Returns True if refresh succeeded, False if it failed.
+        """
+        print(f"\n[auth] {reason}")
+        print("[auth] Attempting automatic token refresh via auth/auto_login.py...")
+        try:
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, "auth/auto_login.py"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=Path(__file__).parent.parent,  # project root
+            )
+            if result.returncode == 0:
+                print("[auth] ✅ Token refreshed automatically — continuing.")
+                return True
+            else:
+                print(f"[auth] ❌ Auto-refresh failed (exit code {result.returncode})")
+                if result.stderr:
+                    print(f"[auth] Error output: {result.stderr.strip()[:300]}")
+                if result.stdout:
+                    print(f"[auth] Output: {result.stdout.strip()[:300]}")
+                return False
+        except subprocess.TimeoutExpired:
+            print("[auth] ❌ Auto-refresh timed out after 30 seconds")
+            return False
+        except Exception as e:
+            print(f"[auth] ❌ Auto-refresh error: {e}")
+            return False
 
-    # Parse the '# saved YYYY-MM-DD HH:MM:SS' comment written by kite_login.py
+    # ── Check 1: Token file must exist ────────────────────────────────────────
+    if not TOKEN_FILE.exists():
+        if not _attempt_auto_refresh(f"{TOKEN_FILE} not found."):
+            print(f"\nERROR: Token file missing and auto-refresh failed.")
+            print("  Run auth/kite_login.py manually to generate a fresh token.")
+            sys.exit(1)
+        # After successful refresh, TOKEN_FILE should now exist — continue
+        if not TOKEN_FILE.exists():
+            print(f"\nERROR: Auto-refresh ran but {TOKEN_FILE} still not found.")
+            sys.exit(1)
+
+    # ── Check 2: Token must be less than 8 hours old ──────────────────────────
     saved_dt = None
     try:
         for line in TOKEN_FILE.read_text().splitlines():
@@ -182,10 +226,15 @@ def _check_auth() -> None:
         saved_dt = datetime.fromtimestamp(mtime)
 
     age_hours = (datetime.now() - saved_dt).total_seconds() / 3600
+
     if age_hours > 8:
-        print(f"\nERROR: Kite access token is {age_hours:.1f} hours old (limit 8h).")
-        print("  Run auth/kite_login.py to refresh the token before running.")
-        sys.exit(1)
+        if not _attempt_auto_refresh(
+            f"Kite access token is {age_hours:.1f} hours old (limit 8h)."
+        ):
+            print(f"\nERROR: Token is {age_hours:.1f}h old and auto-refresh failed.")
+            print("  Run auth/kite_login.py manually to refresh the token.")
+            sys.exit(1)
+        # After successful refresh, token age is reset — no further check needed
 
 
 def _warn_if_market_open() -> None:
