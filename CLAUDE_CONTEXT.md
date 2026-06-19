@@ -245,3 +245,14 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Migration: existing positions get entry_cost=0.0 (conservative — won't retroactively fix old trades)
 - Unit test: Rs-36.44 (old) → Rs-61.89 (new) — Rs25.45 overstatement eliminated ✅
 - Walk-forward: 19/24 unchanged
+
+### Finding #8 Fix: Walk-forward OOS window stale — COMPLETED (Jun 20)
+- Problem: OOS hardcoded to end 2026-01-01, missing 120+ days of live performance
+- Fix: OOS end date now dynamic (_TODAY = date.today()) — always extends to today
+- Score change: 19/24 → 17/24 (79% → 71%) — more honest, includes 2026 live data
+- WHIRLPOOL payoff ratio dropped 2.46→1.48 (below 1.5 threshold) in extended window
+- SIEMENS OOS return essentially 0% — confirms existing removal flag
+- System still VALIDATED at 71% (threshold 65%)
+- Added run_rolling_live_check(): 90-day early warning system
+- Rolling check (last 300 days): 6 HEALTHY, 4 WARNING (WHIRLPOOL, SIEMENS, COLPAL, BSOFT), 0 CRITICAL
+- Run walk_forward.py quarterly to keep validation current
