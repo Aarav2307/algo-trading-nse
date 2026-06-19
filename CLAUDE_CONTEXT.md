@@ -228,3 +228,11 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Tested: 10-hour-old token → auto-refresh → _check_auth completes cleanly ✅
 - Walk-forward: 19/24 unchanged
 - Combined with kite_fetcher auto-refresh: token expiry is now fully transparent everywhere
+
+### Finding #13 Fix: Duplicate AMO orders — COMPLETED (Jun 19)
+- Problem: signal_runner run twice same day creates duplicate DRY_RUN rows; morning_fill_check processes both, double-deducting cash
+- Fix 1: _load_pending_orders() deduplicates by (date, ticker, order_type) — keeps most recent row, warns on duplicates
+- Fix 2: SELL branch in _update_portfolio_fill() has idempotency guard — skips if shares already 0
+- BUY duplicates also caught by pending_buy=False guard from Finding #1 fix
+- Unit tests: 2/2 passed (duplicate removed, non-duplicate preserved, most recent kept)
+- Walk-forward: 19/24 unchanged
