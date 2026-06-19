@@ -87,6 +87,8 @@ class PaperPortfolio:
                 pos["rm_exit_reason"] = None
             if "rm_sell_requeue_count" not in pos:
                 pos["rm_sell_requeue_count"] = 0
+            if "entry_cost" not in pos:
+                pos["entry_cost"] = 0.0   # existing open positions: conservative (buy cost unknown)
 
     def save(self) -> None:
         """
@@ -135,6 +137,7 @@ class PaperPortfolio:
         return {
             "shares":                   0,
             "entry_price":              0.0,   # slippage-adjusted exec price at buy
+            "entry_cost":               0.0,   # buy-side transaction costs (brokerage + SEBI + exchange + GST + stamp duty)
             "entry_date":               None,
             "highest_high_since_entry": 0.0,   # highest high bar since position opened
             "bars_held":                0,      # trading bars held (incremented by RM check_exit)
@@ -182,6 +185,7 @@ class PaperPortfolio:
         pos = self.state["positions"][ticker]
         pos["shares"]                   = shares
         pos["entry_price"]              = exec_price
+        pos["entry_cost"]               = cost   # stored for accurate net_pnl at close time
         pos["entry_date"]               = date_str
         pos["highest_high_since_entry"] = entry_high
         pos["bars_held"]                = 0
@@ -321,6 +325,7 @@ class PaperPortfolio:
         pos["pending_buy"]              = False
         pos["shares"]                   = actual_shares
         pos["entry_price"]              = actual_exec_price
+        pos["entry_cost"]               = cost   # stored for accurate net_pnl at close time
         pos["entry_date"]               = fill_date
         pos["highest_high_since_entry"] = 0.0  # seeded on first check_exit call
         pos["bars_held"]                = 0
@@ -353,8 +358,9 @@ class PaperPortfolio:
         proceeds   = shares * exec_price - cost
         self.state["cash"] += proceeds
 
-        gross_pnl = (exec_price - entry_px) * shares
-        net_pnl   = gross_pnl - cost    # sell costs; entry cost already deducted
+        entry_cost = pos.get("entry_cost", 0.0)   # buy-side costs stored at open_position()
+        gross_pnl  = (exec_price - entry_px) * shares
+        net_pnl    = gross_pnl - cost - entry_cost  # sell costs + buy costs = true round-trip P&L
 
         # Persist completed trade for later analysis
         self.state["trade_log"].append({
@@ -365,6 +371,7 @@ class PaperPortfolio:
             "exit_price":   round(exec_price, 4),
             "shares":       shares,
             "gross_pnl":    round(gross_pnl, 2),
+            "entry_cost":   round(entry_cost, 2),
             "net_pnl":      round(net_pnl, 2),
             "return_pct":   round((exec_price / entry_px - 1) * 100, 4),
             "exit_reason":  reason,

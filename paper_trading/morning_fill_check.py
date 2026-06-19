@@ -478,9 +478,10 @@ def _update_portfolio_fill(
         state["cash"] += proceeds
 
         # Record in trade log with the actual exit reason
-        entry_px  = pos["entry_price"]
-        gross_pnl = (exec_price - entry_px) * shares
-        net_pnl   = gross_pnl - cost
+        entry_px   = pos["entry_price"]
+        entry_cost = pos.get("entry_cost", 0.0)   # buy-side costs stored at confirm_buy_fill()
+        gross_pnl  = (exec_price - entry_px) * shares
+        net_pnl    = gross_pnl - cost - entry_cost  # true round-trip P&L
         state["trade_log"].append({
             "ticker":      ticker,
             "entry_date":  pos["entry_date"],
@@ -489,6 +490,7 @@ def _update_portfolio_fill(
             "exit_price":  round(exec_price, 4),
             "shares":      shares,
             "gross_pnl":   round(gross_pnl, 2),
+            "entry_cost":  round(entry_cost, 2),
             "net_pnl":     round(net_pnl, 2),
             "return_pct":  round((exec_price / entry_px - 1) * 100, 4),
             "exit_reason": exit_reason,
@@ -497,9 +499,11 @@ def _update_portfolio_fill(
 
         # Reset position — clears pending_rm_exit and pending_buy flags if set
         state["positions"][ticker] = {
-            "shares": 0, "entry_price": 0.0, "entry_date": None,
-            "highest_high_since_entry": 0.0, "bars_held": 0,
-            "chandelier_stop": None, "pending_buy": False,
+            "shares": 0, "entry_price": 0.0, "entry_cost": 0.0,
+            "entry_date": None, "highest_high_since_entry": 0.0,
+            "bars_held": 0, "chandelier_stop": None,
+            "pending_buy": False, "pending_rm_exit": False,
+            "rm_exit_reason": None, "rm_sell_requeue_count": 0,
         }
 
         # Deferred RM exits: trigger cooldown now that the fill is confirmed.
