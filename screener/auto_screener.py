@@ -472,14 +472,14 @@ def run_screen() -> dict:
     # WATCH:   remaining death cross stocks (positions 5–10 by gap proximity).
     death_cross_sorted = sorted(
         [s for s in trending_strong if s["cross"] == "DEATH"],
-        key=lambda x: -x["gap"]  # closest to 0 (least negative) first
+        key=lambda x: -(x["gap_short"] if x["gap_short"] is not None else -float("inf"))  # sort by 80-day gap — what signal_runner sees
     )
     adds    = death_cross_sorted[:5]
     watches = death_cross_sorted[5:10]
 
     monitors = sorted(
         [s for s in trending_strong if s["cross"] == "GOLDEN"],
-        key=lambda x: x["gap"]  # lowest gap first = freshest cross
+        key=lambda x: (x["gap_short"] if x["gap_short"] is not None else float("inf"))  # sort by 80-day gap — what signal_runner sees
     )[:5]
 
     # ── Step 4: Check existing universe for regime degradation ────────────────
