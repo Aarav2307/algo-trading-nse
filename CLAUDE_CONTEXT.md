@@ -192,3 +192,13 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Zero manual intervention needed — fully transparent to all callers
 - Side fix: .env was missing newline between ZERODHA_TOTP_SECRET and SENDGRID_API_KEY — TOTP was 118 chars instead of 32, causing pyotp failures. Fixed on both local and server.
 - Tested: expired token → auto-refresh → retry → 12 bars loaded ✅
+
+### Finding #1 Fix: Double cash deduction on BUY fills — COMPLETED (Jun 19)
+- Problem: signal_runner deducted cash at close price; morning_fill_check deducted again at open price
+- Fix: signal_runner now calls queue_pending_buy() — no cash deduction, no position opened
+- Cash deducted exactly once when morning_fill_check calls confirm_buy_fill() at actual open price
+- New methods in paper_portfolio.py: queue_pending_buy(), cancel_pending_buy(), confirm_buy_fill()
+- pending_buy field added to all position dicts (migration runs automatically on load)
+- MISSED BUY AMOs call cancel_pending_buy() — position reset to flat, stock re-eligible for signals
+- Unit tests: 3/3 passed (no cash deduction on queue, correct deduction on confirm, cancel resets)
+- Walk-forward: 19/24 unchanged — no regression
