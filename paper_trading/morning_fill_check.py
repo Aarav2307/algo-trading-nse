@@ -84,16 +84,56 @@ def _load_pending_orders() -> List[dict]:
 
     Date-agnostic: a Friday order that was never checked on Saturday/Sunday
     will still appear here on Monday, so weekend carry-forward works correctly.
+
+    Deduplication: if multiple DRY_RUN rows exist for the same
+    (date, ticker, order_type) combination — which can happen if signal_runner
+    is run twice for the same day — only the LAST row is kept (most recent
+    takes precedence). A warning is printed for each duplicate detected.
+
+    Returns list of unique pending order dicts, one per (date, ticker, order_type).
     """
     if not AMO_CSV.exists():
         return []
 
-    pending = []
+    # Load all pending rows
+    all_pending = []
     with open(AMO_CSV, newline="") as fh:
         for row in csv.DictReader(fh):
             if row["status"] == "DRY_RUN" and row.get("fill_date", "") == "":
-                pending.append(row)
-    return pending
+                all_pending.append(row)
+
+    if not all_pending:
+        return []
+
+    # Deduplicate: keep last row per (date, ticker, order_type)
+    # "last" = last appearance in CSV = most recently written
+    # Use ordered dict to preserve insertion order while deduplicating
+    seen: dict = {}
+    duplicates_found = False
+
+    for row in all_pending:
+        # Date column is named 'date'; handle 'signal_date' as a fallback
+        row_date = row.get("date", row.get("signal_date", "unknown"))
+        key = (row_date, row["ticker"], row["order_type"])
+
+        if key in seen:
+            duplicates_found = True
+            print(
+                f"  WARN [dedup]: Duplicate DRY_RUN order found for "
+                f"{row['ticker']} {row['order_type']} on {row_date} — "
+                f"keeping most recent, discarding earlier entry"
+            )
+
+        seen[key] = row  # overwrite with most recent
+
+    if duplicates_found:
+        print(
+            f"  WARN [dedup]: Duplicate AMO orders detected in {AMO_CSV}. "
+            f"This can happen if signal_runner.py was run twice for the same date. "
+            f"Only the most recent order per (date, ticker, order_type) will be processed."
+        )
+
+    return list(seen.values())
 
 
 def _fetch_open_price(ticker: str, today: date) -> Optional[float]:
@@ -423,9 +463,14 @@ def _update_portfolio_fill(
         return
 
     if order_type == "SELL":
-        if pos["shares"] <= 0:
-            print(f"  WARN: {ticker} has no shares to sell — skipping update.")
+        # Idempotency guard: verify position is still open before processing SELL fill
+        if pos.get("shares", 0) <= 0:
+            print(
+                f"  WARN [{ticker}]: SELL fill received but shares={pos.get('shares', 0)} "
+                f"— position already closed. Skipping duplicate fill."
+            )
             return
+
         exec_price = apply_slippage(fill_price, "sell")
         cost       = transaction_costs(exec_price, shares, "sell")["total"]
         proceeds   = shares * exec_price - cost
