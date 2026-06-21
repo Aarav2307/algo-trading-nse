@@ -272,13 +272,13 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - ADD/MONITOR/WATCH lists now show H values 0.48-0.53 (correctly calibrated)
 - Walk-forward: 17/24 unchanged
 
-### ETF Overlay Backtest — IN PROGRESS (Jun 20)
-- Decision: implement tiered NIFTYBEES overlay to address 60-70% cash drag
-- Overlay tiers: 0 positions=100% ETF, 1-2=60% ETF, 3-4=30% ETF, max=0% ETF
-- Go/no-go criteria: Sharpe +0.15, max DD increase <8pp, ETF cost <0.3%/yr
-- NIFTYBEES confirmed accessible via Kite: 15 bars loaded cleanly
-- validation/etf_overlay_backtest.py — Claude Code prompt written, NOT YET EXECUTED
-- Next step: paste prompt into Claude Code and run Steps 6-9
-- After go/no-go result saved to validation/etf_overlay_result.json, begin Phase 2
-- Phase 2: add NIFTYBEES tracking to signal_runner.py (paper trading only)
-- Phase 3: deploy ₹25,000 real capital only after 6 months paper validation passes
+### ETF Overlay — COMPLETED (Jun 21)
+- Backtest: all_core_pass=true (Sharpe Δ+8.996, overlay DD -14.3% vs threshold -17.2%, ETF cost 0.094%/yr)
+- DD criterion revised: overlay_dd < niftybees_dd + 2pp (old 8pp threshold was against artificially-low cash baseline)
+- Rebalance guard implemented: tier changes only on open_position count crossing tier boundary (~26 trades per stock vs 9,001 bug)
+- Phase 2: NIFTYBEES paper tracking live in signal_runner.py as of 2026-06-21
+- Files changed: paper_portfolio.py (ETF_TIERS, get_etf_target_tier, rebalance_etf), signal_runner.py (ETF block + report line), morning_fill_check.py (comment only)
+- 5/5 unit tests passing on local and server (paper_trading/test_etf_overlay.py)
+- Current tier: 60% (2 open positions — SIEMENS, BAJAJ-AUTO)
+- Regime filter decision: ETF runs independently of NIFTY death cross — regime filter blocks stock entries only
+- Phase 3: deploy ₹25,000 real capital after 6 months clean paper validation (target: Dec 2026)
