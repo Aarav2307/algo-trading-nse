@@ -175,7 +175,7 @@ def build_html(results: dict) -> str:
             ✅ ADD Recommendations ({len(adds)})
         </h2>
         <p style="color: #7f8c8d; font-size: 14px;">
-            These stocks pass all filters: TRENDING_STRONG regime, H &gt; 0.55, ADX &gt; 25,
+            These stocks pass all filters: TRENDING_STRONG regime, H &gt; 0.48, ADX &gt; 25,
             correlation safe, and are currently in or near a golden cross.
         </p>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
@@ -291,7 +291,7 @@ def build_html(results: dict) -> str:
         <p style="color: #bdc3c7; font-size: 12px; text-align: center;">
             NSE Algo Trading System &nbsp;|&nbsp; AWS Lightsail Mumbai &nbsp;|&nbsp;
             Data: {coverage} stocks screened &nbsp;|&nbsp; Min history: 744 bars (2 years)<br>
-            Thresholds: Hurst &gt; 0.55 &nbsp;|&nbsp; ADX &gt; 25 &nbsp;|&nbsp; Max avg correlation: 0.60<br>
+            Thresholds: Hurst &gt; 0.48 &nbsp;|&nbsp; ADX &gt; 25 &nbsp;|&nbsp; Max avg correlation: 0.60<br>
             Next screen: Wednesday or Sunday 6 PM IST
         </p>
     </div>

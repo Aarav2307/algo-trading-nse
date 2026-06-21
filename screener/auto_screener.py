@@ -6,7 +6,7 @@ Pipeline:
   1. Fetch NIFTY 500 constituent list from NSE
   2. Filter stocks with >= 744 trading days (2 years) of history
   3. Compute Hurst exponent + ADX for regime classification
-  4. Filter TRENDING_STRONG (H > 0.55, ADX > 25)
+  4. Filter TRENDING_STRONG (H > 0.48, ADX > 25)
   5. Compute SMA 20/50 gap — flag stocks closest to golden cross
   6. Run correlation check against current trading universe
   7. Check existing universe stocks for regime degradation
