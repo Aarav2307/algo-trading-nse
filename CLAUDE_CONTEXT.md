@@ -271,3 +271,14 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - Random walk verification: H=0.469 (no upward bias confirmed)
 - ADD/MONITOR/WATCH lists now show H values 0.48-0.53 (correctly calibrated)
 - Walk-forward: 17/24 unchanged
+
+### ETF Overlay Backtest — IN PROGRESS (Jun 20)
+- Decision: implement tiered NIFTYBEES overlay to address 60-70% cash drag
+- Overlay tiers: 0 positions=100% ETF, 1-2=60% ETF, 3-4=30% ETF, max=0% ETF
+- Go/no-go criteria: Sharpe +0.15, max DD increase <8pp, ETF cost <0.3%/yr
+- NIFTYBEES confirmed accessible via Kite: 15 bars loaded cleanly
+- validation/etf_overlay_backtest.py — Claude Code prompt written, NOT YET EXECUTED
+- Next step: paste prompt into Claude Code and run Steps 6-9
+- After go/no-go result saved to validation/etf_overlay_result.json, begin Phase 2
+- Phase 2: add NIFTYBEES tracking to signal_runner.py (paper trading only)
+- Phase 3: deploy ₹25,000 real capital only after 6 months paper validation passes
