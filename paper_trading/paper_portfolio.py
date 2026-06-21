@@ -26,6 +26,8 @@ from typing import Dict, List, Optional
 
 from utils.costs import transaction_costs
 
+ETF_TIERS: dict = {0: 1.0, 1: 0.6, 2: 0.6, 3: 0.3, 4: 0.0}
+
 
 class PaperPortfolio:
     """
@@ -90,6 +92,11 @@ class PaperPortfolio:
             if "entry_cost" not in pos:
                 pos["entry_cost"] = 0.0   # existing open positions: conservative (buy cost unknown)
 
+        # Migrate top-level ETF state (backward-compatible)
+        self.state.setdefault("etf_shares",    0)
+        self.state.setdefault("etf_avg_price", 0.0)
+        self.state.setdefault("etf_tier",      0)
+
     def save(self) -> None:
         """
         Atomically save portfolio state to JSON.
@@ -129,6 +136,10 @@ class PaperPortfolio:
             "weekly_signals":     {"BUY": 0, "SELL": 0, "RISK_EXIT": 0},
             # Complete trade history for analysis
             "trade_log":        [],
+            # ETF overlay (NIFTYBEES paper tracking)
+            "etf_shares":       0,
+            "etf_avg_price":    0.0,
+            "etf_tier":         0,
         }
 
     @staticmethod
@@ -532,3 +543,75 @@ class PaperPortfolio:
             "weekly_signals":   self.state.get("weekly_signals", {}),
             "inception_date":   self.state.get("inception_date"),
         }
+
+    # ── ETF overlay (NIFTYBEES paper tracking) ────────────────────────────────
+
+    def get_etf_target_tier(self) -> float:
+        """Return target ETF allocation fraction based on open stock positions."""
+        open_positions = sum(
+            1 for pos in self.state["positions"].values()
+            if pos.get("shares", 0) > 0
+        )
+        return ETF_TIERS[min(open_positions, 4)]
+
+    def rebalance_etf(self, niftybees_price: float, log_fn=None) -> None:
+        """
+        Paper-rebalance the NIFTYBEES ETF position to match the target tier.
+        Called by signal_runner after all stock signals are processed.
+        No-ops if the tier is unchanged. Cash-guards buys against available cash.
+        """
+        open_positions = sum(
+            1 for pos in self.state["positions"].values()
+            if pos.get("shares", 0) > 0
+        )
+        new_tier = ETF_TIERS[min(open_positions, 4)]
+        old_tier = self.state["etf_tier"]
+
+        if new_tier == old_tier:
+            return
+
+        total_portfolio_value = (
+            self.state["cash"]
+            + sum(
+                pos["shares"] * pos["entry_price"]
+                for pos in self.state["positions"].values()
+                if pos.get("shares", 0) > 0
+            )
+            + self.state["etf_shares"] * niftybees_price
+        )
+
+        target_etf_value  = total_portfolio_value * new_tier
+        current_etf_value = self.state["etf_shares"] * niftybees_price
+        delta_value       = target_etf_value - current_etf_value
+        delta_shares      = int(delta_value / niftybees_price)
+
+        if delta_shares == 0:
+            self.state["etf_tier"] = new_tier
+            return
+
+        if delta_shares > 0:
+            cost = delta_shares * niftybees_price
+            if cost > self.state["cash"]:
+                delta_shares = int(self.state["cash"] / niftybees_price)
+            if delta_shares == 0:
+                return
+            self.state["cash"]          -= delta_shares * niftybees_price
+            self.state["etf_shares"]    += delta_shares
+            self.state["etf_avg_price"]  = niftybees_price  # simplified, not VWAP
+        else:
+            sell_shares = min(abs(delta_shares), self.state["etf_shares"])
+            self.state["cash"]        += sell_shares * niftybees_price
+            self.state["etf_shares"]  -= sell_shares
+            if self.state["etf_shares"] == 0:
+                self.state["etf_avg_price"] = 0.0
+
+        self.state["etf_tier"] = new_tier
+        self.save()
+
+        if log_fn:
+            log_fn(
+                f"ETF REBALANCE | tier {old_tier:.0%}→{new_tier:.0%} | "
+                f"NIFTYBEES {delta_shares:+d} shares @ ₹{niftybees_price:.2f} | "
+                f"ETF value ₹{self.state['etf_shares'] * niftybees_price:.0f} | "
+                f"cash ₹{self.state['cash']:.0f}"
+            )

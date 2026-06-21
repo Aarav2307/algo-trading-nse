@@ -806,6 +806,7 @@ def _format_report(
     is_backfill: bool = False,
     market_regime: str = "UNKNOWN",
     skipped_signals: Optional[List[dict]] = None,
+    niftybees_price_for_report: float = 0.0,
 ) -> str:
     """
     Build the full terminal report as a string. Printed to stdout and saved
@@ -840,6 +841,10 @@ def _format_report(
     pnl_sign = "+" if summ["pnl"] >= 0 else ""
     ln(f"  P&L vs start      : {pnl_sign}₹{summ['pnl']:>+,.2f}  ({summ['pnl_pct']:>+.2f}%)")
     ln(f"  Open positions    : {summ['open_count']} / {len(STOCKS)} stocks")
+    etf_shares = portfolio.state.get("etf_shares", 0)
+    etf_tier   = portfolio.state.get("etf_tier", 0)
+    etf_value  = etf_shares * niftybees_price_for_report if etf_shares > 0 else 0
+    ln(f"  NIFTYBEES ETF     : {etf_shares} units | tier {etf_tier:.0%} | value ₹{etf_value:.0f}")
     ln(f"  Completed trades  : {summ['total_trades']}")
     ln()
 
@@ -1303,6 +1308,21 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 # Sizer returned 0 or state changed between phases — log reason
                 print(f"→ {executed['signal']}  {executed.get('reason','')}")
 
+    # ── ETF Overlay Rebalance ────────────────────────────────────────────────
+    niftybees_price_for_report = 0.0
+    if not is_backfill:
+        try:
+            _nb_start = (today - timedelta(days=10)).isoformat()
+            _nb_end   = (today + timedelta(days=1)).isoformat()
+            niftybees_data = get_ohlcv("NIFTYBEES.NS", _nb_start, _nb_end)
+            if niftybees_data is not None and len(niftybees_data) > 0:
+                niftybees_price_for_report = float(niftybees_data["close"].iloc[-1])
+                portfolio.rebalance_etf(niftybees_price_for_report, log_fn=print)
+            else:
+                print("ETF OVERLAY | WARNING: Could not fetch NIFTYBEES price, skipping rebalance")
+        except Exception as e:
+            print(f"ETF OVERLAY | ERROR: {e} — skipping rebalance, no state change")
+
     # ── Step 9: Advance cooldowns (end-of-day, unconditional for all stocks) ──
     # Mirrors advance_bar() in the backtester — called AFTER signal processing,
     # exactly once per trading day.
@@ -1321,7 +1341,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 
     # ── Step 11: Print report ─────────────────────────────────────────────────
     run_time_str = _get_ist_now().strftime("%-I:%M %p IST")
-    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill, market_regime, skipped_signals)
+    report       = _format_report(today, run_time_str, portfolio, results, current_prices, is_backfill, market_regime, skipped_signals, niftybees_price_for_report)
     print()
     print(report)
 

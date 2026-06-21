@@ -57,6 +57,8 @@ _AMO_ORDER_LOG    = Path("paper_trading/amo_orders.csv")
 _COOLDOWN_BARS  = 15
 _COOLDOWN_BARS_WITH_OFFSET = _COOLDOWN_BARS + 1
 
+# ETF overlay (NIFTYBEES) is managed by signal_runner.py — no AMO orders
+
 # Set to True only when PAPER_TRADING_MODE = False in signal_runner.py
 # When True: queries actual Zerodha order status instead of simulating fills
 LIVE_TRADING_MODE: bool = False  # NEVER set to True manually — controlled by deployment config
