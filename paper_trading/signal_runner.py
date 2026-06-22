@@ -837,9 +837,13 @@ def _format_report(
     ln("  PORTFOLIO SUMMARY")
     ln(f"  Cash available    : ₹{summ['cash']:>12,.2f}")
     ln(f"  Invested value    : ₹{summ['invested_value']:>12,.2f}")
-    ln(f"  Total value       : ₹{summ['total_value']:>12,.2f}")
-    pnl_sign = "+" if summ["pnl"] >= 0 else ""
-    ln(f"  P&L vs start      : {pnl_sign}₹{summ['pnl']:>+,.2f}  ({summ['pnl_pct']:>+.2f}%)")
+    etf_value   = portfolio.state.get("etf_shares", 0) * niftybees_price_for_report
+    total_value = summ["total_value"] + etf_value
+    pnl         = total_value - summ["initial_capital"]
+    pnl_pct     = pnl / summ["initial_capital"] * 100
+    ln(f"  Total value       : ₹{total_value:>12,.2f}")
+    pnl_sign = "+" if pnl >= 0 else ""
+    ln(f"  P&L vs start      : {pnl_sign}₹{pnl:>+,.2f}  ({pnl_pct:>+.2f}%)")
     ln(f"  Open positions    : {summ['open_count']} / {len(STOCKS)} stocks")
     etf_shares = portfolio.state.get("etf_shares", 0)
     etf_tier   = portfolio.state.get("etf_tier", 0)
