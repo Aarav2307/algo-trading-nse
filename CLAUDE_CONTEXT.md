@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
 Last updated: 2026-06-18
 
-## Current Trading Universe (10 stocks)
-WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
+## Current Trading Universe (9 stocks)
+SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -67,9 +67,14 @@ WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROM
 - SIEMENS consistent 3/5 underperformer — flag for future removal when position closes
 - NEWGEN listed Jan 2018 — only 226 IS bars, excluded from extended walk-forward
 
-## Stocks Flagged for Future Removal (when positions close)
-- SIEMENS: 3/5 in both original and extended walk-forward — consistent underperformer
-- HEROMOTOCO: 2/5 in extended walk-forward — weak payoff and expectancy
+### Stocks Removed (Jun 24 2026)
+- WHIRLPOOL: OOS return +3.5% fails min_abs_oos_ret threshold (+4%),
+  payoff ratio 1.48 below 1.5 threshold, rolling WARNING.
+  Walk-forward score 10/12 but fails minimum return floor.
+- HEROMOTOCO: 2/5 extended walk-forward, weak payoff and expectancy.
+  Never generated entry signal since added Jun 16.
+- SIEMENS: pending removal — exit AMO queued, position closes Jun 25.
+  3/5 both windows, OOS return ~0%, rolling WARNING.
 
 ## Quant Research Fixes (Jun 17)
 ### Fix 1: Exit pricing bias — COMPLETED
