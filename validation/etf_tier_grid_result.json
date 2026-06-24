@@ -1,0 +1,134 @@
+{
+  "run_date": "2026-06-25",
+  "oos_window": "2023-01-01 to 2026-06-25",
+  "n_stocks": 349,
+  "strategy_only_sharpe": -8.8043,
+  "niftybees_max_dd": -15.234,
+  "niftybees_oos_ret": 36.791,
+  "configs": {
+    "A_current": {
+      "tiers": {
+        "0": 1.0,
+        "1": 0.6,
+        "2": 0.6,
+        "3": 0.3,
+        "4": 0.0
+      },
+      "sharpe": 0.2135,
+      "total_return": 32.063,
+      "cagr": 8.48,
+      "max_dd": -14.269,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.0935,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    },
+    "B_high": {
+      "tiers": {
+        "0": 1.0,
+        "1": 0.7,
+        "2": 0.7,
+        "3": 0.4,
+        "4": 0.0
+      },
+      "sharpe": 0.2473,
+      "total_return": 33.773,
+      "cagr": 8.889,
+      "max_dd": -14.358,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.0793,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    },
+    "C_low": {
+      "tiers": {
+        "0": 1.0,
+        "1": 0.5,
+        "2": 0.5,
+        "3": 0.25,
+        "4": 0.0
+      },
+      "sharpe": 0.1781,
+      "total_return": 30.373,
+      "cagr": 8.072,
+      "max_dd": -14.179,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.1074,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    },
+    "D_aggressive": {
+      "tiers": {
+        "0": 1.0,
+        "1": 0.8,
+        "2": 0.8,
+        "3": 0.5,
+        "4": 0.0
+      },
+      "sharpe": 0.2795,
+      "total_return": 35.501,
+      "cagr": 9.299,
+      "max_dd": -14.544,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.0648,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    },
+    "E_binary": {
+      "tiers": {
+        "0": 1.0,
+        "1": 0.6,
+        "2": 0.6,
+        "3": 0.0,
+        "4": 0.0
+      },
+      "sharpe": 0.2135,
+      "total_return": 32.063,
+      "cagr": 8.48,
+      "max_dd": -14.269,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.0935,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    },
+    "F_moderate": {
+      "tiers": {
+        "0": 0.8,
+        "1": 0.5,
+        "2": 0.5,
+        "3": 0.2,
+        "4": 0.0
+      },
+      "sharpe": 0.0963,
+      "total_return": 26.77,
+      "cagr": 7.189,
+      "max_dd": -11.56,
+      "transactions": 9011,
+      "cost_pct_per_year": 0.0696,
+      "sharpe_pass": true,
+      "dd_pass": true,
+      "cost_pass": true,
+      "all_pass": true
+    }
+  },
+  "winner": "D_aggressive",
+  "winner_tiers": {
+    "0": 1.0,
+    "1": 0.8,
+    "2": 0.8,
+    "3": 0.5,
+    "4": 0.0
+  },
+  "winner_sharpe": 0.2795,
+  "winner_all_pass": true
+}

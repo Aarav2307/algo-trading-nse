@@ -26,7 +26,7 @@ from typing import Dict, List, Optional
 
 from utils.costs import transaction_costs
 
-ETF_TIERS: dict = {0: 1.0, 1: 0.6, 2: 0.6, 3: 0.3, 4: 0.0}
+ETF_TIERS: dict = {0: 1.0, 1: 0.8, 2: 0.8, 3: 0.5, 4: 0.0}
 
 
 class PaperPortfolio:
