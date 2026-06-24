@@ -554,11 +554,18 @@ class PaperPortfolio:
         )
         return ETF_TIERS[min(open_positions, 4)]
 
-    def rebalance_etf(self, niftybees_price: float, log_fn=None) -> None:
+    def rebalance_etf(self, niftybees_price: float, current_prices: dict = None, log_fn=None) -> None:
         """
         Paper-rebalance the NIFTYBEES ETF position to match the target tier.
         Called by signal_runner after all stock signals are processed.
         No-ops if the tier is unchanged. Cash-guards buys against available cash.
+
+        Args:
+            niftybees_price:  today's NIFTYBEES close price
+            current_prices:   {ticker: today's close price} for open stock positions.
+                              Falls back to entry_price if a ticker is missing or
+                              current_prices is None — ensures backward compatibility.
+            log_fn:           optional callable for logging the rebalance action
         """
         open_positions = sum(
             1 for pos in self.state["positions"].values()
@@ -570,14 +577,17 @@ class PaperPortfolio:
         if new_tier == old_tier:
             return
 
+        stock_value = 0.0
+        for ticker, pos in self.state["positions"].items():
+            if pos.get("shares", 0) > 0:
+                if current_prices and ticker in current_prices:
+                    price = current_prices[ticker]
+                else:
+                    price = pos["entry_price"]  # fallback if price not provided
+                stock_value += pos["shares"] * price
+
         total_portfolio_value = (
-            self.state["cash"]
-            + sum(
-                pos["shares"] * pos["entry_price"]
-                for pos in self.state["positions"].values()
-                if pos.get("shares", 0) > 0
-            )
-            + self.state["etf_shares"] * niftybees_price
+            self.state["cash"] + stock_value + self.state["etf_shares"] * niftybees_price
         )
 
         target_etf_value  = total_portfolio_value * new_tier

@@ -1320,7 +1320,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             niftybees_data = get_ohlcv("NIFTYBEES.NS", _nb_start, _nb_end)
             if niftybees_data is not None and len(niftybees_data) > 0:
                 niftybees_price_for_report = float(niftybees_data["close"].iloc[-1])
-                portfolio.rebalance_etf(niftybees_price_for_report, log_fn=print)
+                portfolio.rebalance_etf(niftybees_price_for_report, current_prices=current_prices, log_fn=print)
             else:
                 print("ETF OVERLAY | WARNING: Could not fetch NIFTYBEES price, skipping rebalance")
         except Exception as e:

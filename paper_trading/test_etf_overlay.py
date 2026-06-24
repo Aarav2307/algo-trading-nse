@@ -89,8 +89,8 @@ def test_1_tier_mapping() -> None:
 
     p2 = _make_portfolio(open_positions=2)
     t2 = p2.get_etf_target_tier()
-    if t2 != 0.6:
-        _fail(name, f"2 positions → expected 0.6, got {t2}")
+    if t2 != ETF_TIERS[2]:
+        _fail(name, f"2 positions → expected {ETF_TIERS[2]}, got {t2}")
         return
 
     p4 = _make_portfolio(open_positions=4)
@@ -178,10 +178,12 @@ def test_4_sell_on_position_open() -> None:
     name = "Test 4 — Sell on position open"
 
     # Setup: etf_shares=100 @ tier=1.0, 2 stock positions at entry_price=100
-    # niftybees_price=300
-    # total = 0 (cash) + 2*10*100 (stocks) + 100*300 (ETF) = 32000
-    # target ETF at new tier 0.6 = 19200
-    # current ETF = 30000  → need to sell (30000 - 19200) / 300 ≈ 36 shares
+    # current_prices passed explicitly (differ from entry_price) to exercise
+    # the new code path — verifies current market price is used, not entry_price.
+    # niftybees_price=300, current stock prices: STOCK_0=150, STOCK_1=120
+    # total = 0 (cash) + 10*150 + 10*120 (stocks @ current) + 100*300 (ETF) = 32700
+    # target ETF at new tier (ETF_TIERS[2]) = 32700 * ETF_TIERS[2]
+    # current ETF = 30000 → ETF sells down to target
     portfolio = _make_portfolio(
         open_positions=2,
         cash=0.0,
@@ -190,10 +192,13 @@ def test_4_sell_on_position_open() -> None:
         entry_price=100.0,
     )
 
+    tickers = list(portfolio.state["positions"].keys())
+    current_prices = {tickers[0]: 150.0, tickers[1]: 120.0}
+
     initial_etf_shares = portfolio.state["etf_shares"]
     initial_cash       = portfolio.state["cash"]
 
-    portfolio.rebalance_etf(300.0)
+    portfolio.rebalance_etf(300.0, current_prices=current_prices)
 
     if portfolio.state["etf_shares"] >= initial_etf_shares:
         _fail(name, f"etf_shares did not decrease: {initial_etf_shares} → {portfolio.state['etf_shares']}")
@@ -203,10 +208,7 @@ def test_4_sell_on_position_open() -> None:
         _fail(name, f"cash did not increase: {initial_cash} → {portfolio.state['cash']:.0f}")
         return
 
-    _pass(
-        name,
-        # Extra detail (unused by _pass, just for readability if we were verbose)
-    )
+    _pass(name)
 
 
 # =============================================================================
