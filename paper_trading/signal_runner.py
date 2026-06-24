@@ -51,6 +51,7 @@ from data.kite_fetcher import get_ohlcv
 from engine.position_sizer import PositionSizer
 from engine.risk_manager import RiskManager
 from paper_trading.paper_portfolio import PaperPortfolio
+from paper_trading.correlation_check import check_entry_correlation
 from strategies.sma_crossover import generate_signals
 from engine.order_manager import AMOOrderManager
 from utils.costs import apply_slippage, transaction_costs, BROKERAGE_PER_ORDER, format_cost_breakdown
@@ -1294,6 +1295,39 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 })
                 print(f"→ SKIPPED   {reason}")
                 continue
+
+            # ── Correlation safety check ──────────────────────────────────────
+            # Fail open: a data/network failure must not silently suppress a
+            # valid BUY signal. Log the error and proceed with the trade.
+            try:
+                corr_result = check_entry_correlation(
+                    candidate=ticker,
+                    portfolio_state_path=str(STATE_FILE),
+                    lookback_days=120,
+                    max_correlation=0.60,
+                )
+                if not corr_result["safe"]:
+                    reason = f"Correlation block: {corr_result['reason']}"
+                    results[ticker].update({
+                        "signal":     "CORR_BLOCK",
+                        "reason":     reason,
+                        "rank_score": rank_sc,
+                    })
+                    skipped_signals.append({
+                        "ticker":     ticker,
+                        "rank_score": rank_sc,
+                        "reason":     reason,
+                        "price":      close_px,
+                        "gap_pct":    gap_pct,
+                    })
+                    print(f"→ CORR_BLOCK  {corr_result['reason']}")
+                    continue
+                print(f"  [corr] {ticker}: {corr_result['reason']}")
+            except Exception as _corr_exc:
+                print(
+                    f"  [corr] WARN: {_corr_exc} — "
+                    f"proceeding with BUY (fail open)"
+                )
 
             # Gate passed — execute with current (post-prior-execution) portfolio state.
             executed = _process_stock(
