@@ -284,6 +284,8 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - Phase 2: NIFTYBEES paper tracking live in signal_runner.py as of 2026-06-21
 - Files changed: paper_portfolio.py (ETF_TIERS, get_etf_target_tier, rebalance_etf), signal_runner.py (ETF block + report line), morning_fill_check.py (comment only)
 - 5/5 unit tests passing on local and server (paper_trading/test_etf_overlay.py)
-- Current tier: 60% (2 open positions — SIEMENS, BAJAJ-AUTO)
+- Overlay tiers (D_aggressive, grid-search validated): 0 positions=100% ETF, 1-2=80% ETF, 3=50% ETF, 4=0% ETF
+- Tier grid search: 6 configs tested (A-F), D_aggressive wins Sharpe 0.280 vs A_current 0.213, all 6 pass go/no-go criteria
+- Grid search results: validation/etf_tier_grid_result.json
 - Regime filter decision: ETF runs independently of NIFTY death cross — regime filter blocks stock entries only
 - Phase 3: deploy ₹25,000 real capital after 6 months clean paper validation (target: Dec 2026)
