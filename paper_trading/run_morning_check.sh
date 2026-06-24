@@ -25,7 +25,7 @@ echo "Morning fill check started: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
 
 # --apply flag: pass it to update portfolio state with actual fill prices.
 # Remove the flag to run in dry-run mode (report only, no state changes).
-python auth/auto_login.py >> "$LOG_FILE" 2>&1 && python paper_trading/morning_fill_check.py >> "$LOG_FILE" 2>&1
+python auth/auto_login.py >> "$LOG_FILE" 2>&1 && python paper_trading/morning_fill_check.py --apply >> "$LOG_FILE" 2>&1
 
 echo "Morning fill check completed: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
