@@ -37,6 +37,13 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 
 ## Key Workflow Notes
 - Always SCP files from server before git push (server is source of truth)
+- CRITICAL: Before SCP-ing ANY file to the server that touches paper_trading/,
+  ALWAYS run the backup script first:
+  ssh -i ~/.ssh/LightsailDefaultKey-ap-south-1.pem ubuntu@13.205.133.169 \
+    "bash ~/algo-trading/paper_trading/backup_state.sh"
+- This creates a timestamped backup in paper_trading/state_backups/
+- Never SCP portfolio_state.json directly — it is in .gitignore and
+  the server version is always the source of truth
 - correlation_check.py has hardcoded CANDIDATES list — must edit manually
 - universe_expansion.py does not exist on server
 - bars_held=0 mid-day is normal — updates at 3:45 PM signal run

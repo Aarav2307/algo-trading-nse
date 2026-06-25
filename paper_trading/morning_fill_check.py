@@ -46,7 +46,8 @@ TOKEN_FILE      = Path("auth/access_token.txt")
 # RM exit reasons — these come through in the AMO order's "notes" field.
 # When a SELL fills with one of these notes, we must also trigger cooldown
 # and clear the pending_rm_exit flag on the position.
-_RM_EXIT_NOTES  = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
+_RM_EXIT_NOTES       = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
+_STRATEGY_EXIT_NOTES = frozenset({"STRATEGY_SIGNAL"})
 
 # AMO limit buffer — must match signal_runner.py AMO_CONFIG["limit_buffer_pct"]
 _AMO_LIMIT_BUFFER = 0.005   # 0.5% buffer below close for SELL AMO requeue
@@ -547,6 +548,15 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
 
     today = check_date or date.today()
 
+    # ── Trading day guard ──────────────────────────────────────────────────────
+    # AMO orders only fill on trading days. If today is a weekend or NSE holiday,
+    # there is no open price to check against — exit cleanly.
+    # Guard runs BEFORE portfolio load so validate_state_integrity() is never
+    # triggered on weekends (avoids false STATE INTEGRITY FAIL on low-cash states).
+    if not is_trading_day(today):
+        print(f"Market closed today — {today}. No fill check needed.")
+        return
+
     # ── Load PaperPortfolio for BUY fill confirmation ──────────────────────────
     # Required for confirm_buy_fill() and cancel_pending_buy(). Instantiate with
     # empty tickers list — load() reads tickers from the existing state file.
@@ -554,13 +564,6 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
     _portfolio = PaperPortfolio([], str(STATE_FILE), 100_000.0)
     if STATE_FILE.exists():
         _portfolio.load()
-
-    # ── Trading day guard ──────────────────────────────────────────────────────
-    # AMO orders only fill on trading days. If today is a weekend or NSE holiday,
-    # there is no open price to check against — exit cleanly.
-    if not is_trading_day(today):
-        print(f"Market closed today — {today}. No fill check needed.")
-        return
 
     W = 62
     print("\n" + "=" * W)
@@ -703,7 +706,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 _portfolio.save()
                 print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
 
-            elif apply_fills and order_type == "SELL" and is_rm_exit:
+            elif apply_fills and order_type == "SELL" and (is_rm_exit or notes in _STRATEGY_EXIT_NOTES):
                 # Missed RM SELL AMO: re-queue for tomorrow's open at an updated limit.
                 # Without a requeue, signal_runner sees pending_rm_exit=True forever and
                 # never runs the RM — the position becomes orphaned with no active stop.

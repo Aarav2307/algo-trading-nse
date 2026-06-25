@@ -97,6 +97,61 @@ class PaperPortfolio:
         self.state.setdefault("etf_avg_price", 0.0)
         self.state.setdefault("etf_tier",      0)
 
+        self.validate_state_integrity()
+
+    def validate_state_integrity(self) -> None:
+        """
+        Validates portfolio state on every load. Raises ValueError if state
+        appears corrupted or stale. Better to abort than trade on bad data.
+
+        Catches the most common corruption scenario: a stale local
+        portfolio_state.json accidentally SCP'd over the live server file,
+        which would show a much lower total value than expected.
+        """
+        initial_capital = self.state.get("initial_capital", 100_000.0)
+        cash            = self.state.get("cash", 0.0)
+        etf_shares      = self.state.get("etf_shares", 0)
+        etf_avg_price   = self.state.get("etf_avg_price", 0.0)
+
+        # Stock value using entry_price as proxy (current price unavailable at load time)
+        stock_value = sum(
+            pos.get("shares", 0) * pos.get("entry_price", 0.0)
+            for pos in self.state.get("positions", {}).values()
+        )
+
+        etf_value      = etf_shares * etf_avg_price
+        computed_total = cash + stock_value + etf_value
+
+        # Check 1: total value must be >= 50% of initial capital.
+        # Catches stale file overwrites; allows legitimate large drawdowns.
+        floor = initial_capital * 0.50
+        if computed_total < floor:
+            raise ValueError(
+                f"STATE INTEGRITY FAIL: computed total value ₹{computed_total:,.0f} "
+                f"is below 50% floor ₹{floor:,.0f}. "
+                f"Possible stale portfolio_state.json loaded. "
+                f"Cash=₹{cash:,.0f} | Stock=₹{stock_value:,.0f} | ETF=₹{etf_value:,.0f}. "
+                f"Aborting to prevent trading on corrupted state."
+            )
+
+        # Check 2: total_trades must match trade_log length
+        total_trades  = self.state.get("total_trades", 0)
+        trade_log_len = len(self.state.get("trade_log", []))
+        if total_trades != trade_log_len:
+            raise ValueError(
+                f"STATE INTEGRITY FAIL: total_trades={total_trades} but "
+                f"trade_log has {trade_log_len} entries. State is inconsistent."
+            )
+
+        # Check 3: etf_tier must be a valid D_aggressive tier value
+        valid_tiers = set(ETF_TIERS.values()) | {0, 0.0}
+        etf_tier = self.state.get("etf_tier", 0)
+        if etf_tier not in valid_tiers:
+            raise ValueError(
+                f"STATE INTEGRITY FAIL: etf_tier={etf_tier} is not a valid "
+                f"D_aggressive tier value. Valid values: {valid_tiers}"
+            )
+
     def save(self) -> None:
         """
         Atomically save portfolio state to JSON.
@@ -480,13 +535,14 @@ class PaperPortfolio:
 
     # ── Queries ────────────────────────────────────────────────────────────────
 
-    def get_portfolio_value(self, current_prices: Dict[str, float]) -> float:
+    def get_portfolio_value(self, current_prices: Dict[str, float], niftybees_price: float = 0.0) -> float:
         """
-        Total portfolio value = cash + mark-to-market open positions.
+        Total portfolio value = cash + mark-to-market open positions + ETF value.
 
         Args:
-            current_prices: {ticker: current_close_price} for all tickers.
-                            Missing tickers default to their entry price (fallback).
+            current_prices:  {ticker: current_close_price} for all tickers.
+                             Missing tickers default to their entry price (fallback).
+            niftybees_price: current NIFTYBEES price; 0.0 omits ETF value (backward-compat).
         """
         mtm = 0.0
         for ticker, pos in self.state["positions"].items():
@@ -495,7 +551,8 @@ class PaperPortfolio:
             if pos["shares"] > 0 and not pos.get("pending_buy", False):
                 price = current_prices.get(ticker, pos["entry_price"])
                 mtm  += pos["shares"] * price
-        return self.state["cash"] + mtm
+        etf_value = self.state.get("etf_shares", 0) * niftybees_price
+        return self.state["cash"] + mtm + etf_value
 
     def get_open_positions(self) -> dict:
         """Return {ticker: position_dict} for all tickers currently holding shares."""
@@ -505,14 +562,17 @@ class PaperPortfolio:
             if pos["shares"] > 0
         }
 
-    def summary(self, current_prices: Dict[str, float]) -> dict:
+    def summary(self, current_prices: Dict[str, float], niftybees_price: float = 0.0) -> dict:
         """
         Compute a snapshot of all key portfolio metrics for the daily report.
 
         Returns a dict with clean, pre-formatted metrics so signal_runner.py
         doesn't need to do arithmetic.
+
+        Args:
+            niftybees_price: current NIFTYBEES price; 0.0 omits ETF value (backward-compat).
         """
-        total_value   = self.get_portfolio_value(current_prices)
+        total_value   = self.get_portfolio_value(current_prices, niftybees_price)
         open_pos      = self.get_open_positions()
         initial       = self.state["initial_capital"]
 
@@ -550,7 +610,7 @@ class PaperPortfolio:
         """Return target ETF allocation fraction based on open stock positions."""
         open_positions = sum(
             1 for pos in self.state["positions"].values()
-            if pos.get("shares", 0) > 0
+            if pos.get("shares", 0) > 0 and not pos.get("pending_buy", False)
         )
         return ETF_TIERS[min(open_positions, 4)]
 

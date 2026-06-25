@@ -660,24 +660,25 @@ def _process_stock(
     # ── ③ + ④ Cooldown gate + execution ──────────────────────────────────────
 
     # SELL: strategy exit (death cross while in position, no cooldown triggered)
+    # Deferred to next morning's open via AMO — mirrors the RM exit pattern.
+    # close_position() is called by morning_fill_check.py at the actual fill price.
     if today_signal == -1 and pos["shares"] > 0:
-        exec_px  = apply_slippage(close_px, "sell")
-        shares   = pos["shares"]
-        cost_bd  = transaction_costs(exec_px, shares, "sell")
-        net_pnl  = portfolio.close_position(ticker, exec_px, today_str, "STRATEGY_SIGNAL")
+        shares_to_sell         = pos["shares"]
+        pos["pending_rm_exit"] = True
+        pos["rm_exit_reason"]  = "STRATEGY_SIGNAL"
         portfolio.record_weekly_signal("SELL")
 
         result.update({
             "signal":       "SELL",
-            "exec_price":   exec_px,
-            "shares":       shares,
+            "exec_price":   None,           # confirmed tomorrow at open
+            "shares":       shares_to_sell,
             "exit_reason":  "STRATEGY_SIGNAL",
-            "reason":       "Death cross — SMA20 crossed below SMA50",
-            "net_pnl":      net_pnl,
-            "cost_breakdown": cost_bd,
+            "reason":       "Death cross — SMA20 crossed below SMA50 — AMO SELL queued",
+            "net_pnl":      None,           # recorded tomorrow when fill confirms
             "action_taken": (
-                f"SELL {shares} shares @ ₹{exec_px:.2f} "
-                f"[STRATEGY_SIGNAL]  net P&L ₹{net_pnl:>+,.0f}"
+                f"SELL PENDING (STRATEGY_SIGNAL) | "
+                f"AMO SELL {shares_to_sell} shr @ close ₹{close_px:.2f} "
+                f"→ fills tomorrow open"
             ),
         })
         return result
@@ -812,7 +813,7 @@ def _format_report(
     Build the full terminal report as a string. Printed to stdout and saved
     to the log file.
     """
-    summ = portfolio.summary(current_prices)
+    summ = portfolio.summary(current_prices, niftybees_price_for_report)
     lines = []
     W = 62
 
@@ -837,13 +838,9 @@ def _format_report(
     ln("  PORTFOLIO SUMMARY")
     ln(f"  Cash available    : ₹{summ['cash']:>12,.2f}")
     ln(f"  Invested value    : ₹{summ['invested_value']:>12,.2f}")
-    etf_value   = portfolio.state.get("etf_shares", 0) * niftybees_price_for_report
-    total_value = summ["total_value"] + etf_value
-    pnl         = total_value - summ["initial_capital"]
-    pnl_pct     = pnl / summ["initial_capital"] * 100
-    ln(f"  Total value       : ₹{total_value:>12,.2f}")
-    pnl_sign = "+" if pnl >= 0 else ""
-    ln(f"  P&L vs start      : {pnl_sign}₹{pnl:>+,.2f}  ({pnl_pct:>+.2f}%)")
+    ln(f"  Total value       : ₹{summ['total_value']:>12,.2f}")
+    pnl_sign = "+" if summ["pnl"] >= 0 else ""
+    ln(f"  P&L vs start      : {pnl_sign}₹{summ['pnl']:>+,.2f}  ({summ['pnl_pct']:>+.2f}%)")
     ln(f"  Open positions    : {summ['open_count']} / {len(STOCKS)} stocks")
     etf_shares = portfolio.state.get("etf_shares", 0)
     etf_tier   = portfolio.state.get("etf_tier", 0)
@@ -939,12 +936,13 @@ def _weekly_summary(
     today: date,
     portfolio: PaperPortfolio,
     current_prices: Dict[str, float],
+    niftybees_price: float = 0.0,
 ) -> None:
     """
     Print an additional weekly summary. Called only on Fridays.
     Shows signals fired this week, weekly P&L, and running paper P&L.
     """
-    summ = portfolio.summary(current_prices)
+    summ = portfolio.summary(current_prices, niftybees_price)
     W    = 62
 
     print("=" * W)
@@ -990,6 +988,7 @@ def _append_csv(
     results: Dict[str, dict],
     portfolio: PaperPortfolio,
     current_prices: Dict[str, float],
+    niftybees_price: float = 0.0,
 ) -> None:
     """
     Append one row per stock to the signal log CSV.
@@ -998,7 +997,7 @@ def _append_csv(
     permanently recorded so you can replay or analyse later.
     """
     _ensure_csv_header()
-    total_value = portfolio.get_portfolio_value(current_prices)
+    total_value = portfolio.get_portfolio_value(current_prices, niftybees_price)
     initial     = portfolio.state["initial_capital"]
     pnl_pct     = (total_value / initial - 1) * 100
 
@@ -1149,9 +1148,29 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
         for ticker, df in dfs.items()
     }
 
+    # ── Fetch NIFTYBEES price (for ETF-inclusive reporting throughout) ────────
+    # Done here — before the weekly baseline correction and the signal pipeline —
+    # so niftybees_price_for_report is available everywhere in main().
+    # Runs in BOTH normal and backfill modes: backfill needs the live price to
+    # show correct ETF value in the report. The rebalance is still skipped in
+    # backfill mode (see ETF Overlay Rebalance block below).
+    niftybees_price_for_report = 0.0
+    try:
+        _nb_start      = (today - timedelta(days=10)).isoformat()
+        _nb_end        = (today + timedelta(days=1)).isoformat()
+        niftybees_data = get_ohlcv("NIFTYBEES.NS", _nb_start, _nb_end)
+        if niftybees_data is not None and len(niftybees_data) > 0:
+            niftybees_price_for_report = float(niftybees_data["close"].iloc[-1])
+    except Exception as _nb_exc:
+        print(f"ETF | WARN: Could not fetch NIFTYBEES price — {_nb_exc} (reporting will exclude ETF)")
+    # Fallback: if live fetch failed, use stored avg_price so reports always
+    # show a reasonable ETF value rather than ₹0 (important for backfill runs).
+    if niftybees_price_for_report == 0.0:
+        niftybees_price_for_report = portfolio.state.get("etf_avg_price", 0.0)
+
     # ── Correct weekly baseline now that we have real prices ──────────────────
     if not is_backfill and today.weekday() == 0:
-        real_value = portfolio.get_portfolio_value(current_prices)
+        real_value = portfolio.get_portfolio_value(current_prices, niftybees_price=niftybees_price_for_report)
         portfolio.state["weekly_start_value"] = real_value
 
     # ── Step 8 (new): NIFTY regime filter ────────────────────────────────────
@@ -1336,7 +1355,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             )
             results[ticker] = executed
 
-            if executed["signal"] == "BUY":
+            if executed["signal"] == "BUY_QUEUED":
                 print(
                     f"→ EXECUTED  {executed.get('shares',0)} shr "
                     f"@ ₹{executed.get('exec_price',0):.2f}"
@@ -1346,17 +1365,14 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 print(f"→ {executed['signal']}  {executed.get('reason','')}")
 
     # ── ETF Overlay Rebalance ────────────────────────────────────────────────
-    niftybees_price_for_report = 0.0
+    # NIFTYBEES price was fetched above (after Step 7) and stored in
+    # niftybees_price_for_report. Rebalance here using that price.
     if not is_backfill:
         try:
-            _nb_start = (today - timedelta(days=10)).isoformat()
-            _nb_end   = (today + timedelta(days=1)).isoformat()
-            niftybees_data = get_ohlcv("NIFTYBEES.NS", _nb_start, _nb_end)
-            if niftybees_data is not None and len(niftybees_data) > 0:
-                niftybees_price_for_report = float(niftybees_data["close"].iloc[-1])
+            if niftybees_price_for_report > 0:
                 portfolio.rebalance_etf(niftybees_price_for_report, current_prices=current_prices, log_fn=print)
             else:
-                print("ETF OVERLAY | WARNING: Could not fetch NIFTYBEES price, skipping rebalance")
+                print("ETF OVERLAY | WARNING: NIFTYBEES price unavailable, skipping rebalance")
         except Exception as e:
             print(f"ETF OVERLAY | ERROR: {e} — skipping rebalance, no state change")
 
@@ -1384,11 +1400,11 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 
     # ── Step 12: CSV log (real runs only) ────────────────────────────────────
     if not is_backfill:
-        _append_csv(today, results, portfolio, current_prices)
+        _append_csv(today, results, portfolio, current_prices, niftybees_price=niftybees_price_for_report)
         # Append SKIPPED rows to signal_log.csv
         if skipped_signals:
             _ensure_csv_header()
-            total_value = portfolio.get_portfolio_value(current_prices)
+            total_value = portfolio.get_portfolio_value(current_prices, niftybees_price=niftybees_price_for_report)
             initial     = portfolio.state["initial_capital"]
             pnl_pct     = (total_value / initial - 1) * 100
             with open(LOG_CSV, "a", newline="") as fh:
@@ -1441,7 +1457,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
 
     # ── Step 14: Weekly summary (Fridays only, real runs) ────────────────────
     if not is_backfill and today.weekday() == 4:   # 4 = Friday
-        _weekly_summary(today, portfolio, current_prices)
+        _weekly_summary(today, portfolio, current_prices, niftybees_price_for_report)
 
 
 # =============================================================================
