@@ -37,6 +37,7 @@ sys.path.insert(0, str(_ROOT))
 def check_entry_correlation(
     candidate: str,
     portfolio_state_path: str = "paper_trading/portfolio_state.json",
+    portfolio_state_dict: dict = None,   # overrides file read when provided
     lookback_days: int = 120,
     max_correlation: float = 0.60,
     data_source: str = "yfinance",
@@ -73,14 +74,30 @@ def check_entry_correlation(
     pairs never block entry — only measured pairs can trigger a block.
     """
     # ── Load portfolio state ───────────────────────────────────────────────────
-    state_path = Path(portfolio_state_path)
-    with open(state_path) as fh:
-        state = json.load(fh)
+    if portfolio_state_dict is not None:
+        state = portfolio_state_dict
+    else:
+        state_path = Path(portfolio_state_path)
+        if not state_path.exists():
+            return {
+                "candidate":       candidate,
+                "open_positions":  [],
+                "correlations":    {},
+                "max_correlation": None,
+                "threshold":       max_correlation,
+                "safe":            True,
+                "reason":          "No portfolio state file — correlation check skipped",
+            }
+        with open(state_path) as fh:
+            state = json.load(fh)
 
+    # Exclude pending_buy positions: cash not yet deducted, not truly open.
+    # This is consistent with get_portfolio_value() and get_etf_target_tier().
     open_positions = [
         ticker
-        for ticker, pos in state["positions"].items()
+        for ticker, pos in state.get("positions", {}).items()
         if pos.get("shares", 0) > 0
+        and not pos.get("pending_buy", False)
     ]
 
     # ── No open positions — nothing to correlate against ──────────────────────

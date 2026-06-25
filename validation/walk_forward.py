@@ -35,10 +35,35 @@ from strategies.sma_crossover import generate_signals
 
 
 # =============================================================================
+# UNIVERSE — current validated trading universe
+# =============================================================================
+# Current validated universe as of 2026-06-26.
+# Excluded from WF (insufficient history):
+#   ANURAS.NS    — only ~440 IS bars (listed post-2019)
+#   NEWGEN.NS    — only ~226 IS bars (listed Jan 2018)
+#   PERSISTENT.NS — just added to live system, no WF history yet
+# Removed from live system (not in WF):
+#   TMPV, WHIRLPOOL, SIEMENS, HEROMOTOCO, BOSCHLTD, CUMMINSIND, RPOWER
+#
+# Minimum bar requirements per window:
+#   IS  window: ≥744 bars (~3 years at 248 trading days/yr)
+#   OOS window: ≥252 bars (~1 year)
+#   _run_one() enforces MIN_BARS=200 per window and skips automatically.
+#
+# UPDATE THIS LIST whenever the live universe changes.
+# Re-run walk_forward.py quarterly, or after any universe addition/removal.
+STOCKS = [
+    "BAJAJ-AUTO.NS",   # OOS +13.5%, strong across both WF windows
+    "HCLTECH.NS",      # clean, no flags
+    "COLPAL.NS",       # WF validated 10/12
+    "JKTYRE.NS",       # clean, no flags
+    "BSOFT.NS",        # 4/5 extended WF; standout OOS performer
+]
+
+
+# =============================================================================
 # FROZEN PARAMETERS — identical across both windows, not re-optimised
 # =============================================================================
-
-STOCKS = ["TMPV.NS", "WHIRLPOOL.NS", "SIEMENS.NS", "BAJAJ-AUTO.NS"]
 
 # In-sample:     2018-01-01 → 2022-12-31  (exclusive end = 2023-01-01)
 # OOS end date is dynamic — always extends to today so validation includes

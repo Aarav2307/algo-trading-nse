@@ -1318,10 +1318,22 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             # ── Correlation safety check ──────────────────────────────────────
             # Fail open: a data/network failure must not silently suppress a
             # valid BUY signal. Log the error and proceed with the trade.
+            #
+            # Pass live in-memory state rather than the on-disk file so that
+            # same-day BUY candidates are checked against each other.
+            # pending_buy positions are treated as open (pending_buy=False in
+            # corr_state) so candidate #2 sees candidate #1 already queued.
             try:
+                corr_state = {
+                    "positions": {
+                        t: {**pos, "pending_buy": False}
+                        for t, pos in portfolio.state["positions"].items()
+                        if pos.get("shares", 0) > 0
+                    }
+                }
                 corr_result = check_entry_correlation(
                     candidate=ticker,
-                    portfolio_state_path=str(STATE_FILE),
+                    portfolio_state_dict=corr_state,
                     lookback_days=120,
                     max_correlation=0.60,
                 )

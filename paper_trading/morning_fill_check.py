@@ -632,9 +632,12 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
             _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
             continue
 
-        # Detect deferred RM exits — notes field carries the exit reason
+        # Detect deferred RM exits — notes field carries the exit reason.
+        # Strip any " [REQUEUED]" suffix before matching so requeued orders
+        # are still correctly recognised on 2nd and 3rd miss attempts.
         notes      = order.get("notes", "")
-        is_rm_exit = notes in _RM_EXIT_NOTES
+        notes_base = notes.split(" [")[0].strip() if notes else ""
+        is_rm_exit = notes_base in _RM_EXIT_NOTES
 
         open_px = _fetch_open_price(ticker, today)
 
@@ -706,7 +709,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 _portfolio.save()
                 print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
 
-            elif apply_fills and order_type == "SELL" and (is_rm_exit or notes in _STRATEGY_EXIT_NOTES):
+            elif apply_fills and order_type == "SELL" and (is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES):
                 # Missed RM SELL AMO: re-queue for tomorrow's open at an updated limit.
                 # Without a requeue, signal_runner sees pending_rm_exit=True forever and
                 # never runs the RM — the position becomes orphaned with no active stop.

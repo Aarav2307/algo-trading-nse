@@ -575,6 +575,125 @@ def test_17_backfill_etf_avg_price_fallback() -> None:
 
 
 # =============================================================================
+# Test 18 — correlation check accepts portfolio_state_dict (Fix 2)
+# =============================================================================
+
+def test_18_correlation_check_accepts_state_dict() -> None:
+    name = "Test 18 — correlation check accepts portfolio_state_dict"
+
+    from paper_trading.correlation_check import check_entry_correlation
+
+    # 1 open, 1 flat — only open position should appear in result
+    state_dict = {
+        "positions": {
+            "OPENSTOCK.NS": {"shares": 5,  "pending_buy": False, "entry_price": 100.0},
+            "FLATSTOCK.NS": {"shares": 0,  "pending_buy": False, "entry_price": 0.0},
+        }
+    }
+
+    try:
+        result = check_entry_correlation(
+            candidate="CANDIDATE.NS",
+            portfolio_state_dict=state_dict,
+            lookback_days=30,
+            max_correlation=0.60,
+        )
+    except Exception as exc:
+        _fail(name, f"check_entry_correlation raised: {exc}")
+        return
+
+    # Key assertion: open_positions read from dict, not from disk file
+    if result["open_positions"] != ["OPENSTOCK.NS"]:
+        _fail(name, f"Expected ['OPENSTOCK.NS'], got {result['open_positions']}")
+        return
+    _pass(name)
+
+
+# =============================================================================
+# Test 19 — correlation check excludes pending_buy from dict (Fix 2)
+# =============================================================================
+
+def test_19_correlation_check_excludes_pending_buy_from_dict() -> None:
+    name = "Test 19 — correlation check excludes pending_buy from dict"
+
+    from paper_trading.correlation_check import check_entry_correlation
+
+    # Position has shares > 0 but pending_buy=True → should be excluded
+    state_dict = {
+        "positions": {
+            "PENDINGSTK.NS": {"shares": 5, "pending_buy": True, "entry_price": 100.0},
+        }
+    }
+
+    # No open positions → function returns early (no network call needed)
+    result = check_entry_correlation(
+        candidate="CANDIDATE.NS",
+        portfolio_state_dict=state_dict,
+        lookback_days=120,
+        max_correlation=0.60,
+    )
+
+    if result["open_positions"] != []:
+        _fail(name, f"Expected [] (pending_buy excluded), got {result['open_positions']}")
+        return
+    if not result["safe"]:
+        _fail(name, "Expected safe=True when open_positions=[]")
+        return
+    _pass(name)
+
+
+# =============================================================================
+# Test 20 — notes prefix matching handles [REQUEUED] suffix (Fix 3)
+# =============================================================================
+
+def test_20_notes_prefix_matching_handles_requeued() -> None:
+    name = "Test 20 — notes prefix matching handles [REQUEUED] suffix"
+
+    from paper_trading.morning_fill_check import _RM_EXIT_NOTES, _STRATEGY_EXIT_NOTES
+
+    # First REQUEUED suffix
+    notes      = "CHANDELIER [REQUEUED]"
+    notes_base = notes.split(" [")[0].strip() if notes else ""
+    if notes_base != "CHANDELIER":
+        _fail(name, f"CHANDELIER [REQUEUED]: expected base='CHANDELIER', got '{notes_base}'")
+        return
+    if notes_base not in _RM_EXIT_NOTES:
+        _fail(name, f"'CHANDELIER' should be in _RM_EXIT_NOTES")
+        return
+
+    notes      = "STRATEGY_SIGNAL [REQUEUED]"
+    notes_base = notes.split(" [")[0].strip() if notes else ""
+    if notes_base != "STRATEGY_SIGNAL":
+        _fail(name, f"STRATEGY_SIGNAL [REQUEUED]: expected base='STRATEGY_SIGNAL', got '{notes_base}'")
+        return
+    if notes_base not in _STRATEGY_EXIT_NOTES:
+        _fail(name, f"'STRATEGY_SIGNAL' should be in _STRATEGY_EXIT_NOTES")
+        return
+
+    _pass(name)
+
+
+# =============================================================================
+# Test 21 — double requeue notes still parsed correctly (Fix 3)
+# =============================================================================
+
+def test_21_double_requeue_notes_parsed_correctly() -> None:
+    name = "Test 21 — double requeue notes still parsed correctly"
+
+    from paper_trading.morning_fill_check import _RM_EXIT_NOTES
+
+    notes      = "HARD_STOP [REQUEUED] [REQUEUED]"
+    notes_base = notes.split(" [")[0].strip() if notes else ""
+    if notes_base != "HARD_STOP":
+        _fail(name, f"Expected base='HARD_STOP', got '{notes_base}'")
+        return
+    if notes_base not in _RM_EXIT_NOTES:
+        _fail(name, f"'HARD_STOP' should be in _RM_EXIT_NOTES")
+        return
+    _pass(name)
+
+
+# =============================================================================
 # Guard: live state file must not be modified
 # =============================================================================
 
@@ -615,6 +734,10 @@ if __name__ == "__main__":
     test_15_pnl_calculation_end_to_end()
     test_16_buy_queued_signal_check()
     test_17_backfill_etf_avg_price_fallback()
+    test_18_correlation_check_accepts_state_dict()
+    test_19_correlation_check_excludes_pending_buy_from_dict()
+    test_20_notes_prefix_matching_handles_requeued()
+    test_21_double_requeue_notes_parsed_correctly()
 
     _assert_live_state_untouched(mtime_before)
 
