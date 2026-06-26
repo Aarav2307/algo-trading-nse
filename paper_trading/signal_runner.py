@@ -66,7 +66,6 @@ from utils.market_calendar import is_trading_day, next_trading_day, verify_holid
 NIFTY_TICKER = "NIFTY 50.NS"   # Kite instrument token 256265; strips to "NIFTY 50" internally
 
 STOCKS: List[str] = [
-    "SIEMENS.NS",
     "BAJAJ-AUTO.NS",
     "HCLTECH.NS",
     "COLPAL.NS",
