@@ -1,0 +1,53 @@
+{
+  "run_date": "2026-06-25",
+  "data_source": "yfinance (Kite historical API limited to ~3 years; NIFTYBEES.NS and ^NSEI fetched via data/fetcher.py)",
+  "period": "2019-01-01 \u2192 2020-12-31",
+  "crash_window": "2020-02-17 \u2192 2020-03-25",
+  "tier_config": "D_aggressive",
+  "tiers": {
+    "0": 1.0,
+    "1": 0.8,
+    "2": 0.8,
+    "3": 0.5,
+    "4": 0.0
+  },
+  "data_points": 491,
+  "simulation": {
+    "position_count_seed": 42,
+    "avg_positions_full_period": 2.33,
+    "avg_positions_crash_window": 0.62,
+    "avg_etf_exposure_pct": 58.1,
+    "avg_etf_exposure_crash_pct": 87.7
+  },
+  "full_period_returns": {
+    "niftybees_bah_pct": 31.95,
+    "overlay_pct": 0.03
+  },
+  "crash_metrics": {
+    "niftybees_bah": {
+      "label": "NIFTYBEES Buy & Hold",
+      "pre_crash_peak_value": 116.125,
+      "pre_crash_peak_date": "2020-01-17",
+      "crash_trough_value": 73.929,
+      "crash_trough_date": "2020-03-23",
+      "peak_to_trough_drawdown_pct": -36.34,
+      "recovery_date": "2020-11-09",
+      "max_single_day_loss_pct": -10.16,
+      "max_single_day_loss_date": "2020-03-23"
+    },
+    "d_aggressive": {
+      "label": "D_aggressive Overlay",
+      "pre_crash_peak_value": 110.751,
+      "pre_crash_peak_date": "2019-06-03",
+      "crash_trough_value": 72.195,
+      "crash_trough_date": "2020-03-23",
+      "peak_to_trough_drawdown_pct": -34.81,
+      "recovery_date": "Not recovered by 2020-12-31",
+      "max_single_day_loss_pct": -8.13,
+      "max_single_day_loss_date": "2020-03-23"
+    },
+    "overlay_vs_bah_dd_delta_pp": 1.53
+  },
+  "plot_path": "/Users/aaravagarwal/algo-trading/validation/crash_scenario_plot.png",
+  "result_path": "/Users/aaravagarwal/algo-trading/validation/crash_scenario_result.json"
+}
