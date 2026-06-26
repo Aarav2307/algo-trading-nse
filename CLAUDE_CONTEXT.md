@@ -296,3 +296,38 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - Grid search results: validation/etf_tier_grid_result.json
 - Regime filter decision: ETF runs independently of NIFTY death cross — regime filter blocks stock entries only
 - Phase 3: deploy ₹25,000 real capital after 6 months clean paper validation (target: Dec 2026)
+
+---
+
+## Key Implementation Notes
+
+### Hurst Exponent — CRITICAL
+- Always use compute_hurst() from screener/auto_screener.py — never reimplement
+- Input: raw closing prices (numpy array) — function handles log transformation internally
+- Do NOT pass log returns as input — compute_hurst() does np.log(ts) internally
+- Correct usage:
+    from screener.auto_screener import compute_hurst
+    h = compute_hurst(df['close'].values)  # raw close prices, not log returns
+- Wrong usage (produces nonsensical results near 0 or negative):
+    log_returns = np.diff(np.log(prices))
+    h = compute_hurst(log_returns)  # WRONG — double-differencing
+
+### Hurst Readings (2026-06-26, 337 bars, bear market regime)
+- BAJAJ-AUTO:  H=0.422 — below 0.48 threshold (bear market effect, strong WF performer)
+- HCLTECH:     H=0.549 — passes 0.48, fails 0.55
+- COLPAL:      H=0.524 — passes 0.48, fails 0.55
+- JKTYRE:      H=0.536 — passes 0.48, fails 0.55
+- BSOFT:       H=0.415 — below 0.48 threshold
+- PERSISTENT:  H=0.500 — passes 0.48, fails 0.55
+- Decision: keep HURST_THRESHOLD=0.48 — raising to 0.55 filters entire universe to zero
+- Revisit threshold after October 2026 with full bull+bear cycle data
+
+### Kite Fetcher
+- Correct signature: get_ohlcv(ticker, start='YYYY-MM-DD', end='YYYY-MM-DD')
+- Does NOT accept 'days' parameter
+- Always use date strings, not timedelta objects directly
+
+### General Rule
+- Before reimplementing any function, check if it already exists in the codebase
+- grep -rn 'def function_name' ~/algo-trading/ --include='*.py'
+- Use the existing implementation — it is already tested and validated
