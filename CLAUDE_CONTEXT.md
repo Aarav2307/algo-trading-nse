@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-06-18
+Last updated: 2026-06-26
 
-## Current Trading Universe (9 stocks)
-SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
+## Current Trading Universe (8 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -11,20 +11,41 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - Added Jun 17: NEWGEN, JKTYRE, BSOFT, RPOWER
 - Removed Jun 17: RPOWER (governance risk), BOSCHLTD (walk-forward 1/5)
 - Removed Jun 18: TMPV (Hurst degraded H=0.468, 2 consecutive screens), CUMMINSIND (Hurst degraded H=0.472)
+- Added Jun 24: PERSISTENT.NS (replacing SIEMENS slot, screener validated H=0.519 ADX=30.8 corr=0.231)
+- Removed Jun 24: WHIRLPOOL (fails min_abs_oos_ret +3.5% vs +4% threshold, payoff 1.48 below 1.5)
+- Removed Jun 24: HEROMOTOCO (2/5 extended WF, never generated entry signal since added Jun 16)
+- Removed Jun 24: SIEMENS (3/5 both WF windows, OOS return ~0%, position closed Jun 24 at Rs3,688)
 
-## Paper Trading Status (as of 2026-06-18)
-- Started: 2026-06-02 (15 trading days)
-- Portfolio: Rs98,143 (-1.86%)
-- Cash: Rs76,954
-- Open positions: SIEMENS (-0.3%), BAJAJ-AUTO (-2.5%)
-- Completed trades: 2 (WHIRLPOOL -Rs188 Jun 3, TMPV -Rs1,297 Jun 17 Chandelier stop)
-- All new stocks (HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT) waiting for golden cross entry
+## Paper Trading Status (as of 2026-06-26)
+- Started: 2026-06-02 (24 trading days; Jun 26 is NSE holiday)
+- Portfolio: ~Rs97,890 — to be confirmed after repair_portfolio_state.py runs Monday
+- ETF: 287 NIFTYBEES units @ 80% tier (1 pending sell position keeping tier at 80%)
+- Open positions: BAJAJ-AUTO — SELL AMO pending, fills Monday Jun 29 at market open
+- Confirmed completed trades: 3
+  - WHIRLPOOL: -Rs188 (Jun 3, death cross)
+  - TMPV: -Rs1,297 (Jun 17, Chandelier stop)
+  - SIEMENS: -Rs157 (Jun 24, death cross, filled at Rs3,688)
+- Pending trade: BAJAJ-AUTO SELL AMO queued Jun 25 — P&L unknown until Monday fill
+  (entry Rs10,286, death cross Jun 25, AMO limit Rs9,800.75)
+- NIFTY regime: BEAR (SMA20 < SMA50) — no new entries being taken
+- All other 7 stocks waiting for golden cross entry signal
+- Next action: Monday Jun 29 — check morning log, then run repair_portfolio_state.py
 
 ## Walk-Forward Validation Results
-- Original (2018-22 IS / 2023-26 OOS): 17/20 (85%) — SYSTEM VALIDATED
-- Extended (2015-19 IS / 2020-23 OOS): 37/50 (74%) — SYSTEM VALIDATED
-- Both windows include genuine bear market conditions
-- All stocks delivered positive OOS returns through COVID crash and 2022 selloff
+- Last run score: 17/24 (71%) — SYSTEM VALIDATED (threshold 65%)
+  Note: 17/24 was run on original 4-stock universe with dynamic OOS (date.today())
+  Has NOT been rerun on current 5-stock universe — next run due October 2026
+- OOS end date is dynamic (date.today()) — always includes latest live data
+- 6 metrics per stock: OOS>IS return, Sharpe>0, payoff>1.5, win rate>40%, expectancy>0, min OOS +4%
+- Individual stock results:
+  - BAJAJ-AUTO: OOS +13.5% — strongest performer, passes all 6 metrics
+  - COLPAL: 10/12 validated separately (Jun 24 — both WF windows)
+  - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
+  - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
+  - HCLTECH, JKTYRE, BSOFT: part of 37/50 extended — individual scores not isolated
+  - ANURAS/NEWGEN/PERSISTENT: excluded from WF — insufficient history
+- walk_forward.py universe updated Jun 26: BAJAJ-AUTO, HCLTECH, COLPAL, JKTYRE, BSOFT
+- Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
 - AWS Lightsail Mumbai: ubuntu@13.205.133.169
@@ -44,7 +65,11 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - This creates a timestamped backup in paper_trading/state_backups/
 - Never SCP portfolio_state.json directly — it is in .gitignore and
   the server version is always the source of truth
-- correlation_check.py has hardcoded CANDIDATES list — must edit manually
+- correlation_check.py is a full module — checks candidate against live open positions
+  CLI: python paper_trading/correlation_check.py TICKER.NS
+  In signal_runner: uses in-memory state (not file) — catches same-day BUY pairs correctly
+- repair_portfolio_state.py — run manually after BAJAJ-AUTO Monday fill to correct portfolio value
+  Located at: paper_trading/repair_portfolio_state.py
 - universe_expansion.py does not exist on server
 - bars_held=0 mid-day is normal — updates at 3:45 PM signal run
 - morning_fill_check.py and corporate_actions.py are fully dynamic
@@ -57,7 +82,10 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
-- Wait for 6 months clean paper trading data (currently at ~15 days)
+- Wait for 6 months clean paper trading data (currently at ~24 days as of Jun 26)
+- Implement SL-M orders for exits before going live (gap-down protection)
+- Implement ATR-based position sizing before going live
+- Complete at least 30 full trade cycles (entry + exit) — currently 3 confirmed
 - Flip PAPER_TRADING_MODE=False in signal_runner.py
 - Set LIVE_TRADING_MODE=True in morning_fill_check.py
 - Disable dry-run in engine/order_manager.py
@@ -70,8 +98,14 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - No news/merger monitoring — corporate_actions.py only checks scheduled NSE ex-dates
 - No F&O support (future project)
 - ANURAS has insufficient walk-forward history (listed post-2019) — monitor carefully
-- HEROMOTOCO weak in extended walk-forward (2/5) — flag for future removal
-- SIEMENS consistent 3/5 underperformer — flag for future removal when position closes
+- HEROMOTOCO removed Jun 24 — 2/5 extended WF, never generated entry signal
+- SIEMENS removed Jun 24 — 3/5 both windows, position closed Jun 24 at Rs3,688
+- Gap-down protection not yet implemented — AMO limit orders miss on large overnight gap-downs
+  Prompt written but not yet executed — needed before going live
+- Position sizing not volatility-adjusted — all positions get equal capital regardless of volatility
+- Correlation threshold 0.60 may be too loose for stress scenarios — review after 6 months
+- Hurst threshold stays at 0.48 — raising to 0.55 filters entire current universe to zero stocks
+  (verified Jun 26: all 6 live stocks have H between 0.415-0.549, none pass 0.55)
 - NEWGEN listed Jan 2018 — only 226 IS bars, excluded from extended walk-forward
 
 ### Stocks Removed (Jun 24 2026)
@@ -296,6 +330,34 @@ SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.N
 - Grid search results: validation/etf_tier_grid_result.json
 - Regime filter decision: ETF runs independently of NIFTY death cross — regime filter blocks stock entries only
 - Phase 3: deploy ₹25,000 real capital after 6 months clean paper validation (target: Dec 2026)
+
+### System Audit — Jun 26 2026 (13 findings, 11 fixed)
+
+#### Fixes applied (Jun 26):
+- Finding #2 CRITICAL: get_portfolio_value() now includes ETF — position sizer was receiving ~Rs500 instead of ~Rs98,000
+- Finding #1 CRITICAL: missed STRATEGY_SIGNAL SELLs now requeued (was silently dropped after Fix 1 regression)
+- Finding #3: pending_buy positions excluded from ETF tier count; pending_rm_exit included
+- Finding #4: all reporting (daily report, weekly summary, signal_log.csv) includes ETF value
+- Finding #6: integrity validator derives valid_tiers from ETF_TIERS dynamically (not hardcoded)
+- Finding #7: weekend crash fixed — trading day guard runs before portfolio load in morning_fill_check
+- Finding #9: BUY_QUEUED signal check replaces dead BUY check — EXECUTED log line now fires
+- Finding #10: backfill mode shows correct ETF value using etf_avg_price fallback
+- Finding #5: walk_forward.py universe updated to current 5 validated stocks
+- Finding #8: correlation check passes in-memory state — same-day BUY pairs checked against each other
+- Finding #13: notes prefix matching — "CHANDELIER [REQUEUED]" correctly identified as RM exit
+
+#### Death cross deferral fix (Jun 26):
+- Problem: death cross SELL called close_position() immediately at 3:45 PM before AMO fill
+- Fix: death cross now sets pending_rm_exit=True — position stays open overnight like RM exits
+- morning_fill_check closes position at actual open fill price — P&L computed correctly
+- Note: BAJAJ-AUTO exit (Jun 25) predates this fix — its P&L was computed at close price
+- ETF rebalance no longer fires prematurely on pending death cross exits
+
+#### Remaining fixes not yet implemented:
+- Finding #11: gap-down circuit breaker — Claude Code prompt written, NOT YET EXECUTED
+  When open price >3% below AMO limit: exit at open instead of requeue
+  Required before going live with real money
+- Finding #12: correlation check uses yfinance not Kite data — minor data source mismatch (low priority)
 
 ---
 
