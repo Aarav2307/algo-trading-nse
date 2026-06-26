@@ -52,6 +52,16 @@ _STRATEGY_EXIT_NOTES = frozenset({"STRATEGY_SIGNAL"})
 # AMO limit buffer — must match signal_runner.py AMO_CONFIG["limit_buffer_pct"]
 _AMO_LIMIT_BUFFER = 0.005   # 0.5% buffer below close for SELL AMO requeue
 _AMO_ORDER_LOG    = Path("paper_trading/amo_orders.csv")
+
+# Gap-down circuit breaker threshold for SELL AMOs.
+# If a stock opens more than this % below the SELL limit price,
+# we exit immediately at open rather than requeuing.
+# Rationale: a 3%+ gap-down is a genuine adverse event (not noise).
+# Requeuing after a 3%+ gap means holding a position in a confirmed
+# downtrend absorbing further losses. Exit now at market open.
+# The 0.5% AMO buffer is already in the limit price, so the effective
+# gap from yesterday's close that triggers this is ~3.5%.
+GAP_BREAKER_THRESHOLD = 0.03   # 3% gap triggers immediate exit at open
 # Cooldown bars must match signal_runner.py COOLDOWN_BARS.
 # +1 offset: advance_cooldown() in the same evening's signal_runner absorbs one bar,
 # leaving exactly COOLDOWN_BARS days of suppression starting the next trading day.
@@ -613,6 +623,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
     filled_count    = 0
     missed_count    = 0
     cancelled_count = 0
+    gap_exit_count  = 0
 
     for order in pending:
         ticker      = order["ticker"]
@@ -709,51 +720,77 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 _portfolio.save()
                 print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
 
-            elif apply_fills and order_type == "SELL" and (is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES):
-                # Missed RM SELL AMO: re-queue for tomorrow's open at an updated limit.
-                # Without a requeue, signal_runner sees pending_rm_exit=True forever and
-                # never runs the RM — the position becomes orphaned with no active stop.
-                today_close = _fetch_close_price(ticker, today)
+            elif apply_fills and order_type == "SELL":
+                # Gap-down circuit breaker: if open is too far below limit, exit
+                # immediately instead of requeuing. gap_pct (already computed above)
+                # is negative for a SELL miss; compute positive magnitude for comparison.
+                gap_magnitude = (limit_px - open_px) / limit_px
 
-                if today_close is not None:
-                    new_limit = round(today_close * (1 - _AMO_LIMIT_BUFFER), 2)
-
-                    # Log new SELL AMO to amo_orders.csv for tomorrow's fill check
-                    from engine.order_manager import AMOOrderManager
-                    _amo_cfg = {
-                        "enabled":          True,
-                        "dry_run":          True,
-                        "limit_buffer_pct": _AMO_LIMIT_BUFFER,
-                        "order_log_file":   str(_AMO_ORDER_LOG),
-                    }
-                    amo = AMOOrderManager(_amo_cfg)
-                    amo.place_sell_amo(
-                        ticker=ticker,
-                        shares=shares,
-                        signal_price=today_close,
-                        order_date=today,
-                        notes=notes + " [REQUEUED]",
-                    )
-
-                    # Update portfolio state: increment requeue counter, keep pending_rm_exit=True
-                    _portfolio.load()
-                    _portfolio.requeue_rm_sell(ticker, new_limit, today.isoformat())
-
+                if gap_magnitude > GAP_BREAKER_THRESHOLD:
+                    # Large gap-down — exit at open price immediately rather than requeuing.
+                    # Requeuing after a 3%+ gap means holding a trapped position in a
+                    # confirmed downtrend — circuit breaker prevents cascading losses.
+                    gap_exit_count += 1
                     print(
-                        f"  ⚠️  REQUEUED: {ticker} RM SELL → new AMO SELL limit ₹{new_limit:.2f} "
-                        f"for tomorrow's open"
+                        f"  ⚡ GAP_EXIT  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                        f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                        f"| gap {gap_magnitude*100:.1f}% > {GAP_BREAKER_THRESHOLD*100:.0f}% threshold "
+                        f"— exiting at open{rm_tag}"
                     )
-                    print(
-                        f"  ⚠️  Original MISSED: open ₹{open_px:.2f} vs limit ₹{limit_px:.2f}"
+                    _update_csv_row(order_date, ticker, order_type,
+                                    "GAP_EXIT", str(round(open_px, 4)), today.isoformat())
+                    _update_portfolio_fill(
+                        ticker, order_type, shares, open_px, today,
+                        exit_reason="GAP_EXIT",
+                        is_rm_exit=is_rm_exit,
+                        portfolio_obj=_portfolio,
                     )
-                else:
-                    print(
-                        f"  ERROR [{ticker}]: RM SELL MISSED but could not fetch today's close "
-                        f"for requeue. MANUAL ACTION REQUIRED: check position in Zerodha dashboard."
-                    )
+
+                elif is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES:
+                    # Small gap — requeue for tomorrow's open at an updated limit.
+                    # Without a requeue, signal_runner sees pending_rm_exit=True forever and
+                    # never runs the RM — the position becomes orphaned with no active stop.
+                    today_close = _fetch_close_price(ticker, today)
+
+                    if today_close is not None:
+                        new_limit = round(today_close * (1 - _AMO_LIMIT_BUFFER), 2)
+
+                        # Log new SELL AMO to amo_orders.csv for tomorrow's fill check
+                        from engine.order_manager import AMOOrderManager
+                        _amo_cfg = {
+                            "enabled":          True,
+                            "dry_run":          True,
+                            "limit_buffer_pct": _AMO_LIMIT_BUFFER,
+                            "order_log_file":   str(_AMO_ORDER_LOG),
+                        }
+                        amo = AMOOrderManager(_amo_cfg)
+                        amo.place_sell_amo(
+                            ticker=ticker,
+                            shares=shares,
+                            signal_price=today_close,
+                            order_date=today,
+                            notes=notes + " [REQUEUED]",
+                        )
+
+                        # Update portfolio state: increment requeue counter, keep pending_rm_exit=True
+                        _portfolio.load()
+                        _portfolio.requeue_rm_sell(ticker, new_limit, today.isoformat())
+
+                        print(
+                            f"  ⚠️  REQUEUED: {ticker} RM SELL → new AMO SELL limit ₹{new_limit:.2f} "
+                            f"for tomorrow's open"
+                        )
+                        print(
+                            f"  ⚠️  Original MISSED: open ₹{open_px:.2f} vs limit ₹{limit_px:.2f}"
+                        )
+                    else:
+                        print(
+                            f"  ERROR [{ticker}]: RM SELL MISSED but could not fetch today's close "
+                            f"for requeue. MANUAL ACTION REQUIRED: check position in Zerodha dashboard."
+                        )
 
     print()
-    parts = [f"{filled_count} FILLED", f"{missed_count} MISSED"]
+    parts = [f"{filled_count} FILLED", f"{missed_count} MISSED", f"{gap_exit_count} GAP_EXIT"]
     if cancelled_count:
         parts.append(f"{cancelled_count} CANCELLED (corp action ex-date today)")
     print(f"  Summary: {' | '.join(parts)}")
