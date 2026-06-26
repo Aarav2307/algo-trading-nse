@@ -627,11 +627,22 @@ class PaperPortfolio:
                               current_prices is None — ensures backward compatibility.
             log_fn:           optional callable for logging the rebalance action
         """
-        open_positions = sum(
-            1 for pos in self.state["positions"].values()
-            if pos.get("shares", 0) > 0
-        )
-        new_tier = ETF_TIERS[min(open_positions, 4)]
+        # Mirror get_etf_target_tier() exactly so the two functions can never disagree.
+        # pending_buy=True positions: shares are set but cash not yet deducted → exclude.
+        # pending_rm_exit=True with shares>0: position still open, sell pending → include.
+        open_positions = 0
+        for pos in self.state["positions"].values():
+            shares      = pos.get("shares", 0)
+            pending_buy  = pos.get("pending_buy", False)
+            pending_sell = pos.get("pending_rm_exit", False)
+
+            if shares > 0 and not pending_buy:
+                open_positions += 1
+            elif pending_sell and shares == 0:
+                open_positions += 1
+
+        open_positions = min(open_positions, 4)
+        new_tier = ETF_TIERS[open_positions]
         old_tier = self.state["etf_tier"]
 
         if new_tier == old_tier:

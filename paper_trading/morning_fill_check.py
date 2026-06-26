@@ -700,7 +700,6 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 print(f"  [{ticker}]: BUY AMO {result['status']} — pending_buy cancelled")
 
         else:
-            missed_count += 1
             detail = (
                 f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
                 f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%{rm_tag}"
@@ -719,6 +718,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 _portfolio.cancel_pending_buy(ticker)
                 _portfolio.save()
                 print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
+                missed_count += 1   # true miss — BUY didn't fill
 
             elif apply_fills and order_type == "SELL":
                 # Gap-down circuit breaker: if open is too far below limit, exit
@@ -727,9 +727,8 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 gap_magnitude = (limit_px - open_px) / limit_px
 
                 if gap_magnitude > GAP_BREAKER_THRESHOLD:
-                    # Large gap-down — exit at open price immediately rather than requeuing.
-                    # Requeuing after a 3%+ gap means holding a trapped position in a
-                    # confirmed downtrend — circuit breaker prevents cascading losses.
+                    # Large gap-down — exit immediately via circuit breaker.
+                    # Counted as GAP_EXIT, NOT as a missed order — do not increment missed_count.
                     gap_exit_count += 1
                     print(
                         f"  ⚡ GAP_EXIT  {ticker:<14} {order_type:<4} {shares:>3} shr "
@@ -747,9 +746,10 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                     )
 
                 elif is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES:
-                    # Small gap — requeue for tomorrow's open at an updated limit.
+                    # Small gap — true miss, requeue for tomorrow's open at an updated limit.
                     # Without a requeue, signal_runner sees pending_rm_exit=True forever and
                     # never runs the RM — the position becomes orphaned with no active stop.
+                    missed_count += 1
                     today_close = _fetch_close_price(ticker, today)
 
                     if today_close is not None:
@@ -788,6 +788,14 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                             f"  ERROR [{ticker}]: RM SELL MISSED but could not fetch today's close "
                             f"for requeue. MANUAL ACTION REQUIRED: check position in Zerodha dashboard."
                         )
+
+                else:
+                    # SELL miss — small gap, not an exit we manage (edge case).
+                    missed_count += 1
+
+            else:
+                # Non-BUY/SELL miss, or dry-run (apply_fills=False): always a true miss.
+                missed_count += 1
 
     print()
     parts = [f"{filled_count} FILLED", f"{missed_count} MISSED", f"{gap_exit_count} GAP_EXIT"]

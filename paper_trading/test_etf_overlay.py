@@ -694,6 +694,99 @@ def test_21_double_requeue_notes_parsed_correctly() -> None:
 
 
 # =============================================================================
+# Test 22 — rebalance_etf() excludes pending_buy from tier (Finding #1)
+# =============================================================================
+
+def test_22_rebalance_etf_excludes_pending_buy() -> None:
+    name = "Test 22 — rebalance_etf() excludes pending_buy from tier"
+
+    # Start with 200 ETF units at tier 1.0 (100% ETF, 0 confirmed positions, 0 cash)
+    portfolio = _make_portfolio(
+        open_positions=0, cash=0.0,
+        etf_shares=200, etf_avg_price=250.0, etf_tier=1.0,
+    )
+    portfolio.state["cash"] = 5_000.0   # give some cash so rebalance CAN act if it wants to
+    tickers = list(portfolio.state["positions"].keys())
+
+    # Queue a BUY (pending_buy=True, shares set, cash NOT deducted)
+    portfolio.state["positions"][tickers[0]]["shares"]      = 10
+    portfolio.state["positions"][tickers[0]]["pending_buy"] = True
+
+    initial_etf_shares = portfolio.state["etf_shares"]   # 200
+
+    # With the FIX: open_positions=0 (pending_buy excluded) → new_tier=ETF_TIERS[0]=1.0
+    #              1.0 == old_tier → NO CHANGE, no ETF sell
+    # With OLD code: open_positions=1 (pending_buy counted) → new_tier=ETF_TIERS[1]=0.8
+    #               0.8 != 1.0 → premature ETF sell
+    portfolio.rebalance_etf(250.0)
+
+    if portfolio.state["etf_tier"] != ETF_TIERS[0]:
+        _fail(name, f"Expected tier {ETF_TIERS[0]} (no confirmed positions), got {portfolio.state['etf_tier']}")
+        return
+    if portfolio.state["etf_shares"] < initial_etf_shares:
+        _fail(name, f"Premature ETF sell: {initial_etf_shares} → {portfolio.state['etf_shares']} shares")
+        return
+
+    _pass(name)
+
+
+# =============================================================================
+# Test 23 — rebalance_etf() and get_etf_target_tier() always agree (Finding #1)
+# =============================================================================
+
+def test_23_rebalance_etf_and_tier_always_agree() -> None:
+    name = "Test 23 — rebalance_etf() and get_etf_target_tier() always agree"
+
+    cases = [
+        # (label,                             n_confirmed, pending_buy_idx, pending_rm_exit, expected_tier_key)
+        ("0 confirmed, 0 pending",            0,           None,            False,           0),
+        ("1 confirmed, 0 pending",            1,           None,            False,           1),
+        ("0 confirmed, 1 pending_buy",        0,           0,               False,           0),
+        ("1 confirmed, 1 pending_buy",        1,           1,               False,           1),
+        ("1 confirmed, pending_rm_exit=True", 1,           None,            True,            1),
+    ]
+
+    for label, n_confirmed, pb_idx, has_pre, expected_tier_key in cases:
+        portfolio = _make_portfolio(open_positions=0, cash=50_000.0, etf_tier=0)
+        tickers   = list(portfolio.state["positions"].keys())
+
+        # Set up confirmed (real) open positions
+        for i in range(n_confirmed):
+            portfolio.state["positions"][tickers[i]]["shares"]          = 10
+            portfolio.state["positions"][tickers[i]]["pending_buy"]     = False
+            portfolio.state["positions"][tickers[i]]["pending_rm_exit"] = False
+
+        # Optionally add a pending_buy position at pb_idx
+        if pb_idx is not None:
+            portfolio.state["positions"][tickers[pb_idx]]["shares"]      = 5
+            portfolio.state["positions"][tickers[pb_idx]]["pending_buy"] = True
+
+        # Optionally mark confirmed position 0 as pending_rm_exit
+        if has_pre and n_confirmed > 0:
+            portfolio.state["positions"][tickers[0]]["pending_rm_exit"] = True
+
+        expected_tier = ETF_TIERS[expected_tier_key]
+
+        # get_etf_target_tier() must agree
+        tier_from_getter = portfolio.get_etf_target_tier()
+        if tier_from_getter != expected_tier:
+            _fail(name, f"[{label}] get_etf_target_tier: expected {expected_tier}, got {tier_from_getter}")
+            return
+
+        # rebalance_etf() starts from a DIFFERENT tier so it is forced to run
+        # and update state["etf_tier"] — then we check the result
+        portfolio.state["etf_tier"] = 0   # guaranteed different from expected (1.0/0.8)
+        portfolio.rebalance_etf(273.55)
+
+        tier_after = portfolio.state["etf_tier"]
+        if tier_after != expected_tier:
+            _fail(name, f"[{label}] rebalance_etf: expected tier {expected_tier}, got {tier_after}")
+            return
+
+    _pass(name)
+
+
+# =============================================================================
 # Guard: live state file must not be modified
 # =============================================================================
 
@@ -738,6 +831,8 @@ if __name__ == "__main__":
     test_19_correlation_check_excludes_pending_buy_from_dict()
     test_20_notes_prefix_matching_handles_requeued()
     test_21_double_requeue_notes_parsed_correctly()
+    test_22_rebalance_etf_excludes_pending_buy()
+    test_23_rebalance_etf_and_tier_always_agree()
 
     _assert_live_state_untouched(mtime_before)
 

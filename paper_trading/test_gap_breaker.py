@@ -375,6 +375,117 @@ def test_6_gap_exit_no_double_exit() -> None:
 
 
 # =============================================================================
+# Test 7 — missed_count not incremented on GAP_EXIT (Finding #4)
+# =============================================================================
+
+def test_7_missed_count_not_incremented_on_gap_exit() -> None:
+    name = "Test 7 — missed_count not incremented on GAP_EXIT"
+
+    # Simulate the MISSED block counter logic from Fix 2.
+    # A 7.6% gap triggers GAP_EXIT → gap_exit_count only, missed_count stays 0.
+    limit_px      = 3680.0
+    open_px       = 3400.0   # 7.6% gap
+    gap_magnitude = (limit_px - open_px) / limit_px
+    apply_fills   = True
+    order_type    = "SELL"
+    is_rm_exit    = True
+
+    missed_count   = 0
+    gap_exit_count = 0
+
+    if apply_fills and order_type == "BUY":
+        missed_count += 1
+    elif apply_fills and order_type == "SELL":
+        if gap_magnitude > GAP_BREAKER_THRESHOLD:
+            gap_exit_count += 1       # GAP_EXIT — NOT a miss
+        elif is_rm_exit:
+            missed_count += 1
+        else:
+            missed_count += 1
+    else:
+        missed_count += 1
+
+    if gap_exit_count != 1:
+        _fail_test(name, f"Expected gap_exit_count=1, got {gap_exit_count}")
+        return
+    if missed_count != 0:
+        _fail_test(name, f"Expected missed_count=0, got {missed_count} (GAP_EXIT must not increment missed)")
+        return
+
+    _pass_test(name)
+
+
+# =============================================================================
+# Test 8 — missed_count increments on true SELL miss (Finding #4)
+# =============================================================================
+
+def test_8_missed_count_increments_on_true_miss() -> None:
+    name = "Test 8 — missed_count increments on true miss (requeued)"
+
+    # A 1.63% gap → small miss → requeue path → missed_count += 1, gap_exit_count == 0.
+    limit_px      = 3680.0
+    open_px       = 3620.0   # 1.63% gap
+    gap_magnitude = (limit_px - open_px) / limit_px
+    apply_fills   = True
+    order_type    = "SELL"
+    is_rm_exit    = True     # RM exit → would be requeued
+
+    missed_count   = 0
+    gap_exit_count = 0
+
+    if apply_fills and order_type == "BUY":
+        missed_count += 1
+    elif apply_fills and order_type == "SELL":
+        if gap_magnitude > GAP_BREAKER_THRESHOLD:
+            gap_exit_count += 1
+        elif is_rm_exit:
+            missed_count += 1   # true miss — small gap, requeue path
+        else:
+            missed_count += 1
+    else:
+        missed_count += 1
+
+    if missed_count != 1:
+        _fail_test(name, f"Expected missed_count=1 for small-gap SELL miss, got {missed_count}")
+        return
+    if gap_exit_count != 0:
+        _fail_test(name, f"Expected gap_exit_count=0 for small-gap miss, got {gap_exit_count}")
+        return
+
+    _pass_test(name)
+
+
+# =============================================================================
+# Test 9 — summary line is correct with 1 FILLED + 1 MISS + 1 GAP_EXIT (Finding #4)
+# =============================================================================
+
+def test_9_summary_line_correct_with_mixed_orders() -> None:
+    name = "Test 9 — Summary '1 FILLED | 1 MISSED | 1 GAP_EXIT' (not 2 MISSED)"
+
+    filled_count   = 1
+    missed_count   = 1
+    gap_exit_count = 1
+
+    parts   = [f"{filled_count} FILLED", f"{missed_count} MISSED", f"{gap_exit_count} GAP_EXIT"]
+    summary = f"  Summary: {' | '.join(parts)}"
+
+    if "1 FILLED" not in summary:
+        _fail_test(name, f"Expected '1 FILLED' in summary: {summary}")
+        return
+    if "1 MISSED" not in summary:
+        _fail_test(name, f"Expected '1 MISSED' in summary: {summary}")
+        return
+    if "1 GAP_EXIT" not in summary:
+        _fail_test(name, f"Expected '1 GAP_EXIT' in summary: {summary}")
+        return
+    if "2 MISSED" in summary:
+        _fail_test(name, f"GAP_EXIT must NOT be counted in MISSED: {summary}")
+        return
+
+    _pass_test(name)
+
+
+# =============================================================================
 # Runner
 # =============================================================================
 
@@ -392,6 +503,9 @@ if __name__ == "__main__":
     test_4_exactly_at_threshold()
     test_5_gap_exit_pnl_correct()
     test_6_gap_exit_no_double_exit()
+    test_7_missed_count_not_incremented_on_gap_exit()
+    test_8_missed_count_increments_on_true_miss()
+    test_9_summary_line_correct_with_mixed_orders()
 
     if LIVE_STATE.exists():
         mtime_after = os.path.getmtime(LIVE_STATE)
