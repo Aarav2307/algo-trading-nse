@@ -354,9 +354,11 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - ETF rebalance no longer fires prematurely on pending death cross exits
 
 #### Remaining fixes not yet implemented:
-- Finding #11: gap-down circuit breaker — Claude Code prompt written, NOT YET EXECUTED
-  When open price >3% below AMO limit: exit at open instead of requeue
-  Required before going live with real money
+- Finding #11: gap-down circuit breaker — COMPLETED (Jun 26)
+  GAP_BREAKER_THRESHOLD = 3% in morning_fill_check.py
+  GAP_EXIT path: closes position at open, records in trade_log, does not requeue
+  Small gaps (<3%) still requeue as before — behavior unchanged
+  6/6 unit tests passing (paper_trading/test_gap_breaker.py)
 - Finding #12: correlation check uses yfinance not Kite data — minor data source mismatch (low priority)
 
 ---
