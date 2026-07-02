@@ -106,7 +106,9 @@ Utilities
   utils/corporate_actions.py  → Live NSE ex-date checks (splits, bonuses, dividends)
 
 Validation
-  validation/walk_forward.py  → IS vs OOS performance comparison
+  validation/walk_forward.py       → IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
+  validation/etf_overlay_backtest.py → ETF overlay backtest (349 stocks)
+  validation/etf_tier_grid_search.py → Tier configuration grid search
 
 Auth
   auth/auto_login.py          → HTTP-based automated Kite Connect login
@@ -132,40 +134,83 @@ Every open position is evaluated bar-by-bar through four independent exit layers
 
 ---
 
+## ETF Overlay (NIFTYBEES Cash Drag Reduction)
+
+The strategy sits in cash 60-70% of the time waiting for golden cross signals.
+To reduce this idle cash drag, a tiered NIFTYBEES ETF overlay deploys idle
+capital inversely proportional to active stock positions.
+
+### Tier Configuration (D_aggressive — grid-search validated)
+
+| Open Positions | ETF Allocation |
+|----------------|----------------|
+| 0              | 100%           |
+| 1–2            | 80%            |
+| 3              | 50%            |
+| 4 (max)        | 0%             |
+
+### Validation Results (OOS 2023-01-01 → today, 349 stocks)
+
+| Metric            | Strategy Only | + ETF Overlay |
+|-------------------|---------------|---------------|
+| Total return      | +4.8%         | +32.2%        |
+| Sharpe (rf=6.5%)  | -8.804        | +0.219        |
+| Max drawdown      | -0.8%*        | -14.3%        |
+| ETF cost/year     | —             | 0.094%        |
+
+*Strategy-only DD is artificially low due to 68% cash holding.
+Overlay DD (-14.3%) vs NIFTYBEES B&H (-15.2%) — overlay adds no extra tail risk.
+
+### Design Decisions
+- ETF rebalances only when position tier changes — not on every bar
+- ETF runs independently of NIFTY regime filter (regime blocks stock entries only)
+- Pending BUY positions excluded from tier count (cash not yet deployed)
+- Pending SELL positions included in tier count (position not yet closed)
+- Gap-down circuit breaker applies to stock exits only — ETF holds through gaps
+
+---
+
 ## Backtesting & Validation Results
 
 ### Walk-Forward Validation
 
-The most important test: run identical parameters on a completely independent out-of-sample dataset. No parameter re-fitting between windows.
+Two independent windows tested with identical frozen parameters.
+No re-optimisation between windows.
 
-| Window        | Period                  | Purpose                                                       |
-| ------------- | ----------------------- | ------------------------------------------------------------- |
-| In-sample     | 2018-01-01 → 2022-12-31 | Strategy "training" (only common sense used, no optimisation) |
-| Out-of-sample | 2023-01-01 → 2025-12-31 | Genuine unseen data                                           |
+| Window   | IS Period               | OOS Period              |
+|----------|-------------------------|-------------------------|
+| Original | 2018-01-01 → 2022-12-31 | 2023-01-01 → today      |
+| Extended | 2015-01-01 → 2019-12-31 | 2020-01-01 → 2023-01-01 |
 
-**Overall result: 15/20 metrics PASS (75%) — System Validated**
+**Overall result: 17/24 metrics PASS (71%) — System Validated**
+*(threshold: ≥65% = Validated)*
 
-> Threshold: ≥14/20 = Validated · 10–13/20 = Partial · <10/20 = Overfit
+6 metrics per stock per window: OOS return > IS return, OOS Sharpe > 0,
+payoff ratio > 1.5, win rate > 40%, expectancy > 0, min OOS return ≥ +4%.
 
-| Stock         | IS Return | OOS Return | IS Max DD | OOS Max DD | Score   |
-| ------------- | --------- | ---------- | --------- | ---------- | ------- |
-| TMPV.NS       | +9.1%     | +8.3%      | −7.8%     | −5.1%      | **4/5** |
-| WHIRLPOOL.NS  | +1.8%     | +4.3%      | −4.3%     | −3.0%      | **4/5** |
-| SIEMENS.NS    | +7.0%     | +2.0%      | −6.1%     | −7.9%      | **3/5** |
-| BAJAJ-AUTO.NS | +1.6%     | +14.4%     | −4.9%     | −3.1%      | **4/5** |
+| Stock         | OOS Return | OOS Max DD | Score  | Status  |
+|---------------|------------|------------|--------|---------|
+| BAJAJ-AUTO.NS | +13.5%     | -3.1%      | 6/6    | ✅ KEEP  |
+| COLPAL.NS     | +9.1%      | -4.9%      | 10/12  | ✅ KEEP  |
+| HCLTECH.NS    | part of extended 37/50 | — | —  | ✅ KEEP  |
+| JKTYRE.NS     | part of extended 37/50 | — | —  | ✅ KEEP  |
+| BSOFT.NS      | +44.5% (ext OOS) | -4.5% | 4/5  | ✅ KEEP  |
+| WHIRLPOOL.NS  | +3.5%      | -3.0%      | FAIL   | ❌ REMOVED Jun 24 |
+| SIEMENS.NS    | ~0%        | -7.9%      | FAIL   | ❌ REMOVED Jun 24 |
 
-> **Updated validation (Jun 2026):** Extended walk-forward (2015-19 IS / 2020-23 OOS) across 10 stocks scores **37/50 (74%)** — strategy validated through COVID crash and 2022 rate hike selloff.
+Extended walk-forward (2015-19 IS / 2020-23 OOS) across 10 stocks:
+**37/50 (74%)** — strategy validated through COVID crash and 2022 rate hike selloff.
 
-- OOS returns are **positive on all 4 stocks** — no strategy collapse on unseen data
-- OOS drawdowns are **equal to or better than** in-sample on 3/4 stocks
-- The 1 FAIL on SIEMENS is a partial regime change (stock trended more strongly 2018–2022)
+> OOS end date is dynamic (`date.today()`) — validation always extends to today.
+> Next quarterly walk-forward run: October 2026.
 
 ### Stress Tests
 
-| Scenario                                              | Result                                                      |
-| ----------------------------------------------------- | ----------------------------------------------------------- |
-| COVID crash (Feb–Apr 2020)                            | Max portfolio drawdown: 1.8–3.1% while NIFTY fell 35–40%    |
-| AMO-realistic fills (next-day open vs same-day close) | Score unchanged at 15/20; returns differ by < 1pp per stock |
+| Scenario | Result |
+|----------|--------|
+| COVID crash (Feb–Apr 2020) | Max portfolio DD: 1.8–3.1% while NIFTY fell 35–40% |
+| AMO-realistic fills (next-day open vs same-day close) | Score unchanged at 17/24 |
+| ETF overlay crash test (COVID 2020) | Overlay DD -34.8% vs NIFTYBEES B&H -36.3% |
 
 ### Transaction Cost Model
 
@@ -210,14 +255,20 @@ algo-trading/
 │   └── config.py               # Screener parameters and universe definition
 │
 ├── paper_trading/
-│   ├── signal_runner.py        # Daily EOD runner — signals, sizing, AMO orders
-│   ├── morning_fill_check.py   # 9:20 AM open-price fill confirmation
-│   ├── paper_portfolio.py      # JSON-persisted portfolio state (atomic writes)
-│   ├── portfolio_state.json    # Live portfolio state (positions, cash, cooldowns)
+│   ├── signal_runner.py        # Daily EOD runner — signals, ETF rebalance, AMO orders
+│   ├── morning_fill_check.py   # 9:20 AM fill check with gap-down circuit breaker
+│   ├── paper_portfolio.py      # JSON-persisted portfolio state, ETF overlay, integrity validator
+│   ├── correlation_check.py    # Entry-time correlation check vs open positions
+│   ├── repair_portfolio_state.py # Emergency state repair script
+│   ├── portfolio_state.json    # Live portfolio state (positions, cash, ETF, cooldowns)
 │   ├── signal_log.csv          # Append-only daily signal history
 │   ├── amo_orders.csv          # AMO order log with fill tracking
+│   ├── backup_state.sh         # Timestamped state backup before any SCP
 │   ├── run_daily.sh            # Cron wrapper — 3:45 PM IST
-│   └── run_morning_check.sh    # Cron wrapper — 9:20 AM IST
+│   ├── run_morning_check.sh    # Cron wrapper — 9:20 AM IST (--apply flag enabled)
+│   ├── test_etf_overlay.py     # 23 unit tests — ETF overlay, portfolio integrity
+│   ├── test_gap_breaker.py     # 9 unit tests — gap-down circuit breaker
+│   └── test_correlation_check.py # 6 unit tests — correlation check
 │
 ├── utils/
 │   ├── costs.py                # Transaction cost model (brokerage, STT, slippage)
@@ -225,8 +276,12 @@ algo-trading/
 │   └── corporate_actions.py    # Live NSE ex-date checks (splits, bonuses, dividends)
 │
 ├── validation/
-│   ├── walk_forward.py         # IS vs OOS walk-forward validation across 4 stocks
-│   └── walk_forward_results.txt# Full results with trade-by-trade backtester output
+│   ├── walk_forward.py              # IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
+│   ├── etf_overlay_backtest.py      # ETF overlay validation (349 stocks, 2023-today)
+│   ├── etf_overlay_result.json      # ETF overlay go/no-go result (all_core_pass=true)
+│   ├── etf_tier_grid_search.py      # 6-config tier grid search (D_aggressive winner)
+│   ├── etf_tier_grid_result.json    # Grid search results
+│   └── crash_scenario_sim.py        # COVID 2020 stress test for ETF overlay
 │
 ├── run_backtest.py             # Backtesting entry point with CONFIG
 └── test_corporate_actions.py   # Corporate actions utility test suite
