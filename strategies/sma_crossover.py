@@ -54,8 +54,8 @@ def generate_signals(df: pd.DataFrame, fast_period: int = 50, slow_period: int =
 
     # A crossover happens when today's relationship differs from yesterday's.
     # shift(1) gives yesterday's value; compare element-wise.
-    crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
-    crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+    crossed_above = fast_above & ~fast_above.shift(1, fill_value=False)   # golden cross
+    crossed_below = ~fast_above & fast_above.shift(1, fill_value=False)   # death cross
 
     signals = pd.Series(0, index=df.index, name="signal")
     signals[crossed_above] = 1
