@@ -1,5 +1,5 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-06-26
+Last updated: 2026-07-02
 
 ## Current Trading Universe (8 stocks)
 BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
@@ -16,20 +16,22 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - Removed Jun 24: HEROMOTOCO (2/5 extended WF, never generated entry signal since added Jun 16)
 - Removed Jun 24: SIEMENS (3/5 both WF windows, OOS return ~0%, position closed Jun 24 at Rs3,688)
 
-## Paper Trading Status (as of 2026-06-26)
-- Started: 2026-06-02 (24 trading days; Jun 26 is NSE holiday)
-- Portfolio: ~Rs97,890 — to be confirmed after repair_portfolio_state.py runs Monday
-- ETF: 287 NIFTYBEES units @ 80% tier (1 pending sell position keeping tier at 80%)
-- Open positions: BAJAJ-AUTO — SELL AMO pending, fills Monday Jun 29 at market open
-- Confirmed completed trades: 3
-  - WHIRLPOOL: -Rs188 (Jun 3, death cross)
-  - TMPV: -Rs1,297 (Jun 17, Chandelier stop)
-  - SIEMENS: -Rs157 (Jun 24, death cross, filled at Rs3,688)
-- Pending trade: BAJAJ-AUTO SELL AMO queued Jun 25 — P&L unknown until Monday fill
-  (entry Rs10,286, death cross Jun 25, AMO limit Rs9,800.75)
-- NIFTY regime: BEAR (SMA20 < SMA50) — no new entries being taken
-- All other 7 stocks waiting for golden cross entry signal
-- Next action: Monday Jun 29 — check morning log, then run repair_portfolio_state.py
+## Paper Trading Status (as of 2026-07-02)
+- Started: 2026-06-02 (29 trading days as of Jul 2)
+- Portfolio: ₹98,717 (-1.28%) as of Jul 2 close
+- Cash: ₹243.49
+- ETF: 359 NIFTYBEES units @ 100% tier (0 open positions)
+- ETF value: ~₹98,474 (359 × ₹274.30 Jul 2 close)
+- Open positions: 0
+- NIFTY regime: BEAR (SMA20 < SMA50, gap narrowing — -0.28% on Jul 2)
+- Confirmed completed trades: 4
+  - WHIRLPOOL: -₹188 (Jun 3, death cross)
+  - TMPV: -₹1,297 (Jun 17, Chandelier stop)
+  - SIEMENS: -₹157 (Jun 24, death cross, filled at ₹3,688)
+  - BAJAJ-AUTO: -₹441 gross (Jun 29, death cross, filled at ₹9,892 — gapped UP)
+- All 8 stocks waiting for golden cross entry signal
+- NIFTY SMA gap closing daily — BULL regime flip possible next week
+- repair_portfolio_state.py: no longer needed — BAJAJ-AUTO filled cleanly Jun 29
 
 ## Walk-Forward Validation Results
 - Last run score: 17/24 (71%) — SYSTEM VALIDATED (threshold 65%)
@@ -68,8 +70,9 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - correlation_check.py is a full module — checks candidate against live open positions
   CLI: python paper_trading/correlation_check.py TICKER.NS
   In signal_runner: uses in-memory state (not file) — catches same-day BUY pairs correctly
-- repair_portfolio_state.py — run manually after BAJAJ-AUTO Monday fill to correct portfolio value
+- repair_portfolio_state.py — one-time emergency repair script, keep for future use
   Located at: paper_trading/repair_portfolio_state.py
+  BAJAJ-AUTO filled cleanly Jun 29 — script was not needed
 - universe_expansion.py does not exist on server
 - bars_held=0 mid-day is normal — updates at 3:45 PM signal run
 - morning_fill_check.py and corporate_actions.py are fully dynamic
@@ -82,7 +85,7 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
-- Wait for 6 months clean paper trading data (currently at ~24 days as of Jun 26)
+- Wait for 6 months clean paper trading data (currently at ~29 days as of Jul 2)
 - Implement SL-M orders for exits before going live (gap-down protection)
 - Implement ATR-based position sizing before going live
 - Complete at least 30 full trade cycles (entry + exit) — currently 3 confirmed
@@ -100,8 +103,10 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - ANURAS has insufficient walk-forward history (listed post-2019) — monitor carefully
 - HEROMOTOCO removed Jun 24 — 2/5 extended WF, never generated entry signal
 - SIEMENS removed Jun 24 — 3/5 both windows, position closed Jun 24 at Rs3,688
-- Gap-down protection not yet implemented — AMO limit orders miss on large overnight gap-downs
-  Prompt written but not yet executed — needed before going live
+- Gap-down circuit breaker: COMPLETED (Jun 26) — GAP_BREAKER_THRESHOLD=3%
+  If open price >3% below AMO limit: exit at open (GAP_EXIT), not requeued
+  9/9 unit tests passing (paper_trading/test_gap_breaker.py)
+  Note: SL-M orders still needed for real-money live trading (paper trading uses simulation)
 - Position sizing not volatility-adjusted — all positions get equal capital regardless of volatility
 - Correlation threshold 0.60 may be too loose for stress scenarios — review after 6 months
 - Hurst threshold stays at 0.48 — raising to 0.55 filters entire current universe to zero stocks
@@ -360,6 +365,40 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
   Small gaps (<3%) still requeue as before — behavior unchanged
   6/6 unit tests passing (paper_trading/test_gap_breaker.py)
 - Finding #12: correlation check uses yfinance not Kite data — minor data source mismatch (low priority)
+
+#### Second System Audit — Jul 2 2026 (25 findings total)
+Fixed from second audit:
+- Audit2 Finding #1: rebalance_etf() now mirrors get_etf_target_tier() exactly
+  pending_buy excluded, pending_rm_exit included — ETF no longer sells prematurely on queued BUY
+  23/23 unit tests passing
+- Audit2 Finding #4: missed_count no longer double-counts GAP_EXIT orders
+  Summary correctly shows FILLED | MISSED | GAP_EXIT
+  9/9 unit tests passing
+- pandas FutureWarning fixed in strategies/sma_crossover.py
+  fill_value=False replaces .fillna(False) — 16 fewer warning lines per daily log
+
+Remaining from second audit (not yet fixed):
+- Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
+  Risk: full NIFTY exposure while stock entries suppressed — undoes regime filter protection
+- Audit2 Finding #3: simultaneous BUY fills can orphan pending_buy=True permanently
+  Needs cash reservation logic in queue_pending_buy()
+- Audit2 Finding #5: walk_forward.py STOCKS_EXTENDED still contains removed stocks
+  (TMPV, WHIRLPOOL, SIEMENS, HEROMOTOCO, CUMMINSIND) — stale, next quarterly run
+- Audit2 Finding #8: NSE_HOLIDAYS_2027 = [] — time bomb for January 2027
+  Must populate before October 2026 from official NSE circular
+- Audit2 Finding #10: screener API rate limiting causes silent stock drops
+  500+ stocks fetched with no sleep — hits Kite 60req/min limit silently
+- Audit2 Finding #13: sector concentration — up to 4 IT stocks simultaneously possible
+  Needs max 2 stocks per sector gate in Phase 2 BUY allocation
+- Audit2 Finding #14: WF validation threshold (17) does not scale with universe size
+  17/24 = 71% but 17/30 = 57% with 5-stock universe — needs dynamic threshold
+- Audit2 Finding #21: position sizer cash buffer uses only ₹20 brokerage
+  Full transaction cost ~₹42 — can size 1 share more than cash can support
+- Audit2 Finding #22: NIFTY 500 URL silent failure returns empty universe
+  Screener completes with 0 ADD recommendations, indistinguishable from real result
+- Audit2 Finding #23: ETF avg_price not VWAP — overwritten on each buy
+  Correct formula: new_avg = (old_shares × old_avg + delta × price) / new_shares
+- Audit2 Finding #12: correlation check uses yfinance not Kite data (low priority)
 
 ---
 
