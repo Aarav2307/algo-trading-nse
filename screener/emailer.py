@@ -38,6 +38,19 @@ def build_html(results: dict) -> str:
     passed     = meta["passed_filters"]
     universe   = meta["current_universe"]
     coverage   = meta["data_coverage"]
+    used_cache = meta.get("used_cache", False)
+
+    cache_banner = (
+        """
+    <div style="background:#fff3cd;border:1px solid #ffc107;
+                border-radius:6px;padding:12px 16px;margin-bottom:20px;">
+        <strong>&#9888;&#65039; Data Warning:</strong> This screen ran on cached NIFTY 500
+        data because the live NSE fetch failed. Results reflect index
+        composition as of the last successful fetch. Universe coverage
+        may be slightly incomplete.
+    </div>"""
+        if used_cache else ""
+    )
 
     # ── Helper: stock row ─────────────────────────────────────────────────────
     def add_row(s: dict, rank: int) -> str:
@@ -272,6 +285,8 @@ def build_html(results: dict) -> str:
         <p style="margin: 8px 0 0 0; color: #bdc3c7; font-size: 14px;">{run_date} &nbsp;|&nbsp; NIFTY 500 Screen &nbsp;|&nbsp; {screened} candidates evaluated &nbsp;|&nbsp; {passed} passed filters</p>
     </div>
 
+    {cache_banner}
+
     <!-- Current Universe -->
     <div style="background: white; padding: 20px; border: 1px solid #ecf0f1; margin-bottom: 20px;">
         <h3 style="margin-top: 0; color: #2c3e50;">Current Trading Universe ({len(universe)} stocks)</h3>
@@ -311,7 +326,13 @@ def send_report(results: dict) -> bool:
     html_body  = build_html(results)
     run_date   = results["meta"]["run_date"]
     adds_count = len(results["adds"])
-    subject    = f"NSE Algo — Universe Screen {run_date[:10]} | {adds_count} ADD recommendation{'s' if adds_count != 1 else ''}"
+    used_cache = results.get("meta", {}).get("used_cache", False)
+    cache_flag = "⚠️ STALE DATA | " if used_cache else ""
+    subject    = (
+        f"NSE Algo — Universe Screen {run_date[:10]} | "
+        f"{cache_flag}"
+        f"{adds_count} ADD recommendation{'s' if adds_count != 1 else ''}"
+    )
 
     payload = {
         "personalizations": [{"to": [{"email": SENDGRID_TO}]}],

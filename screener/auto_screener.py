@@ -63,6 +63,11 @@ DEGRADATION_TRACKER  = _ROOT / "screener" / "degradation_tracker.json"
 # system see the same SMA crossover picture.
 SIGNAL_LOOKBACK_DAYS: int = 120
 
+# Cache for last successful NIFTY 500 fetch
+# Used as fallback if live NSE fetch fails
+NIFTY500_CACHE     = _ROOT / "screener" / "nifty500_cache.json"
+NIFTY500_MIN_COUNT = 400  # below this = fetch failure
+
 # ── Degradation tracker ───────────────────────────────────────────────────────
 
 def load_degradation_tracker() -> dict:
@@ -426,21 +431,85 @@ def compute_vol(df: pd.DataFrame) -> float:
 
 # ── NIFTY 500 fetch ───────────────────────────────────────────────────────────
 
-def fetch_nifty500() -> dict[str, str]:
-    """Returns {ticker.NS: industry} from NSE CSV."""
+def fetch_nifty500() -> tuple[dict[str, str], bool]:
+    """
+    Returns ({ticker.NS: industry}, used_cache).
+
+    Fetches NIFTY 500 from NSE archives URL.
+    Falls back to local cache if fetch fails or returns < 400 tickers.
+
+    used_cache=True means the screen is running on stale data —
+    caller should warn in email subject and logs.
+
+    Cache is saved to screener/nifty500_cache.json on every
+    successful live fetch.
+    """
     url     = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
     headers = {"User-Agent": "Mozilla/5.0"}
+
+    # ── Attempt live fetch ────────────────────────────────────────
+    live_result = {}
+    live_error  = None
     try:
         r  = requests.get(url, headers=headers, timeout=15)
         r.raise_for_status()
         df = pd.read_csv(pd.io.common.StringIO(r.text))
-        return {
+        live_result = {
             str(row["Symbol"]).strip() + ".NS": str(row["Industry"]).strip()
             for _, row in df.iterrows()
         }
     except Exception as e:
-        print(f"[auto_screener] NIFTY 500 fetch failed: {e}")
-        return {}
+        live_error = str(e)
+
+    # ── Validate live result ──────────────────────────────────────
+    if len(live_result) >= NIFTY500_MIN_COUNT:
+        # Success — save to cache and return
+        try:
+            cache_data = {
+                "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "count":      len(live_result),
+                "data":       live_result,
+            }
+            with open(NIFTY500_CACHE, "w") as f:
+                json.dump(cache_data, f, indent=2)
+            print(f"[auto_screener] NIFTY 500: {len(live_result)} stocks "
+                  f"(live, cache updated)")
+        except Exception as ce:
+            print(f"[auto_screener] WARNING: Could not save cache: {ce}")
+        return live_result, False
+
+    # ── Live fetch failed or returned too few tickers ─────────────
+    if live_error:
+        print(f"[auto_screener] NIFTY 500 live fetch failed: {live_error}")
+    else:
+        print(f"[auto_screener] NIFTY 500 live fetch returned only "
+              f"{len(live_result)} tickers (< {NIFTY500_MIN_COUNT}) "
+              f"— treating as failure")
+
+    # ── Try cache fallback ────────────────────────────────────────
+    if NIFTY500_CACHE.exists():
+        try:
+            with open(NIFTY500_CACHE) as f:
+                cache_data = json.load(f)
+            cached     = cache_data.get("data", {})
+            fetched_at = cache_data.get("fetched_at", "unknown date")
+            if len(cached) >= NIFTY500_MIN_COUNT:
+                print(
+                    f"[auto_screener] WARNING: Using cached NIFTY 500 "
+                    f"from {fetched_at} ({len(cached)} stocks). "
+                    f"Live fetch failed — results may be slightly stale."
+                )
+                return cached, True
+        except Exception as ce:
+            print(f"[auto_screener] Cache load failed: {ce}")
+
+    # ── Both live and cache failed ────────────────────────────────
+    print(
+        "[auto_screener] CRITICAL: NIFTY 500 fetch failed AND no valid "
+        "cache found. Screener cannot run. Check NSE connectivity and "
+        f"ensure {NIFTY500_CACHE} exists from a prior successful run."
+    )
+    return {}, True  # empty — caller must handle gracefully
 
 # ── Current universe from portfolio state ─────────────────────────────────────
 
@@ -491,10 +560,32 @@ def run_screen() -> dict:
     """
     print(f"\n[auto_screener] Starting screen — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
-    nifty500        = fetch_nifty500()
-    current_universe = get_current_universe()
+    nifty500, used_cache = fetch_nifty500()
+    current_universe     = get_current_universe()
 
-    print(f"[auto_screener] NIFTY 500: {len(nifty500)} stocks")
+    if used_cache:
+        print(
+            "[auto_screener] WARNING: Screen running on CACHED NIFTY 500 data. "
+            "Results may not reflect latest index composition."
+        )
+    if not nifty500:
+        print("[auto_screener] CRITICAL: Empty NIFTY 500 — aborting screen.")
+        return {
+            "adds":     [],
+            "monitors": [],
+            "watches":  [],
+            "removes":  [],
+            "meta": {
+                "run_date":         datetime.now().strftime("%Y-%m-%d %H:%M IST"),
+                "screened":         0,
+                "passed_filters":   0,
+                "current_universe": current_universe,
+                "data_coverage":    0,
+                "used_cache":       True,
+                "error":            "NIFTY 500 fetch failed — no cache available",
+            },
+        }
+
     print(f"[auto_screener] Current universe: {len(current_universe)} stocks")
 
     # ── Step 1: Fetch data for all stocks ─────────────────────────────────────
@@ -739,6 +830,7 @@ def run_screen() -> dict:
             "passed_filters":   len(trending_strong),
             "current_universe": current_universe,
             "data_coverage":    len(data_cache),
+            "used_cache":       used_cache,
         }
     }
 
