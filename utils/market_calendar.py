@@ -14,7 +14,9 @@ Usage:
         print("Market closed today")
 """
 
-from datetime import date, timedelta
+import json
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import List
 
 
@@ -56,8 +58,128 @@ NSE_HOLIDAYS_2026: List[date] = [
 
 NSE_HOLIDAYS_2027: List[date] = []  # Populate before December 2026
 
-# Convert to a set for O(1) lookup — include all years so is_trading_day() works year-round
+# Convert to a set for O(1) lookup — kept for verify_holiday_coverage() backward compat
 _HOLIDAY_SET: set = set(NSE_HOLIDAYS_2026) | set(NSE_HOLIDAYS_2027)
+
+# Path for caching NSE holiday data fetched from official API
+_HOLIDAY_CACHE_FILE = Path(__file__).parent.parent / "utils" / "nse_holiday_cache.json"
+
+# Years with complete, verified hardcoded holiday lists.
+# 2024 and 2025 are intentionally excluded — they were never hardcoded here,
+# so those years fall through to the live API fetch (which is correct).
+_HARDCODED_YEARS = {2026}
+
+
+# =============================================================================
+# NSE holiday API fetch + cache
+# =============================================================================
+
+def fetch_nse_holidays(year: int) -> list[date]:
+    """
+    Fetch official NSE trading holidays for a given year from
+    NSE's holiday API. Caches result locally to avoid repeated
+    API calls.
+
+    API: https://www.nseindia.com/api/holiday-master?type=trading
+    Segment: CM (Capital Market / Equity) — the segment this system trades.
+
+    Returns list of date objects for trading holidays in the given year.
+    Returns empty list on failure (caller should use hardcoded fallback).
+    """
+    # Check cache first
+    cache = _load_holiday_cache()
+    cache_key = str(year)
+    if cache_key in cache:
+        cached_dates = [
+            date.fromisoformat(d) for d in cache[cache_key]["dates"]
+        ]
+        print(f"[market_calendar] {year} holidays: {len(cached_dates)} "
+              f"(cached {cache[cache_key]['fetched_at']})")
+        return cached_dates
+
+    # Fetch from NSE API
+    try:
+        import requests
+        session = requests.Session()
+        # NSE requires a session cookie — hit homepage first
+        session.get(
+            "https://www.nseindia.com",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10
+        )
+        r = session.get(
+            "https://www.nseindia.com/api/holiday-master?type=trading",
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept":     "application/json",
+                "Referer":    "https://www.nseindia.com",
+            },
+            timeout=15
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        # CM = Capital Market (equity segment)
+        cm_holidays = data.get("CM", [])
+        if not cm_holidays:
+            print("[market_calendar] WARNING: CM segment empty in NSE response")
+            return []
+
+        # Parse and filter for the requested year
+        holidays = []
+        for item in cm_holidays:
+            try:
+                # Format: "26-Jan-2026"
+                d = datetime.strptime(
+                    item["tradingDate"], "%d-%b-%Y"
+                ).date()
+                if d.year == year:
+                    holidays.append(d)
+            except (KeyError, ValueError):
+                continue
+
+        if not holidays:
+            print(f"[market_calendar] WARNING: No CM holidays found "
+                  f"for {year} in NSE response. "
+                  f"NSE may not have published {year} list yet.")
+            return []
+
+        # Save to cache
+        holidays.sort()
+        cache[cache_key] = {
+            "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "count":      len(holidays),
+            "dates":      [d.isoformat() for d in holidays],
+        }
+        _save_holiday_cache(cache)
+        print(f"[market_calendar] {year} holidays: {len(holidays)} "
+              f"(fetched from NSE API, cached)")
+        return holidays
+
+    except Exception as e:
+        print(f"[market_calendar] NSE holiday API failed for {year}: {e}")
+        return []
+
+
+def _load_holiday_cache() -> dict:
+    """Load holiday cache from disk. Returns empty dict on missing/corrupt."""
+    try:
+        if _HOLIDAY_CACHE_FILE.exists():
+            with open(_HOLIDAY_CACHE_FILE) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def _save_holiday_cache(cache: dict) -> None:
+    """Save holiday cache to disk. Silently ignores errors."""
+    try:
+        _HOLIDAY_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(_HOLIDAY_CACHE_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        print(f"[market_calendar] WARNING: Could not save holiday cache: {e}")
 
 
 # =============================================================================
@@ -68,13 +190,13 @@ def is_trading_day(d: date) -> bool:
     """
     Return True if the NSE equity market is open on date d.
 
-    Rules (in order of check):
-      1. Weekends (Saturday, Sunday) → always closed
-      2. NSE declared holidays       → closed
-      3. Everything else             → open
+    For 2026: uses the hardcoded verified list from the NSE circular.
+    For all other years: fetches from the NSE official holiday API with
+    local cache (utils/nse_holiday_cache.json). On API failure with no
+    cache, fails-open (treats the day as a trading day) with a warning.
 
     Args:
-        d: date to check (can be any year, but holiday list covers 2026 only)
+        d: date to check
 
     Returns:
         bool — True if the market is open on this date.
@@ -82,7 +204,25 @@ def is_trading_day(d: date) -> bool:
     # weekday() returns 0=Monday … 6=Sunday
     if d.weekday() >= 5:
         return False
-    return d not in _HOLIDAY_SET
+
+    # Build holiday set for this specific year
+    if d.year in _HARDCODED_YEARS:
+        year_holidays = {
+            2026: NSE_HOLIDAYS_2026,
+        }[d.year]
+    else:
+        # Fetch from NSE API (cached after first call per year)
+        year_holidays = fetch_nse_holidays(d.year)
+        if not year_holidays:
+            # API failed and no cache — fail-open with warning
+            print(
+                f"[market_calendar] WARNING: Could not determine "
+                f"holidays for {d.year}. Treating {d} as trading day. "
+                f"Check NSE connectivity."
+            )
+            return True
+
+    return d not in set(year_holidays)
 
 
 def next_trading_day(d: date) -> date:
@@ -172,3 +312,31 @@ def count_trading_days_since(d: date) -> int:
         Number of trading days from d to today, inclusive.
     """
     return len(get_trading_days_between(d, date.today()))
+
+
+def refresh_holiday_cache(years: list[int] = None) -> dict:
+    """
+    Fetch and cache holiday data for given years from NSE API.
+    Call this once manually to pre-populate the cache.
+
+    Usage:
+        python3 -c "
+        from utils.market_calendar import refresh_holiday_cache
+        refresh_holiday_cache([2027])
+        "
+
+    Returns {year: count} of holidays fetched.
+    """
+    if years is None:
+        current_year = date.today().year
+        years = [current_year, current_year + 1]
+
+    results = {}
+    for year in years:
+        holidays = fetch_nse_holidays(year)
+        results[year] = len(holidays)
+        if holidays:
+            print(f"  {year}: {len(holidays)} holidays cached")
+        else:
+            print(f"  {year}: fetch failed or not yet published by NSE")
+    return results
