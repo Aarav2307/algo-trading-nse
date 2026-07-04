@@ -1787,15 +1787,111 @@ def print_parameter_stability_report(results: list[dict], stocks: list[str]) -> 
             print(f"{ticker:<20} {str(b_score):^15} {str(best_score):^15} {b_oos_str:^15} {best_oos_str:^15}")
 
 
+# =============================================================================
+# Dynamic extended-universe builder
+# =============================================================================
+
+def build_extended_universe(
+    candidate_tickers: list[str],
+    min_bars: int = MIN_BARS,
+    is_start: str = EXT_IS_START,
+    is_end:   str = "2020-01-01",
+) -> tuple[list[str], list[str]]:
+    """
+    Determine which tickers have sufficient data for the extended
+    IS window (default: 2015-01-01 to 2020-01-01).
+
+    Fetches IS data for each candidate and checks bar count.
+    Returns (qualified, skipped) lists.
+
+    Args:
+        candidate_tickers: Tickers to check. Pass the union of the
+            primary STOCKS list plus any historically traded stocks
+            you want to evaluate.
+        min_bars:  Minimum trading bars required in the IS window.
+            Default: MIN_BARS (200). For a meaningful extended WF,
+            consider passing 500+ (2 years of IS data).
+        is_start:  Start of the IS window to check.
+        is_end:    End of the IS window to check.
+
+    Returns:
+        qualified: list of tickers with >= min_bars in IS window
+        skipped:   list of (ticker, reason) tuples for those that failed
+    """
+    qualified = []
+    skipped   = []
+
+    print(f"\n[build_extended_universe] Checking {len(candidate_tickers)} "
+          f"candidates for IS window {is_start} → {is_end} "
+          f"(need ≥ {min_bars} bars)...")
+
+    for ticker in candidate_tickers:
+        try:
+            df = get_ohlcv(ticker, is_start, is_end)
+            if df is None or len(df) < min_bars:
+                n = len(df) if df is not None else 0
+                reason = f"{n} bars < {min_bars} required"
+                skipped.append((ticker, reason))
+                print(f"  ✗  {ticker:<22}  {reason}")
+            else:
+                qualified.append(ticker)
+                print(f"  ✓  {ticker:<22}  {len(df)} bars")
+        except Exception as e:
+            skipped.append((ticker, str(e)))
+            print(f"  ✗  {ticker:<22}  fetch error: {e}")
+
+    print(f"\n[build_extended_universe] {len(qualified)} qualified, "
+          f"{len(skipped)} skipped")
+    return qualified, skipped
+
+
 if __name__ == "__main__":
     COOLDOWN = 15
     NIFTY_FILTER = True
 
-    STOCKS_EXTENDED = [
-        "TMPV.NS", "WHIRLPOOL.NS", "SIEMENS.NS", "BAJAJ-AUTO.NS",
-        "COLPAL.NS", "HEROMOTOCO.NS", "HCLTECH.NS",
-        "CUMMINSIND.NS", "JKTYRE.NS", "BSOFT.NS",
+    # Build extended universe dynamically — no manual maintenance needed.
+    # Candidates: current STOCKS + historically traded stocks worth validating.
+    # The function checks actual bar counts and excludes anything with
+    # insufficient IS data automatically.
+    #
+    # Add any historically traded stock here — if it doesn't have enough
+    # data, it will be automatically excluded with a clear reason printed.
+    # Never remove stocks from this candidate list — let the data decide.
+    _EXTENDED_CANDIDATES = [
+        # Current live universe
+        "BAJAJ-AUTO.NS",   # strong WF, removed from live Jun 2026 — include for validation
+        "HCLTECH.NS",
+        "COLPAL.NS",
+        "JKTYRE.NS",
+        "BSOFT.NS",
+        "PERSISTENT.NS",   # added Jun 2026 — will qualify when history builds
+        "ANURAS.NS",       # listed post-2019 — will fail bar check automatically
+        "NEWGEN.NS",       # listed 2018 — will fail bar check automatically
+        # Historically traded, removed from live universe
+        "TMPV.NS",
+        "WHIRLPOOL.NS",
+        "SIEMENS.NS",
+        "HEROMOTOCO.NS",
+        "CUMMINSIND.NS",
+        "BOSCHLTD.NS",
+        "RPOWER.NS",
     ]
+
+    # Require at least 500 bars in IS window for meaningful extended WF
+    # (MIN_BARS=200 is the absolute floor; 500 = ~2 years of trading days)
+    STOCKS_EXTENDED, _skipped = build_extended_universe(
+        _EXTENDED_CANDIDATES,
+        min_bars=500,
+        is_start=EXT_IS_START,   # "2015-01-01"
+        is_end="2020-01-01",
+    )
+
+    if not STOCKS_EXTENDED:
+        print("WARNING: No stocks qualified for extended universe. "
+              "Check Kite token and data availability.")
+    else:
+        print(f"\nExtended universe ({len(STOCKS_EXTENDED)} stocks): "
+              f"{', '.join(STOCKS_EXTENDED)}")
 
     print("\nRunning ORIGINAL walk-forward (2018-22 IS / 2023-26 OOS)...")
     original_results = run_walk_forward(
