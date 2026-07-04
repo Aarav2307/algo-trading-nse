@@ -90,6 +90,11 @@ LOOKBACK_CALENDAR_DAYS = 120   # ~85 trading days → enough for SMA-50 + ATR-22
 # are ranked and the highest-scoring one(s) fill the available slots.
 MAX_CONCURRENT_POSITIONS: int = 4
 
+# Minimum cash required to attempt a BUY. Below ₹1,000, the position sizer
+# will return 0 shares for any stock in the universe (cheapest ~₹300+) and
+# the attempt produces a confusing SKIPPED log with no clear reason.
+MIN_CASH_TO_ATTEMPT_BUY = 1000.0
+
 # Weights for composite BUY signal ranking. Must be inspected, not re-optimised.
 # Higher score = higher priority when capital is constrained.
 SIGNAL_RANK_WEIGHTS = {
@@ -1297,10 +1302,11 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 print(f"→ SKIPPED   {reason}")
                 continue
 
-            # Cash floor: need at least two brokerages' worth to be worth trying
-            if portfolio.state["cash"] < BROKERAGE_PER_ORDER * 2:
+            # Cash floor: below ₹1,000 the sizer will return 0 shares for any stock
+            if portfolio.state["cash"] < MIN_CASH_TO_ATTEMPT_BUY:
                 reason = (
-                    f"Insufficient cash (₹{portfolio.state['cash']:,.0f} available)"
+                    f"Insufficient cash ₹{portfolio.state['cash']:,.0f} "
+                    f"(minimum ₹{MIN_CASH_TO_ATTEMPT_BUY:,.0f} required)"
                 )
                 results[ticker].update({
                     "signal":     "SKIPPED",
