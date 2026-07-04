@@ -276,7 +276,22 @@ def compute_hurst(ts: np.ndarray) -> float:
 
 
 def compute_adx(df: pd.DataFrame, period: int = 14) -> float:
-    """Median ADX over full window."""
+    """
+    20-day average ADX using standard 14-period Wilder calculation.
+
+    Returns the mean of the last 20 ADX values rather than the
+    full-history median. This reflects CURRENT trend strength —
+    what the stock is doing now, not what it did over 2 years.
+
+    Research basis:
+    - Wilder designed ADX as a short-term indicator (14-period)
+    - Professional screeners use current ADX, not historical median
+    - 20-day average smooths single-bar noise while staying current
+    - A falling ADX from 40→25 signals fading momentum even if
+      price continues — the median would miss this entirely
+
+    Returns 0.0 on error (safe default — stock fails ADX filter).
+    """
     try:
         high  = df["high"]
         low   = df["low"]
@@ -296,9 +311,69 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> float:
         denom    = (plus_di + minus_di).replace(0, np.nan)
         dx       = 100 * (plus_di - minus_di).abs() / denom
         adx      = dx.ewm(span=period, min_periods=period).mean()
-        return float(adx.median())
+
+        if len(adx.dropna()) < 20:
+            # Insufficient bars for 20-day average — use what we have
+            return float(adx.dropna().mean())
+
+        return float(adx.tail(20).mean())
+
     except Exception:
         return 0.0
+
+
+def compute_adx_trend(df: pd.DataFrame, period: int = 14) -> str:
+    """
+    Returns whether ADX is currently RISING, FALLING, or FLAT.
+
+    Used for early warning in degradation checks:
+    - A stock with ADX=28 but FALLING is weakening
+    - A stock with ADX=23 but RISING may be strengthening
+    - The degradation tracker can use this as a soft flag
+
+    Compares 5-day average ADX vs 20-day average ADX:
+      RISING:  5d_avg > 20d_avg + 1.0  (trend strengthening)
+      FALLING: 5d_avg < 20d_avg - 1.0  (trend weakening)
+      FLAT:    within ±1.0             (stable)
+
+    Returns "UNKNOWN" on error.
+    """
+    try:
+        high  = df["high"]
+        low   = df["low"]
+        close = df["close"]
+        tr = pd.concat([
+            high - low,
+            (high - close.shift()).abs(),
+            (low  - close.shift()).abs()
+        ], axis=1).max(axis=1)
+        atr      = tr.ewm(span=period, min_periods=period).mean()
+        up       = high.diff()
+        down     = -low.diff()
+        plus_dm  = up.where((up > down) & (up > 0), 0.0)
+        minus_dm = down.where((down > up) & (down > 0), 0.0)
+        plus_di  = 100 * plus_dm.ewm(span=period, min_periods=period).mean() / atr
+        minus_di = 100 * minus_dm.ewm(span=period, min_periods=period).mean() / atr
+        denom    = (plus_di + minus_di).replace(0, np.nan)
+        dx       = 100 * (plus_di - minus_di).abs() / denom
+        adx      = dx.ewm(span=period, min_periods=period).mean()
+        adx_clean = adx.dropna()
+
+        if len(adx_clean) < 20:
+            return "UNKNOWN"
+
+        avg_5d  = float(adx_clean.tail(5).mean())
+        avg_20d = float(adx_clean.tail(20).mean())
+
+        if avg_5d > avg_20d + 1.0:
+            return "RISING"
+        elif avg_5d < avg_20d - 1.0:
+            return "FALLING"
+        else:
+            return "FLAT"
+
+    except Exception:
+        return "UNKNOWN"
 
 
 def compute_sma_gap(df: pd.DataFrame) -> Optional[float]:
@@ -528,10 +603,11 @@ def run_screen() -> dict:
         if ticker not in data_cache:
             continue
 
-        df  = data_cache[ticker]
-        h   = compute_hurst(df["close"].values)
-        a   = compute_adx(df)
-        gap = compute_sma_gap(df)
+        df        = data_cache[ticker]
+        h         = compute_hurst(df["close"].values)
+        a         = compute_adx(df)
+        adx_trend = compute_adx_trend(df)
+        gap       = compute_sma_gap(df)
 
         # Check if open position exists — never recommend removal for open positions
         try:
@@ -541,8 +617,15 @@ def run_screen() -> dict:
         except Exception:
             has_open_position = False
 
-        # Determine if this stock is degraded
-        is_degraded = (h < HURST_DEGRADE or a < ADX_DEGRADE)
+        # Determine if this stock is degraded:
+        #   - Hurst below removal threshold, OR
+        #   - ADX below removal threshold, OR
+        #   - ADX is falling AND already below entry threshold (approaching removal)
+        is_degraded = (
+            h < HURST_DEGRADE or
+            a < ADX_DEGRADE or
+            (adx_trend == "FALLING" and a < ADX_THRESHOLD)
+        )
 
         # Get or create tracker entry for this stock
         if ticker not in tracker:
@@ -594,11 +677,17 @@ def run_screen() -> dict:
             if has_open_position:
                 print(f"[tracker] {ticker}: would REMOVE but has open position — skipping (will re-evaluate after close)")
             else:
-                reason = f"H={h:.3f} < {HURST_DEGRADE}" if h < HURST_DEGRADE else f"ADX={a:.1f} < {ADX_DEGRADE}"
+                if h < HURST_DEGRADE:
+                    reason = f"H={h:.3f} < {HURST_DEGRADE}"
+                elif a < ADX_DEGRADE:
+                    reason = f"ADX={a:.1f} < {ADX_DEGRADE} (trend: {adx_trend})"
+                else:
+                    reason = f"ADX={a:.1f} falling toward threshold (trend: {adx_trend})"
                 removes.append({
                     "ticker":            ticker,
                     "hurst":             round(h, 3),
                     "adx":               round(a, 1),
+                    "adx_trend":         adx_trend,
                     "gap":               round(gap, 2) if gap is not None else None,
                     "reason":            reason,
                     "consecutive_flags": entry["consecutive_flags"],
