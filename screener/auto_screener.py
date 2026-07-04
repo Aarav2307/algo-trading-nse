@@ -23,6 +23,7 @@ import os
 import math
 import argparse
 import json
+import time
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -499,17 +500,46 @@ def run_screen() -> dict:
     # ── Step 1: Fetch data for all stocks ─────────────────────────────────────
     data_cache: dict[str, pd.DataFrame] = {}
     all_tickers = list(set(list(nifty500.keys()) + current_universe))
+    attempted   = 0
+    skipped     = 0
 
-    print(f"[auto_screener] Fetching data for {len(all_tickers)} stocks...")
+    print(f"[auto_screener] Fetching data for {len(all_tickers)} stocks "
+          f"(rate-limited to 55 req/min)...")
+
     for i, ticker in enumerate(all_tickers, 1):
+        attempted += 1
         try:
             df = get_ohlcv(ticker, START_DATE, END_DATE)
             if df is not None and len(df) >= MIN_BARS:
                 data_cache[ticker] = df
-        except Exception:
-            pass
+            # Sleep after every successful fetch to stay under Kite's
+            # ~60 req/min limit. 1.1s gives ~55 req/min — safe buffer.
+            time.sleep(1.1)
+        except Exception as e:
+            skipped += 1
+            # Log first 5 skips explicitly so silent failures are visible
+            if skipped <= 5:
+                print(f"[auto_screener]   SKIP {ticker}: {e}")
+            elif skipped == 6:
+                print(f"[auto_screener]   (further skips suppressed — "
+                      f"check Kite rate limit or token)")
+
         if i % 50 == 0:
-            print(f"[auto_screener]   {i}/{len(all_tickers)} fetched, {len(data_cache)} valid")
+            skip_pct = skipped / attempted * 100
+            print(f"[auto_screener]   {i}/{len(all_tickers)} attempted, "
+                  f"{len(data_cache)} valid, {skipped} skipped ({skip_pct:.1f}%)")
+
+    skip_pct = skipped / attempted * 100 if attempted > 0 else 0
+    print(f"[auto_screener] Fetch complete: {len(data_cache)} valid, "
+          f"{skipped} skipped ({skip_pct:.1f}%)")
+
+    # Warn if skip rate is high — indicates rate limiting or token issues
+    if skip_pct > 5.0:
+        print(
+            f"[auto_screener] WARNING: {skipped}/{attempted} stocks skipped "
+            f"({skip_pct:.1f}%) — universe coverage may be incomplete. "
+            f"Check Kite API rate limit or access token."
+        )
 
     print(f"[auto_screener] {len(data_cache)} stocks with >= {MIN_BARS} bars")
 
