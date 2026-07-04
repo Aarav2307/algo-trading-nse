@@ -236,7 +236,7 @@ class PaperPortfolio:
             chandelier_stop: initial Chandelier stop level (None if ATR data insufficient)
             entry_high:      today bar's high — seeds the highest_high tracker
         """
-        cost        = transaction_costs(exec_price, shares, "buy")["total"]
+        cost        = transaction_costs(exec_price, shares, "buy", "delivery")
         total_spent = shares * exec_price + cost
 
         if total_spent > self.state["cash"]:
@@ -377,7 +377,7 @@ class PaperPortfolio:
                 f"confirm_buy_fill called for {ticker} but no pending_buy flag set."
             )
 
-        cost        = transaction_costs(actual_exec_price, actual_shares, "buy")["total"]
+        cost        = transaction_costs(actual_exec_price, actual_shares, "buy", "delivery")
         total_spent = actual_shares * actual_exec_price + cost
 
         if total_spent > self.state["cash"]:
@@ -420,7 +420,7 @@ class PaperPortfolio:
         shares     = pos["shares"]
         entry_px   = pos["entry_price"]
 
-        cost       = transaction_costs(exec_price, shares, "sell")["total"]
+        cost       = transaction_costs(exec_price, shares, "sell", "delivery")
         proceeds   = shares * exec_price - cost
         self.state["cash"] += proceeds
 

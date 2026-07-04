@@ -23,7 +23,7 @@ bit-identical to a pre-sizing baseline.
 
 import math
 
-from utils.costs import BROKERAGE_PER_ORDER
+from utils.costs import transaction_costs
 
 
 class PositionSizer:
@@ -94,10 +94,16 @@ class PositionSizer:
             portfolio_value * self.max_position_pct / entry_price
         )
 
-        # ── Cash cap: subtract flat brokerage to prevent settlement shortfall ─
-        # Brokerage is charged per order regardless of size, so we must reserve it.
-        effective_cash = max(0.0, cash_available - BROKERAGE_PER_ORDER)
-        max_from_cash  = math.floor(effective_cash / entry_price)
+        # ── Cash cap: exact cost check to prevent settlement shortfall ──────
+        # Bootstrap with 1-share cost, then iterate down until total fits in cash.
+        buy_cost_1share = transaction_costs(entry_price, 1, "buy", "delivery")
+        max_from_cash   = math.floor((cash_available - buy_cost_1share) / entry_price)
+        while max_from_cash > 0:
+            total_cost = (max_from_cash * entry_price) + \
+                         transaction_costs(entry_price, max_from_cash, "buy", "delivery")
+            if total_cost <= cash_available:
+                break
+            max_from_cash -= 1
 
         shares = min(shares_from_risk, max_from_pos_cap, max_from_cash)
 

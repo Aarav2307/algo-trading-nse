@@ -485,7 +485,7 @@ def _update_portfolio_fill(
             return
 
         exec_price = apply_slippage(fill_price, "sell")
-        cost       = transaction_costs(exec_price, shares, "sell")["total"]
+        cost       = transaction_costs(exec_price, shares, "sell", "delivery")
         proceeds   = shares * exec_price - cost
 
         state["cash"] += proceeds

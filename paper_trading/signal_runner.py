@@ -54,7 +54,10 @@ from paper_trading.paper_portfolio import PaperPortfolio
 from paper_trading.correlation_check import check_entry_correlation
 from strategies.sma_crossover import generate_signals
 from engine.order_manager import AMOOrderManager
-from utils.costs import apply_slippage, transaction_costs, BROKERAGE_PER_ORDER, format_cost_breakdown
+from utils.costs import (
+    apply_slippage, transaction_costs, transaction_cost_breakdown,
+    BROKERAGE_PER_ORDER, format_cost_breakdown,
+)
 from utils.market_calendar import is_trading_day, next_trading_day, verify_holiday_coverage
 
 
@@ -765,7 +768,7 @@ def _process_stock(
         portfolio.record_weekly_signal("BUY")
 
         limit_px = round(close_px * (1 + AMO_CONFIG["limit_buffer_pct"]), 2)
-        cost_bd  = transaction_costs(entry_exec_px, shares, "buy")
+        cost_bd  = transaction_cost_breakdown(entry_exec_px, shares, "buy", "delivery")
         result.update({
             "signal":          "BUY_QUEUED",
             "exec_price":      entry_exec_px,   # provisional close price
