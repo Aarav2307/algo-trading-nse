@@ -85,6 +85,7 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
 - Wait for 6 months clean paper trading data (currently at ~33 days as of Jul 5)
+  Note: NIFTY BULL flip imminent (SMA gap -0.07% on Jul 3) — entries expected soon
 - Implement SL-M orders for exits before going live (gap-down protection)
 - Implement ATR-based position sizing before going live
 - Complete at least 30 full trade cycles (entry + exit) — currently 3 confirmed
@@ -363,7 +364,10 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
   GAP_EXIT path: closes position at open, records in trade_log, does not requeue
   Small gaps (<3%) still requeue as before — behavior unchanged
   6/6 unit tests passing (paper_trading/test_gap_breaker.py)
-- Finding #12: correlation check uses yfinance not Kite data — minor data source mismatch (low priority)
+- Finding #12: RESOLVED (Jul 5) — correlation check now uses pre-fetched dfs from signal_runner
+  Path A (signal_runner): zero API calls — uses dfs dict already in memory at 3:45 PM
+  Path B (CLI): lazy yfinance import — token-free, works on weekends
+  Architecturally correct: same data used for signals used for correlation check
 
 #### Second System Audit — Jul 2 2026 (25 findings total)
 Fixed from second audit:
@@ -405,18 +409,46 @@ Remaining from second audit (not yet fixed):
   Risk: full NIFTY exposure while stock entries suppressed
 - Audit2 Finding #13: sector concentration — up to 4 IT stocks simultaneously possible
   Design decision needed before implementing
-- Audit2 Finding #14: WF validation threshold does not scale with universe size
-  17/24 = 71% but needs dynamic threshold for different universe sizes
-- Audit2 Finding #23: ETF avg_price not VWAP — overwritten on each buy
-  Correct formula: new_avg = (old_shares × old_avg + delta × price) / new_shares
-- Audit2 Finding #12: correlation check uses yfinance not Kite data (low priority)
+- Audit2 Finding #14: RESOLVED (Jul 5)
+  _print_verdict() rewritten with per-stock primary gate (PER_STOCK_MIN=4/6)
+  Aggregate score shown as informational only — not used for verdict
+  Statistical limitation note added: 5 correlated stocks = ~15 independent observations
+  Dynamic 'n stocks × 6 metrics' replaces hardcoded '4 stocks × 24'
+- Audit2 Finding #23: RESOLVED (Jul 5)
+  ETF avg_price now uses VWAP: new_avg = (old_shares × old_avg + delta × price) / new_shares
+  First buy: avg = purchase price. Partial sell: avg unchanged. Full sell: resets to 0.0
+  4 new unit tests added (Tests 24-27), all passing
+- Audit2 Finding #12: RESOLVED (Jul 5) — see Finding #12 above
+
+#### Pre-trade Risk Monitor — COMPLETED (Jul 5 2026)
+New feature: utils/news_monitor.py — nightly risk check before signal run
+
+Sources (both verified working from Mumbai server):
+  - NSE surveillance: nsearchives.nseindia.com/content/equities/sec_list.csv
+    Band in ('2','5') or 'GSM' in Remarks → SURVEILLANCE flag → auto-block entry
+  - NSE board meetings: nseindia.com/api/corporate-board-meetings?index=equities&...
+    Board meeting within 5 trading days with results keywords → EARNINGS_RISK → warn only
+
+Architecture:
+  - Runs at 7 PM IST Mon-Fri (cron: 0 13 * * 1-5)
+  - Writes utils/news_flags.json atomically after each run
+  - signal_runner.py reads flags at startup before Phase 2 BUY loop
+  - SURVEILLANCE: auto-block (objective regulatory fact, no human review)
+  - EARNINGS_RISK: warning only, entry proceeds (fail-open — missed trade worse than early entry)
+  - Manual override: utils/manual_blocks.json — human-edited, time-limited
+  - All network failures fail-open — never block trading on data failure
+  - 9/9 unit tests passing (utils/test_news_monitor.py)
+
+First live detection verified:
+  - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
+  - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
 Test suite (verified on server Jul 5 2026):
 - test_etf_overlay.py: 23/23 ✅
 - test_gap_breaker.py: 9/9 ✅
 - test_costs.py: 7/7 ✅
 - test_correlation_check.py: 6/6 ✅
-- Total: 45/45 tests passing
+- Total: 49/49 tests passing (added Tests 24-27 for ETF VWAP avg_price)
 
 ---
 
