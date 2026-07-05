@@ -114,6 +114,7 @@ Utilities
   utils/costs.py              → Transaction cost model (delivery: ₹0 brokerage, STT 0.1% both sides, DP ₹15.34/sell)
   utils/market_calendar.py    → NSE holiday calendar (dynamic API fetch + local cache), trading day checks
   utils/corporate_actions.py  → Live NSE ex-date checks (splits, bonuses, dividends)
+  utils/news_monitor.py       → Nightly pre-trade risk monitor: ASM/ESM surveillance + earnings blackout
 
 Validation
   validation/walk_forward.py       → IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
@@ -296,8 +297,13 @@ algo-trading/
 │   ├── costs.py                # Transaction costs (delivery: ₹0 brokerage, STT 0.1%, DP ₹15.34/sell)
 │   ├── market_calendar.py      # NSE holiday calendar — dynamic API fetch + local cache
 │   ├── corporate_actions.py    # Live NSE ex-date checks (splits, bonuses, dividends)
+│   ├── news_monitor.py         # Nightly pre-trade risk monitor (ASM/ESM + earnings blackout)
+│   ├── run_news_monitor.sh     # Cron wrapper — 7 PM IST Mon-Fri
+│   ├── manual_blocks.json      # Human-edited manual entry blocks (time-limited)
+│   ├── news_flags.json         # Pre-trade risk flags (auto-generated nightly)
+│   ├── nse_holiday_cache.json  # Cached NSE holiday data (auto-updated from API)
 │   ├── test_costs.py           # 7 unit tests — transaction cost model
-│   └── nse_holiday_cache.json  # Cached NSE holiday data (auto-updated from API)
+│   └── test_news_monitor.py    # 9 unit tests — pre-trade risk monitor
 │
 ├── validation/
 │   ├── walk_forward.py              # IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
@@ -328,6 +334,9 @@ The system runs unattended on a **AWS Lightsail Ubuntu 22.04 instance** in the M
 
 # 6:00 PM IST = 12:30 PM UTC — universe screener (Wed + Sun)
 30 12 * * 0,3 /home/ubuntu/algo-trading/paper_trading/run_screen.sh
+
+# 7:00 PM IST = 13:00 PM UTC — pre-trade risk monitor (Mon-Fri)
+0 13 * * 1-5 /home/ubuntu/algo-trading/utils/run_news_monitor.sh
 ```
 
 ### Authentication
