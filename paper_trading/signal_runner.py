@@ -34,6 +34,7 @@ assert PAPER_TRADING_MODE, (
 
 import argparse
 import csv
+import json
 import math
 import os
 import sys
@@ -132,10 +133,12 @@ PS_CONFIG = {
 }
 
 # File paths (relative to project root)
-STATE_FILE  = Path("paper_trading/portfolio_state.json")
-LOG_CSV     = Path("paper_trading/signal_log.csv")
-LOGS_DIR    = Path("paper_trading/logs")
-TOKEN_FILE  = Path("auth/access_token.txt")
+STATE_FILE         = Path("paper_trading/portfolio_state.json")
+LOG_CSV            = Path("paper_trading/signal_log.csv")
+LOGS_DIR           = Path("paper_trading/logs")
+TOKEN_FILE         = Path("auth/access_token.txt")
+NEWS_FLAGS_FILE    = Path("utils/news_flags.json")
+MANUAL_BLOCKS_FILE = Path("utils/manual_blocks.json")
 
 # IST = UTC+5:30
 _IST_OFFSET = timedelta(hours=5, minutes=30)
@@ -258,6 +261,32 @@ def _warn_if_market_open() -> None:
             f"(current IST time {now_ist.strftime('%H:%M')} < 15:30). "
             f"For accurate end-of-day signals, run after 3:30 PM IST."
         )
+
+
+# =============================================================================
+# Pre-trade risk flags (news_monitor output)
+# =============================================================================
+
+def load_news_flags() -> dict:
+    """
+    Load pre-trade risk flags from news_monitor output.
+    Returns empty dict on any failure — never crash signal_runner.
+    Warns if flags file is older than 20 hours (stale).
+    """
+    try:
+        if not NEWS_FLAGS_FILE.exists():
+            print("[news_monitor] No flags file found — skipping pre-trade checks")
+            return {}
+        with open(NEWS_FLAGS_FILE) as f:
+            data = json.load(f)
+        generated_at = datetime.strptime(data["generated_at"], "%Y-%m-%d %H:%M")
+        age_hours = (datetime.now() - generated_at).total_seconds() / 3600
+        if age_hours > 20:
+            print(f"[news_monitor] WARNING: Flags file is {age_hours:.0f}h old — may be stale")
+        return data.get("flags", {})
+    except Exception as e:
+        print(f"[news_monitor] WARNING: Could not load flags: {e} — proceeding without checks")
+        return {}
 
 
 # =============================================================================
@@ -1102,6 +1131,19 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
     portfolio = PaperPortfolio(STOCKS, str(STATE_FILE), INITIAL_CAPITAL)
     portfolio.load()
 
+    # ── Step 3a: Load pre-trade risk flags (news_monitor output) ─────────────
+    news_flags = load_news_flags()
+    # Alert if any OPEN position is now on surveillance list
+    for _ticker, _pos in portfolio.state["positions"].items():
+        if _pos.get("shares", 0) > 0 and _ticker in news_flags:
+            _flag = news_flags[_ticker]
+            if _flag.get("auto_block", False):
+                print(
+                    f"[news_monitor] CRITICAL: Open position {_ticker} is now under "
+                    f"surveillance ({_flag['type']}): {_flag['detail']}. "
+                    f"Consider manual exit."
+                )
+
     # ── Step 4: Idempotency guard ─────────────────────────────────────────────
     # Blocks re-runs only when the previous run already captured end-of-day data
     # (i.e. it ran after 3:30 PM IST). A run that happened before market close
@@ -1322,6 +1364,30 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 })
                 print(f"→ SKIPPED   {reason}")
                 continue
+
+            # ── Pre-trade risk flag check ─────────────────────────────────────
+            if ticker in news_flags:
+                flag = news_flags[ticker]
+                if flag.get("auto_block", False):
+                    reason = f"PRE-TRADE BLOCK ({flag['type']}): {flag['detail']}"
+                    results[ticker].update({
+                        "signal":     "BLOCKED",
+                        "reason":     reason,
+                        "rank_score": rank_sc,
+                    })
+                    skipped_signals.append({
+                        "ticker":     ticker,
+                        "rank_score": rank_sc,
+                        "reason":     reason,
+                        "price":      close_px,
+                        "gap_pct":    gap_pct,
+                    })
+                    print(f"→ BLOCKED   {reason}")
+                    continue
+                else:
+                    # Warning only — do not block, human has been notified via log
+                    print(f"  [news] WARNING {ticker}: {flag['detail']} — proceeding with entry")
+                    print(f"  NEWS WARNING | {ticker} | {flag['type']} | {flag['detail']}")
 
             # ── Correlation safety check ──────────────────────────────────────
             # Fail open: a data/network failure must not silently suppress a
