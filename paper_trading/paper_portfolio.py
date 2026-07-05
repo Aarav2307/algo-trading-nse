@@ -676,9 +676,22 @@ class PaperPortfolio:
                 delta_shares = int(self.state["cash"] / niftybees_price)
             if delta_shares == 0:
                 return
+            old_shares = self.state["etf_shares"]
+            old_avg    = self.state["etf_avg_price"]
+            new_shares = old_shares + delta_shares
+            # VWAP: weighted average of existing position and new purchase.
+            # First purchase: avg = purchase price.
+            # Subsequent: avg = (old_shares × old_avg + new_shares × price) / total
+            if old_shares == 0 or old_avg == 0.0:
+                new_avg = niftybees_price
+            else:
+                new_avg = (
+                    (old_shares * old_avg + delta_shares * niftybees_price)
+                    / new_shares
+                )
             self.state["cash"]          -= delta_shares * niftybees_price
-            self.state["etf_shares"]    += delta_shares
-            self.state["etf_avg_price"]  = niftybees_price  # simplified, not VWAP
+            self.state["etf_shares"]     = new_shares
+            self.state["etf_avg_price"]  = round(new_avg, 4)
         else:
             sell_shares = min(abs(delta_shares), self.state["etf_shares"])
             self.state["cash"]        += sell_shares * niftybees_price

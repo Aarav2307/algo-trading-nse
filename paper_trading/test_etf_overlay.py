@@ -787,6 +787,96 @@ def test_23_rebalance_etf_and_tier_always_agree() -> None:
 
 
 # =============================================================================
+# Tests 24-27 — ETF avg_price VWAP calculation (Audit2 Finding #23)
+# =============================================================================
+
+def test_24_vwap_first_buy():
+    """First ETF purchase: avg_price = purchase price (not VWAP of zero-position)."""
+    name = "test_24_vwap_first_buy"
+    # 0 positions → tier 100%. cash = 100 × 273.55 exactly → delta_shares = 100.
+    portfolio = _make_portfolio(
+        open_positions=0, cash=27355.0,
+        etf_shares=0, etf_avg_price=0.0, etf_tier=0,
+    )
+    portfolio.rebalance_etf(273.55)
+    shares = portfolio.state["etf_shares"]
+    avg    = portfolio.state["etf_avg_price"]
+    if shares != 100:
+        _fail(name, f"expected 100 shares, got {shares}")
+    elif abs(avg - 273.55) > 0.01:
+        _fail(name, f"expected avg_price 273.55, got {avg}")
+    else:
+        _pass(name)
+
+
+def test_25_vwap_second_buy_different_price():
+    """Second ETF buy at a different price: avg_price is VWAP of both tranches."""
+    name = "test_25_vwap_second_buy_different_price"
+    # 0 positions → tier 100%. cash=14000, etf=100@273.55.
+    # total_portfolio = 14000 + 100×280 = 42000.
+    # target_etf = 42000, current_etf = 28000, delta = 14000.
+    # delta_shares = int(14000/280) = 50.
+    # new_avg = (100×273.55 + 50×280) / 150 = 41355/150 = 275.70
+    portfolio = _make_portfolio(
+        open_positions=0, cash=14000.0,
+        etf_shares=100, etf_avg_price=273.55, etf_tier=0,
+    )
+    portfolio.rebalance_etf(280.00)
+    shares = portfolio.state["etf_shares"]
+    avg    = portfolio.state["etf_avg_price"]
+    if shares != 150:
+        _fail(name, f"expected 150 shares, got {shares}")
+    elif abs(avg - 275.70) > 0.01:
+        _fail(name, f"expected avg_price ≈275.70, got {avg}")
+    else:
+        _pass(name)
+
+
+def test_26_avg_price_unchanged_on_partial_sell():
+    """Partial ETF sell: avg_price must not change (cost-basis preserved)."""
+    name = "test_26_avg_price_unchanged_on_partial_sell"
+    # 3 positions → tier 50%. etf_shares=150 @ 285.00.
+    # total_portfolio = 12000 + 30000 + 42750 = 84750.
+    # target_etf = 42375, current_etf = 42750, delta = -375.
+    # delta_shares = int(-375/285) = -1 → 1 share sold.
+    portfolio = _make_portfolio(
+        open_positions=3, cash=12000.0,
+        etf_shares=150, etf_avg_price=275.70, etf_tier=1.0,
+    )
+    portfolio.rebalance_etf(285.00)
+    shares = portfolio.state["etf_shares"]
+    avg    = portfolio.state["etf_avg_price"]
+    if shares >= 150:
+        _fail(name, f"expected a sell to happen, etf_shares={shares}")
+    elif abs(avg - 275.70) > 0.01:
+        _fail(name, f"expected avg_price 275.70 (unchanged), got {avg}")
+    else:
+        _pass(name)
+
+
+def test_27_avg_price_resets_on_full_sell():
+    """Full ETF sell (tier→0%): avg_price must reset to 0.0."""
+    name = "test_27_avg_price_resets_on_full_sell"
+    # 4 positions → tier 0%. etf_shares=2 @ 285.00.
+    # total_portfolio = 1000 + 40000 + 570 = 41570.
+    # target_etf = 0, current_etf = 570, delta_shares = int(-570/285) = -2.
+    # sell_shares = min(2, 2) = 2 → all shares sold.
+    portfolio = _make_portfolio(
+        open_positions=4, cash=1000.0,
+        etf_shares=2, etf_avg_price=275.70, etf_tier=1.0,
+    )
+    portfolio.rebalance_etf(285.00)
+    shares = portfolio.state["etf_shares"]
+    avg    = portfolio.state["etf_avg_price"]
+    if shares != 0:
+        _fail(name, f"expected 0 shares after full sell, got {shares}")
+    elif avg != 0.0:
+        _fail(name, f"expected avg_price 0.0 after full sell, got {avg}")
+    else:
+        _pass(name)
+
+
+# =============================================================================
 # Guard: live state file must not be modified
 # =============================================================================
 
@@ -833,6 +923,10 @@ if __name__ == "__main__":
     test_21_double_requeue_notes_parsed_correctly()
     test_22_rebalance_etf_excludes_pending_buy()
     test_23_rebalance_etf_and_tier_always_agree()
+    test_24_vwap_first_buy()
+    test_25_vwap_second_buy_different_price()
+    test_26_avg_price_unchanged_on_partial_sell()
+    test_27_avg_price_resets_on_full_sell()
 
     _assert_live_state_untouched(mtime_before)
 

@@ -522,48 +522,99 @@ def _print_stock(
 
 
 def _print_verdict(all_scores: list[list[bool]], lines: list):
+    """
+    System-level verdict based on per-stock performance.
 
+    PRIMARY gate: each stock must pass >= PER_STOCK_MIN metrics.
+    INFORMATIONAL: aggregate pass rate shown but not used for verdict.
+
+    Design rationale:
+      Aggregate scoring on 5 stocks with 6 metrics = 30 data points
+      with high inter-stock correlation (all exposed to NIFTY regime).
+      Effective sample size is ~15 independent observations —
+      too small for any aggregate threshold to be statistically
+      meaningful. Per-stock independence is the correct primary gate.
+    """
     def emit(text: str = ""):
         print(text)
         lines.append(text)
 
-    flat     = [v for stock in all_scores for v in stock]
-    n_pass   = sum(flat)
-    n_total  = len(flat)
-    pct      = n_pass / n_total * 100 if n_total > 0 else 0.0
+    # ── Constants ─────────────────────────────────────────────────────────
+    PER_STOCK_MIN  = 4      # each stock must pass ≥4/6 metrics independently
+    STOCK_PASS_PCT = 0.70   # ≥70% of stocks must individually qualify
+
+    # ── Per-stock qualification ────────────────────────────────────────────
+    per_stock_scores = [(sum(s), len(s)) for s in all_scores]
+    qualified_stocks = sum(1 for n, t in per_stock_scores if n >= PER_STOCK_MIN)
+    total_stocks     = len(all_scores)
+    stock_pass_rate  = qualified_stocks / total_stocks if total_stocks > 0 else 0.0
+
+    # ── Aggregate (informational only) ─────────────────────────────────────
+    flat    = [v for stock in all_scores for v in stock]
+    n_pass  = sum(flat)
+    n_total = len(flat)
+    agg_pct = n_pass / n_total * 100 if n_total > 0 else 0.0
 
     emit()
     emit("=" * 80)
     emit("  OVERALL SYSTEM VERDICT")
     emit("=" * 80)
-    emit(f"  Total score: {n_pass}/{n_total} PASS  ({pct:.0f}%)")
-    emit(f"  (Max possible: 24 = 4 stocks × 6 metrics; "
+
+    # Per-stock breakdown
+    emit(f"  Per-stock results (primary gate — each stock needs ≥{PER_STOCK_MIN}/6):")
+    for i, (stock_n, stock_t) in enumerate(per_stock_scores):
+        qualified = "✓ QUALIFIED" if stock_n >= PER_STOCK_MIN else "✗ WEAK"
+        emit(f"    Stock {i+1}: {stock_n}/{stock_t}  {qualified}")
+    emit()
+    emit(f"  Qualified stocks: {qualified_stocks}/{total_stocks} "
+         f"({stock_pass_rate:.0%})")
+    emit()
+
+    # Aggregate (informational)
+    n_stocks = len([s for s in all_scores if s])
+    emit(f"  Aggregate score:  {n_pass}/{n_total} ({agg_pct:.0f}%)  "
+         f"[informational — not used for verdict]")
+    emit(f"  (Max possible: {n_total} = {n_stocks} stocks × 6 metrics; "
          f"stocks with data errors are excluded)")
     emit()
 
-    if n_pass >= 17:
+    # Primary verdict based on per-stock gate
+    stocks_ok = (qualified_stocks / total_stocks >= STOCK_PASS_PCT) if total_stocks > 0 else False
+
+    if total_stocks == 0:
+        verdict = "NO DATA"
+        detail  = "No stocks produced valid results. Check data and token."
+    elif stocks_ok:
         verdict = "SYSTEM VALIDATED"
         detail  = (
-            "Parameters are robust across both windows. "
+            f"{qualified_stocks}/{total_stocks} stocks individually pass "
+            f"≥{PER_STOCK_MIN}/6 metrics. Parameters are robust. "
             "Safe to proceed to paper trading."
         )
-    elif n_pass >= 12:
+    elif qualified_stocks >= 1:
         verdict = "PARTIALLY VALIDATED"
         detail  = (
-            "System shows real edge but has weaknesses. "
-            "Paper trade with extra caution and reduced sizing."
+            f"Only {qualified_stocks}/{total_stocks} stocks individually "
+            f"qualify. Paper trade with reduced sizing. "
+            "Investigate weak stocks before adding capital."
         )
     else:
         verdict = "NOT VALIDATED"
         detail  = (
-            "Significant overfitting or regime dependence detected. "
-            "Do not deploy capital. Diagnose causes before proceeding."
+            "No stocks pass the per-stock minimum. Significant overfitting "
+            "or regime dependence detected. Do not deploy capital."
         )
 
     emit(f"  Verdict:     {verdict}")
     emit(f"  Implication: {detail}")
     emit()
-    emit("  Thresholds: ≥17/24 → VALIDATED | 12-16 → PARTIAL | <12 → NOT VALIDATED")
+    emit(f"  Gates: per-stock ≥{PER_STOCK_MIN}/6 | "
+         f"≥{STOCK_PASS_PCT:.0%} of stocks must qualify")
+    emit()
+    emit("  NOTE: With 5 stocks and correlated NIFTY exposure, effective")
+    emit("  sample size is ~15 independent observations. Statistical")
+    emit("  significance is limited — live paper trading confirmation")
+    emit("  (6 months, 30+ trades) is the definitive validation.")
 
 
 def _degradation_analysis(
