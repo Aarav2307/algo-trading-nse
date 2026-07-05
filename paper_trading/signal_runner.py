@@ -60,6 +60,7 @@ from utils.costs import (
     BROKERAGE_PER_ORDER, format_cost_breakdown,
 )
 from utils.market_calendar import is_trading_day, next_trading_day, verify_holiday_coverage
+from screener.auto_screener import compute_hurst
 
 
 # =============================================================================
@@ -95,6 +96,12 @@ MAX_CONCURRENT_POSITIONS: int = 4
 # will return 0 shares for any stock in the universe (cheapest ~₹300+) and
 # the attempt produces a confusing SKIPPED log with no clear reason.
 MIN_CASH_TO_ATTEMPT_BUY = 1000.0
+
+# Minimum Hurst exponent required for a live BUY entry — matches screener threshold.
+# Recalibrated Jun 2026: log-price variogram estimator, random walk baseline = 0.48.
+# A stock with H < 0.48 at golden cross time is mean-reverting, not trending —
+# SMA crossover has negative expectancy in that regime.
+HURST_THRESHOLD: float = 0.48
 
 # Weights for composite BUY signal ranking. Must be inspected, not re-optimised.
 # Higher score = higher priority when capital is constrained.
@@ -741,6 +748,34 @@ def _process_stock(
                 "reason": "Market regime filter: NIFTY in death cross — no new entries",
             })
             return result
+
+        # ── Live Hurst quality gate ─────────────────────────────────────────
+        # Check current Hurst at entry time — not just at screener time.
+        # A stock's trending behavior can degrade after universe addition.
+        # If Hurst < threshold at golden cross time, suppress entry.
+        # Fail-open: if Hurst computation fails, allow entry (don't block on error).
+        try:
+            live_hurst = compute_hurst(df["close"].values)
+            if live_hurst < HURST_THRESHOLD:
+                result.update({
+                    "signal": "HURST_SKIP",
+                    "reason": (
+                        f"Live Hurst {live_hurst:.3f} < threshold {HURST_THRESHOLD:.2f} "
+                        f"— stock not trending sufficiently for SMA crossover entry"
+                    ),
+                    "hurst": round(live_hurst, 3),
+                })
+                print(
+                    f"  HURST_SKIP | {ticker} | H={live_hurst:.3f} < {HURST_THRESHOLD:.2f} "
+                    f"| golden cross suppressed — stock in mean-reversion regime"
+                )
+                return result
+        except Exception as _hurst_exc:
+            # Fail-open: Hurst computation error must never block a valid entry
+            print(
+                f"  HURST_GATE | {ticker} | WARNING: Hurst computation failed "
+                f"({_hurst_exc}) — allowing entry"
+            )
 
         # ── BUY candidate: defer or execute ─────────────────────────────────
         # When defer_buy=True (Phase 1 of the two-phase allocation), return a

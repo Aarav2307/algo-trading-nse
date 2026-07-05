@@ -10,11 +10,16 @@ import sys
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
+import pandas as pd
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from paper_trading.paper_portfolio import PaperPortfolio, ETF_TIERS
+from paper_trading.signal_runner import _process_stock, HURST_THRESHOLD
 
 LIVE_STATE = Path("paper_trading/portfolio_state.json")
 _PASS = 0
@@ -877,6 +882,138 @@ def test_27_avg_price_resets_on_full_sell():
 
 
 # =============================================================================
+# Tests 28-30 — Live Hurst quality gate in _process_stock()
+# =============================================================================
+
+def _make_hurst_test_df(n_bars: int = 70) -> pd.DataFrame:
+    """Minimal OHLCV DataFrame for Hurst gate tests (n_bars >= SMA_SLOW=50)."""
+    dates  = pd.date_range("2026-01-01", periods=n_bars, freq="B")
+    prices = np.linspace(100.0, 120.0, n_bars)
+    return pd.DataFrame({
+        "open":   prices * 0.999,
+        "high":   prices * 1.001,
+        "low":    prices * 0.998,
+        "close":  prices,
+        "volume": np.ones(n_bars) * 10_000_000,
+    }, index=dates)
+
+
+def _make_hurst_test_portfolio(ticker: str, cash: float = 100_000.0) -> PaperPortfolio:
+    """Minimal PaperPortfolio for Hurst gate tests — 0 shares, no cooldown."""
+    tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    tmp.close()
+    portfolio = PaperPortfolio([ticker], tmp.name, cash)
+    portfolio.state = {
+        "cash":              cash,
+        "initial_capital":   cash,
+        "positions": {
+            ticker: {
+                "shares":                   0,
+                "entry_price":              0.0,
+                "pending_buy":              False,
+                "pending_rm_exit":          False,
+                "bars_held":                0,
+                "highest_high_since_entry": 0.0,
+                "chandelier_stop":          None,
+                "entry_date":               None,
+                "entry_cost":               0.0,
+            }
+        },
+        "cooldown_state": {
+            ticker: {"remaining_bars": 0, "last_exit_reason": None}
+        },
+        "total_trades":       0,
+        "last_run_date":      None,
+        "inception_date":     "2026-01-01",
+        "weekly_start_value": cash,
+        "weekly_start_date":  "2026-01-01",
+        "weekly_signals":     {"BUY": 0, "SELL": 0, "RISK_EXIT": 0},
+        "trade_log":          [],
+        "etf_shares":         0,
+        "etf_avg_price":      0.0,
+        "etf_tier":           0.0,
+    }
+    return portfolio
+
+
+def _golden_cross_signals(df, fast, slow):
+    """Mock generate_signals — returns golden cross (+1) on the last bar only."""
+    s = pd.Series(0, index=df.index)
+    s.iloc[-1] = 1
+    return s
+
+
+def test_28_hurst_skip_fires_below_threshold():
+    """HURST_SKIP fires when live Hurst is below HURST_THRESHOLD."""
+    name   = "test_28_hurst_skip_fires_below_threshold"
+    ticker = "TEST.NS"
+    df     = _make_hurst_test_df()
+    port   = _make_hurst_test_portfolio(ticker)
+
+    with (
+        patch("paper_trading.signal_runner.generate_signals",
+              side_effect=_golden_cross_signals),
+        patch("paper_trading.signal_runner.compute_hurst", return_value=0.35),
+    ):
+        result = _process_stock(
+            ticker, df, port, {ticker: 120.0}, "BULL", defer_buy=True
+        )
+
+    if result["signal"] != "HURST_SKIP":
+        _fail(name, f"expected HURST_SKIP, got {result['signal']} — {result['reason']}")
+        return
+    if result.get("hurst") != 0.35:
+        _fail(name, f"expected hurst=0.35 in result, got {result.get('hurst')}")
+        return
+    _pass(name)
+
+
+def test_29_hurst_gate_passes_above_threshold():
+    """BUY_CANDIDATE returned when live Hurst is above HURST_THRESHOLD."""
+    name   = "test_29_hurst_gate_passes_above_threshold"
+    ticker = "TEST.NS"
+    df     = _make_hurst_test_df()
+    port   = _make_hurst_test_portfolio(ticker)
+
+    with (
+        patch("paper_trading.signal_runner.generate_signals",
+              side_effect=_golden_cross_signals),
+        patch("paper_trading.signal_runner.compute_hurst", return_value=0.62),
+    ):
+        result = _process_stock(
+            ticker, df, port, {ticker: 120.0}, "BULL", defer_buy=True
+        )
+
+    if result["signal"] != "BUY_CANDIDATE":
+        _fail(name, f"expected BUY_CANDIDATE, got {result['signal']} — {result['reason']}")
+        return
+    _pass(name)
+
+
+def test_30_hurst_gate_fails_open_on_error():
+    """Hurst computation error must never block entry — fail-open to BUY_CANDIDATE."""
+    name   = "test_30_hurst_gate_fails_open_on_error"
+    ticker = "TEST.NS"
+    df     = _make_hurst_test_df()
+    port   = _make_hurst_test_portfolio(ticker)
+
+    with (
+        patch("paper_trading.signal_runner.generate_signals",
+              side_effect=_golden_cross_signals),
+        patch("paper_trading.signal_runner.compute_hurst",
+              side_effect=RuntimeError("simulated compute_hurst failure")),
+    ):
+        result = _process_stock(
+            ticker, df, port, {ticker: 120.0}, "BULL", defer_buy=True
+        )
+
+    if result["signal"] != "BUY_CANDIDATE":
+        _fail(name, f"expected BUY_CANDIDATE (fail-open), got {result['signal']} — {result['reason']}")
+        return
+    _pass(name)
+
+
+# =============================================================================
 # Guard: live state file must not be modified
 # =============================================================================
 
@@ -927,6 +1064,9 @@ if __name__ == "__main__":
     test_25_vwap_second_buy_different_price()
     test_26_avg_price_unchanged_on_partial_sell()
     test_27_avg_price_resets_on_full_sell()
+    test_28_hurst_skip_fires_below_threshold()
+    test_29_hurst_gate_passes_above_threshold()
+    test_30_hurst_gate_fails_open_on_error()
 
     _assert_live_state_untouched(mtime_before)
 
