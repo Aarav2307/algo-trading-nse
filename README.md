@@ -8,13 +8,15 @@
 
 Automated end-of-day swing trading system for NSE India equity markets. Built entirely in Python, deployed on AWS, connected to live Zerodha Kite Connect API. Generates daily signals after market close, places AMO limit orders, and runs a morning fill-check at market open — fully unattended.
 
-Currently in paper trading phase with walk-forward validated backtesting results across 8 years of NSE data.
+Currently in paper trading phase (started Jun 2 2026, 33 trading days).
+Walk-forward validated across 8 years of NSE data. 4 completed trades,
+portfolio Rs243.49 cash + 359 NIFTYBEES units as of Jul 5 2026.
+All capital deployed in NIFTYBEES ETF overlay while awaiting BULL regime flip.
 
-**Current universe (10 stocks):** WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
+**Current universe (8 stocks):** BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS,
+ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
 
 **Screener universe:** Dynamic NIFTY 500 (504 stocks) fetched live from NSE.
-
-**Current universe (10 stocks):** WHIRLPOOL.NS, SIEMENS.NS, BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, HEROMOTOCO.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS
 
 ---
 
@@ -55,24 +57,32 @@ The system runs in two daily phases, fully automated:
 3:45 PM IST — Evening run (signal_runner.py)
 ┌──────────────────────────────────────────────────────────┐
 │  1. Auth check — verify Kite token is fresh (<8 hrs)     │
-│  2. Market day check — NSE holiday calendar              │
-│  3. Fetch OHLCV — last 120 calendar days per stock       │
-│  4. Corporate actions check — ex-dates in next 2 days    │
-│  5. Strategy signals — SMA crossover on today's close    │
-│  6. Risk manager — check stops on open positions         │
-│  7. Cooldown gate — suppress entries post-RM-exit        │
-│  8. Position sizer — fixed-fractional 1.5% risk          │
-│  9. AMO orders — limit orders logged for tomorrow's open │
-│ 10. Signal report — terminal + CSV log                   │
+│  2. Market day check — NSE holiday calendar (dynamic)    │
+│  3. Fetch NIFTYBEES price — ETF reporting + rebalance    │
+│  4. Fetch OHLCV — last 120 calendar days per stock       │
+│  5. NIFTY regime filter — suppress entries in bear mkt   │
+│  6. Corporate actions check — ex-dates in next 2 days    │
+│  7. Phase 1: collect BUY candidates (golden cross)       │
+│  8. Risk manager — check stops on all open positions     │
+│  9. Phase 2: rank BUY candidates, correlation check,     │
+│     cash gate (min Rs1,000), execute in rank order       │
+│ 10. ETF overlay rebalance — NIFTYBEES tier adjustment    │
+│ 11. AMO orders — limit orders for tomorrow's open        │
+│ 12. Signal report — terminal + email + CSV log           │
 └──────────────────────────────────────────────────────────┘
 
 9:20 AM IST — Morning run (morning_fill_check.py)
 ┌──────────────────────────────────────────────────────────┐
-│  1. Corporate actions — cancel fills if ex-date today    │
-│  2. Fetch open prices — today's opening bar per stock    │
-│  3. Fill check — did the open price beat our limit?      │
-│  4. Portfolio update — record actual fill prices         │
-│  5. Morning report — filled / missed / cancelled         │
+│  1. Market day check — skip if holiday/weekend           │
+│  2. Corporate actions — cancel fills if ex-date today    │
+│  3. Fetch open prices — today's opening bar per stock    │
+│  4. Fill check — did the open price beat our limit?      │
+│  5. Gap-down circuit breaker — if gap >3%, GAP_EXIT      │
+│     at open instead of requeue                           │
+│  6. Portfolio update — record actual fill prices         │
+│  7. State integrity check — validates portfolio vs       │
+│     50% floor, trade log, ETF tier validity              │
+│  8. Morning report — filled / missed / gap_exit          │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -101,8 +111,8 @@ Paper Trading Layer
   paper_trading/paper_portfolio.py → Persistent portfolio state (JSON)
 
 Utilities
-  utils/costs.py              → Transaction cost model (₹20 brokerage + STT + slippage)
-  utils/market_calendar.py    → NSE holiday calendar, trading day checks
+  utils/costs.py              → Transaction cost model (delivery: ₹0 brokerage, STT 0.1% both sides, DP ₹15.34/sell)
+  utils/market_calendar.py    → NSE holiday calendar (dynamic API fetch + local cache), trading day checks
   utils/corporate_actions.py  → Live NSE ex-date checks (splits, bonuses, dividends)
 
 Validation
@@ -214,12 +224,22 @@ Extended walk-forward (2015-19 IS / 2020-23 OOS) across 10 stocks:
 
 ### Transaction Cost Model
 
-All backtests use realistic costs:
+All backtests use verified Zerodha delivery costs (confirmed Jun 2026,
+zerodha.com/charges):
 
 ```
-Brokerage : ₹20 flat per order (Zerodha model)
-STT       : 0.025% on sell-side turnover
-Slippage  : 0.05% on execution price (both sides)
+Brokerage    : ₹0 — Zerodha equity delivery is free
+STT          : 0.1% on BOTH buy and sell sides (delivery)
+NSE exchange : 0.00335% on turnover
+SEBI fee     : 0.0001% on turnover
+GST          : 18% on (exchange + SEBI fees)
+Stamp duty   : 0.015% on buy-side only
+DP charge    : ₹15.34 flat per sell (CDSL + Zerodha + GST)
+Slippage     : 0.05% on execution price (both sides)
+
+Total buy-side  : ~₹11.91 per ₹10,000 trade
+Total sell-side : ~₹25.75 per ₹10,000 trade
+Round-trip      : ~₹37.66 per ₹10,000 (old model ₹34.09 was wrong)
 ```
 
 ---
@@ -250,6 +270,8 @@ algo-trading/
 │   └── mean_reversion.py       # RSI + Bollinger Bands signals
 │
 ├── screener/
+│   ├── auto_screener.py        # Full NIFTY 500 screener — Hurst, ADX, correlation, gap
+│   ├── emailer.py              # HTML email report with ADD/MONITOR/WATCH/REMOVE sections
 │   ├── regime_classifier.py    # Hurst exponent + ADX stock regime detection
 │   ├── sma_screener.py         # Universe scan for crossover candidates
 │   └── config.py               # Screener parameters and universe definition
@@ -271,9 +293,11 @@ algo-trading/
 │   └── test_correlation_check.py # 6 unit tests — correlation check
 │
 ├── utils/
-│   ├── costs.py                # Transaction cost model (brokerage, STT, slippage)
-│   ├── market_calendar.py      # NSE 2026 holiday list, trading day utilities
-│   └── corporate_actions.py    # Live NSE ex-date checks (splits, bonuses, dividends)
+│   ├── costs.py                # Transaction costs (delivery: ₹0 brokerage, STT 0.1%, DP ₹15.34/sell)
+│   ├── market_calendar.py      # NSE holiday calendar — dynamic API fetch + local cache
+│   ├── corporate_actions.py    # Live NSE ex-date checks (splits, bonuses, dividends)
+│   ├── test_costs.py           # 7 unit tests — transaction cost model
+│   └── nse_holiday_cache.json  # Cached NSE holiday data (auto-updated from API)
 │
 ├── validation/
 │   ├── walk_forward.py              # IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
@@ -301,6 +325,9 @@ The system runs unattended on a **AWS Lightsail Ubuntu 22.04 instance** in the M
 
 # 9:20 AM IST = 03:50 AM UTC — morning fill check
 50 3 * * 1-5 /home/ubuntu/algo-trading/paper_trading/run_morning_check.sh
+
+# 6:00 PM IST = 12:30 PM UTC — universe screener (Wed + Sun)
+30 12 * * 0,3 /home/ubuntu/algo-trading/paper_trading/run_screen.sh
 ```
 
 ### Authentication
