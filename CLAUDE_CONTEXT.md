@@ -1,5 +1,5 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-02
+Last updated: 2026-07-05
 
 ## Current Trading Universe (8 stocks)
 BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
@@ -16,21 +16,20 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - Removed Jun 24: HEROMOTOCO (2/5 extended WF, never generated entry signal since added Jun 16)
 - Removed Jun 24: SIEMENS (3/5 both WF windows, OOS return ~0%, position closed Jun 24 at Rs3,688)
 
-## Paper Trading Status (as of 2026-07-02)
-- Started: 2026-06-02 (29 trading days as of Jul 2)
-- Portfolio: ₹98,717 (-1.28%) as of Jul 2 close
-- Cash: ₹243.49
+## Paper Trading Status (as of 2026-07-05)
+- Started: 2026-06-02 (33 trading days as of Jul 5)
+- Portfolio: Rs243.49 cash + 359 NIFTYBEES units (verified from server Jul 5)
 - ETF: 359 NIFTYBEES units @ 100% tier (0 open positions)
-- ETF value: ~₹98,474 (359 × ₹274.30 Jul 2 close)
 - Open positions: 0
-- NIFTY regime: BEAR (SMA20 < SMA50, gap narrowing — -0.28% on Jul 2)
+- Total trades: 4 (confirmed from portfolio_state.json)
+- NIFTY regime: BEAR as of last_run 2026-07-03
+- NIFTY SMA gap closing rapidly — -0.07% on Jul 3, BULL flip imminent
 - Confirmed completed trades: 4
   - WHIRLPOOL: -₹188 (Jun 3, death cross)
   - TMPV: -₹1,297 (Jun 17, Chandelier stop)
   - SIEMENS: -₹157 (Jun 24, death cross, filled at ₹3,688)
   - BAJAJ-AUTO: -₹441 gross (Jun 29, death cross, filled at ₹9,892 — gapped UP)
 - All 8 stocks waiting for golden cross entry signal
-- NIFTY SMA gap closing daily — BULL regime flip possible next week
 - repair_portfolio_state.py: no longer needed — BAJAJ-AUTO filled cleanly Jun 29
 
 ## Walk-Forward Validation Results
@@ -85,7 +84,7 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
-- Wait for 6 months clean paper trading data (currently at ~29 days as of Jul 2)
+- Wait for 6 months clean paper trading data (currently at ~33 days as of Jul 5)
 - Implement SL-M orders for exits before going live (gap-down protection)
 - Implement ATR-based position sizing before going live
 - Complete at least 30 full trade cycles (entry + exit) — currently 3 confirmed
@@ -377,28 +376,47 @@ Fixed from second audit:
 - pandas FutureWarning fixed in strategies/sma_crossover.py
   fill_value=False replaces .fillna(False) — 16 fewer warning lines per daily log
 
+#### Additional fixes applied (Jul 2-5 2026):
+- Audit2 Finding #3: RESOLVED (Jul 5)
+  Cash floor raised Rs40 → Rs1,000 (MIN_CASH_TO_ATTEMPT_BUY)
+  Combined with iterative floor in sizer + pending_buy in position count
+- Audit2 Finding #5: RESOLVED (Jul 5)
+  build_extended_universe() computes STOCKS_EXTENDED dynamically from actual bar counts
+  15 candidates checked via Kite — zero manual maintenance going forward
+- Audit2 Finding #8: RESOLVED (Jul 5)
+  Dynamic NSE holiday fetch from nseindia.com/api/holiday-master?type=trading
+  Cached in utils/nse_holiday_cache.json — auto-updates each year
+  To pre-warm 2027: python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
+- Audit2 Finding #10: RESOLVED (Jul 2)
+  time.sleep(1.1) added to screener fetch loop — 55 req/min (safe under Kite 60/min limit)
+  Skip count logged with explicit warnings if >5% tickers dropped
+- Audit2 Finding #21: RESOLVED (Jul 2)
+  Transaction costs corrected: STT 0.1% delivery (was 0.025% intraday), brokerage Rs0 delivery
+  DP charge Rs15.34 added per sell. Round-trip Rs37.66 on Rs10,000 (verified Zerodha Jun 2026)
+  Position sizer uses exact buy-side cost + iterative floor check
+  7/7 unit tests passing (utils/test_costs.py)
+- Audit2 Finding #22: RESOLVED (Jul 2)
+  NIFTY 500 fetch now has cache fallback (screener/nifty500_cache.json)
+  Email subject shows ⚠️ STALE DATA if cache was used
+  Cache pre-populated with 500 tickers
+
 Remaining from second audit (not yet fixed):
 - Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
-  Risk: full NIFTY exposure while stock entries suppressed — undoes regime filter protection
-- Audit2 Finding #3: simultaneous BUY fills can orphan pending_buy=True permanently
-  Needs cash reservation logic in queue_pending_buy()
-- Audit2 Finding #5: walk_forward.py STOCKS_EXTENDED still contains removed stocks
-  (TMPV, WHIRLPOOL, SIEMENS, HEROMOTOCO, CUMMINSIND) — stale, next quarterly run
-- Audit2 Finding #8: NSE_HOLIDAYS_2027 = [] — time bomb for January 2027
-  Must populate before October 2026 from official NSE circular
-- Audit2 Finding #10: screener API rate limiting causes silent stock drops
-  500+ stocks fetched with no sleep — hits Kite 60req/min limit silently
+  Risk: full NIFTY exposure while stock entries suppressed
 - Audit2 Finding #13: sector concentration — up to 4 IT stocks simultaneously possible
-  Needs max 2 stocks per sector gate in Phase 2 BUY allocation
-- Audit2 Finding #14: WF validation threshold (17) does not scale with universe size
-  17/24 = 71% but 17/30 = 57% with 5-stock universe — needs dynamic threshold
-- Audit2 Finding #21: position sizer cash buffer uses only ₹20 brokerage
-  Full transaction cost ~₹42 — can size 1 share more than cash can support
-- Audit2 Finding #22: NIFTY 500 URL silent failure returns empty universe
-  Screener completes with 0 ADD recommendations, indistinguishable from real result
+  Design decision needed before implementing
+- Audit2 Finding #14: WF validation threshold does not scale with universe size
+  17/24 = 71% but needs dynamic threshold for different universe sizes
 - Audit2 Finding #23: ETF avg_price not VWAP — overwritten on each buy
   Correct formula: new_avg = (old_shares × old_avg + delta × price) / new_shares
 - Audit2 Finding #12: correlation check uses yfinance not Kite data (low priority)
+
+Test suite (verified on server Jul 5 2026):
+- test_etf_overlay.py: 23/23 ✅
+- test_gap_breaker.py: 9/9 ✅
+- test_costs.py: 7/7 ✅
+- test_correlation_check.py: 6/6 ✅
+- Total: 45/45 tests passing
 
 ---
 
@@ -424,6 +442,27 @@ Remaining from second audit (not yet fixed):
 - PERSISTENT:  H=0.500 — passes 0.48, fails 0.55
 - Decision: keep HURST_THRESHOLD=0.48 — raising to 0.55 filters entire universe to zero
 - Revisit threshold after October 2026 with full bull+bear cycle data
+
+### NSE Holiday Calendar
+- Dynamic fetch from: nseindia.com/api/holiday-master?type=trading (CM segment)
+- Requires session cookie — auto_login not needed, just a plain requests.Session()
+- Cached in: utils/nse_holiday_cache.json (auto-updated on each successful fetch)
+- 2026: hardcoded verified list in market_calendar.py (NSE circular confirmed)
+- 2027+: fetched from NSE API automatically on first is_trading_day() call for that year
+- To pre-warm next year in November 2026:
+  python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
+- Never hardcode future years — let the API provide them
+
+### Transaction Costs (verified Zerodha Jun 2026, zerodha.com/charges)
+- Delivery is used for all trades (CNC orders via AMO)
+- Brokerage: Rs0 (Zerodha delivery is free)
+- STT: 0.1% on BOTH buy and sell sides (was wrongly set to 0.025% intraday rate)
+- DP charge: Rs15.34 per sell (CDSL Rs3.50 + Zerodha Rs9.50 + GST Rs2.34)
+- Stamp duty: 0.015% buy-side only
+- Total buy-side on Rs10,000: ~Rs11.91
+- Total sell-side on Rs10,000: ~Rs25.75 (includes DP charge)
+- Round-trip on Rs10,000: ~Rs37.66
+- See utils/costs.py — transaction_costs(price, shares, side, trade_type='delivery')
 
 ### Kite Fetcher
 - Correct signature: get_ohlcv(ticker, start='YYYY-MM-DD', end='YYYY-MM-DD')
