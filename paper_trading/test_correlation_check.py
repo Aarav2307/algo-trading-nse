@@ -1,7 +1,8 @@
 """
 paper_trading/test_correlation_check.py — Unit tests for correlation_check.py
 
-All tests use mocked yfinance data and temp portfolio state files.
+Tests 1, 5-6 test edge cases and the yfinance fallback path.
+Tests 2-4  test the primary price_data path (used by signal_runner).
 The live portfolio_state.json is never touched.
 """
 
@@ -62,36 +63,48 @@ def _make_state_file(open_positions: list, entry_price: float = 1000.0) -> str:
     return tmp.name
 
 
+def make_price_df(prices) -> pd.DataFrame:
+    """Build a minimal OHLCV-style DataFrame with a 'close' column."""
+    dates = pd.date_range("2026-01-01", periods=len(prices), freq="B")
+    return pd.DataFrame({"close": prices}, index=dates)
+
+
+def _make_correlated_prices(
+    target_corr: float, seed: int = 42, n: int = 100
+) -> tuple:
+    """
+    Return (prices_candidate, prices_position) as numpy arrays.
+    The two series have approximately target_corr correlation on log returns.
+    """
+    rng = np.random.default_rng(seed)
+    r_base = rng.normal(0, 0.012, n)
+    noise  = rng.normal(0, 0.012, n)
+    r_pos  = target_corr * r_base + np.sqrt(max(0.0, 1.0 - target_corr ** 2)) * noise
+    return (
+        100.0 * np.exp(np.cumsum(r_base)),
+        100.0 * np.exp(np.cumsum(r_pos)),
+    )
+
+
 def _make_yf_mock(tickers: list, target_corr: float = 0.0, seed: int = 42) -> pd.DataFrame:
     """
-    Build a yfinance-style MultiIndex DataFrame for mocking.
-
-    The first ticker in `tickers` is treated as the candidate; subsequent
-    tickers are open positions whose returns are generated with `target_corr`
-    correlation to the candidate's returns.
-
-    Returns a DataFrame where df["Close"] gives the per-ticker close prices.
+    Build a yfinance-style MultiIndex DataFrame for mocking (CLI path tests).
+    Returns a DataFrame where df["Close"] gives per-ticker close prices.
     """
-    n = 100  # trading days
+    n = 100
     dates = pd.bdate_range("2026-01-01", periods=n)
     rng = np.random.default_rng(seed)
-
-    # Base returns for candidate
     r_base = rng.normal(0, 0.012, n)
 
     prices: dict[str, np.ndarray] = {}
     for i, ticker in enumerate(tickers):
         if i == 0:
-            # Candidate
             r = r_base
         else:
-            # Open position with target_corr to candidate
             noise = rng.normal(0, 0.012, n)
             r = target_corr * r_base + np.sqrt(max(0.0, 1.0 - target_corr ** 2)) * noise
-
         prices[ticker] = 100.0 * np.exp(np.cumsum(r))
 
-    # Build MultiIndex DataFrame matching yfinance multi-ticker format
     mi_cols = pd.MultiIndex.from_product(
         [["Close"], tickers], names=["Price", "Ticker"]
     )
@@ -112,7 +125,7 @@ def _fail(name: str, msg: str) -> None:
 
 
 # =============================================================================
-# Test 1 — No open positions
+# Test 1 — No open positions (no price fetch needed on either path)
 # =============================================================================
 
 def test_1_no_open_positions() -> None:
@@ -140,59 +153,66 @@ def test_1_no_open_positions() -> None:
 
 
 # =============================================================================
-# Test 2 — Safe correlation (~0.15)
+# Test 2 — Safe correlation via price_data (primary path, ~0.15 corr)
 # =============================================================================
 
 def test_2_safe_correlation() -> None:
-    name = "Test 2 — Safe correlation"
+    name = "Test 2 — Safe correlation (price_data path)"
 
-    tickers = ["CANDIDATE.NS", "OPENPOS.NS"]
+    p_cand, p_open = _make_correlated_prices(target_corr=0.15, seed=1)
+    mock_data = {
+        "CANDIDATE.NS": make_price_df(p_cand),
+        "OPENPOS.NS":   make_price_df(p_open),
+    }
     state_path = _make_state_file(open_positions=["OPENPOS.NS"])
-    mock_df = _make_yf_mock(tickers, target_corr=0.15, seed=1)
 
     try:
-        with patch("yfinance.download", return_value=mock_df):
-            result = check_entry_correlation(
-                candidate="CANDIDATE.NS",
-                portfolio_state_path=state_path,
-                max_correlation=0.60,
-            )
-
+        result = check_entry_correlation(
+            candidate="CANDIDATE.NS",
+            portfolio_state_path=state_path,
+            max_correlation=0.60,
+            price_data=mock_data,
+        )
         if not result["safe"]:
             _fail(name, f"Expected safe=True; max_corr={result['max_correlation']}")
             return
         if result["max_correlation"] is None or result["max_correlation"] >= 0.60:
             _fail(name, f"Expected max_correlation < 0.60, got {result['max_correlation']}")
             return
+        if "OPENPOS.NS" not in result["correlations"]:
+            _fail(name, "OPENPOS.NS missing from correlations dict")
+            return
         _pass(name)
     finally:
         os.unlink(state_path)
 
 
 # =============================================================================
-# Test 3 — Unsafe correlation (~0.90)
+# Test 3 — Unsafe correlation via price_data (~0.90 corr)
 # =============================================================================
 
 def test_3_unsafe_correlation() -> None:
-    name = "Test 3 — Unsafe correlation"
+    name = "Test 3 — Unsafe correlation (price_data path)"
 
-    tickers = ["CANDIDATE.NS", "OPENPOS.NS"]
+    p_cand, p_open = _make_correlated_prices(target_corr=0.90, seed=2)
+    mock_data = {
+        "CANDIDATE.NS": make_price_df(p_cand),
+        "OPENPOS.NS":   make_price_df(p_open),
+    }
     state_path = _make_state_file(open_positions=["OPENPOS.NS"])
-    mock_df = _make_yf_mock(tickers, target_corr=0.90, seed=2)
 
     try:
-        with patch("yfinance.download", return_value=mock_df):
-            result = check_entry_correlation(
-                candidate="CANDIDATE.NS",
-                portfolio_state_path=state_path,
-                max_correlation=0.60,
-            )
-
+        result = check_entry_correlation(
+            candidate="CANDIDATE.NS",
+            portfolio_state_path=state_path,
+            max_correlation=0.60,
+            price_data=mock_data,
+        )
         if result["safe"]:
             _fail(name, f"Expected safe=False; max_corr={result['max_correlation']}")
             return
         if result["max_correlation"] is None or result["max_correlation"] < 0.60:
-            _fail(name, f"Expected max_correlation ≥ 0.60, got {result['max_correlation']}")
+            _fail(name, f"Expected max_correlation >= 0.60, got {result['max_correlation']}")
             return
         _pass(name)
     finally:
@@ -200,55 +220,37 @@ def test_3_unsafe_correlation() -> None:
 
 
 # =============================================================================
-# Test 4 — Multiple open positions, one unsafe
+# Test 4 — Multiple positions, one unsafe via price_data
 # =============================================================================
 
 def test_4_multiple_positions_one_unsafe() -> None:
-    name = "Test 4 — Multiple positions, one unsafe"
-
-    # Two open positions: one safe (~0.20), one unsafe (~0.90)
-    tickers = ["CANDIDATE.NS", "SAFE_POS.NS", "UNSAFE_POS.NS"]
-    state_path = _make_state_file(open_positions=["SAFE_POS.NS", "UNSAFE_POS.NS"])
+    name = "Test 4 — Multiple positions, one unsafe (price_data path)"
 
     rng = np.random.default_rng(3)
     n = 100
-    dates = pd.bdate_range("2026-01-01", periods=n)
-    r_base = rng.normal(0, 0.012, n)
+    r_base   = rng.normal(0, 0.012, n)
+    r_safe   = 0.20 * r_base + np.sqrt(1 - 0.04)  * rng.normal(0, 0.012, n)
+    r_unsafe = 0.90 * r_base + np.sqrt(1 - 0.81)  * rng.normal(0, 0.012, n)
 
-    # Candidate returns = base
-    r_cand = r_base
-    # Safe position: low correlation
-    r_safe = 0.20 * r_base + np.sqrt(1 - 0.04) * rng.normal(0, 0.012, n)
-    # Unsafe position: high correlation
-    r_unsafe = 0.90 * r_base + np.sqrt(1 - 0.81) * rng.normal(0, 0.012, n)
-
-    prices = {
-        "CANDIDATE.NS": 100.0 * np.exp(np.cumsum(r_cand)),
-        "SAFE_POS.NS":   200.0 * np.exp(np.cumsum(r_safe)),
-        "UNSAFE_POS.NS": 150.0 * np.exp(np.cumsum(r_unsafe)),
+    mock_data = {
+        "CANDIDATE.NS":  make_price_df(100.0 * np.exp(np.cumsum(r_base))),
+        "SAFE_POS.NS":   make_price_df(200.0 * np.exp(np.cumsum(r_safe))),
+        "UNSAFE_POS.NS": make_price_df(150.0 * np.exp(np.cumsum(r_unsafe))),
     }
-    mi_cols = pd.MultiIndex.from_product(
-        [["Close"], tickers], names=["Price", "Ticker"]
-    )
-    mock_df = pd.DataFrame(
-        np.column_stack([prices[t] for t in tickers]),
-        index=dates,
-        columns=mi_cols,
-    )
+    state_path = _make_state_file(open_positions=["SAFE_POS.NS", "UNSAFE_POS.NS"])
 
     try:
-        with patch("yfinance.download", return_value=mock_df):
-            result = check_entry_correlation(
-                candidate="CANDIDATE.NS",
-                portfolio_state_path=state_path,
-                max_correlation=0.60,
-            )
-
+        result = check_entry_correlation(
+            candidate="CANDIDATE.NS",
+            portfolio_state_path=state_path,
+            max_correlation=0.60,
+            price_data=mock_data,
+        )
         if result["safe"]:
             _fail(name, f"Expected safe=False; max_corr={result['max_correlation']}")
             return
         if result["max_correlation"] is None or result["max_correlation"] < 0.60:
-            _fail(name, f"Expected max_correlation ≥ 0.60, got {result['max_correlation']}")
+            _fail(name, f"Expected max_correlation >= 0.60, got {result['max_correlation']}")
             return
         if "SAFE_POS.NS" not in result["correlations"]:
             _fail(name, "SAFE_POS.NS missing from correlations dict")
@@ -256,8 +258,12 @@ def test_4_multiple_positions_one_unsafe() -> None:
         if "UNSAFE_POS.NS" not in result["correlations"]:
             _fail(name, "UNSAFE_POS.NS missing from correlations dict")
             return
-        # Safe position should have lower correlation than unsafe
-        if result["correlations"]["SAFE_POS.NS"] >= result["correlations"]["UNSAFE_POS.NS"]:
+        safe_corr   = result["correlations"]["SAFE_POS.NS"]
+        unsafe_corr = result["correlations"]["UNSAFE_POS.NS"]
+        if not (isinstance(safe_corr, float) and isinstance(unsafe_corr, float)):
+            _fail(name, f"Expected numeric correlations, got {safe_corr}, {unsafe_corr}")
+            return
+        if safe_corr >= unsafe_corr:
             _fail(name, "Expected safe position to have lower correlation than unsafe")
             return
         _pass(name)
@@ -266,65 +272,39 @@ def test_4_multiple_positions_one_unsafe() -> None:
 
 
 # =============================================================================
-# Test 5 — NaN handling (one pair has no overlapping data)
+# Test 5 — Missing ticker in price_data (graceful NaN handling)
 # =============================================================================
 
-def test_5_nan_handling() -> None:
-    name = "Test 5 — NaN handling"
+def test_5_missing_ticker_in_price_data() -> None:
+    name = "Test 5 — Missing ticker in price_data (graceful handling)"
 
-    # Candidate has prices for days 0-49 only (NaN for days 50-99).
-    # NAN_POS has prices for days 50-99 only (NaN for days 0-49).
-    # This guarantees zero overlapping data → NaN correlation for that pair.
-    # GOOD_POS has full coverage and a safe correlation (~0.20) with candidate.
-    state_path = _make_state_file(open_positions=["GOOD_POS.NS", "NAN_POS.NS"])
-
-    rng = np.random.default_rng(4)
-    n = 100
-    dates = pd.bdate_range("2026-01-01", periods=n)
-    r_base = rng.normal(0, 0.012, n)
-
-    # Candidate: valid only for days 0-49
-    p_cand = np.full(n, np.nan)
-    p_cand[:50] = 100.0 * np.exp(np.cumsum(r_base[:50]))
-
-    # NAN_POS: valid only for days 50-99 — no overlap with candidate
-    p_nan = np.full(n, np.nan)
-    p_nan[50:] = 150.0 * np.exp(np.cumsum(rng.normal(0, 0.012, n - 50)))
-
-    # GOOD_POS: full coverage, safe correlation (~0.20) with the base returns
-    r_good = 0.20 * r_base + np.sqrt(1 - 0.04) * rng.normal(0, 0.012, n)
-    p_good = 200.0 * np.exp(np.cumsum(r_good))
-
-    tickers = ["CANDIDATE.NS", "GOOD_POS.NS", "NAN_POS.NS"]
-    mi_cols = pd.MultiIndex.from_product(
-        [["Close"], tickers], names=["Price", "Ticker"]
-    )
-    mock_df = pd.DataFrame(
-        np.column_stack([p_cand, p_good, p_nan]),
-        index=dates,
-        columns=mi_cols,
-    )
+    p_cand, p_good = _make_correlated_prices(target_corr=0.15, seed=5)
+    # MISSING_POS.NS intentionally absent from price_data
+    mock_data = {
+        "CANDIDATE.NS": make_price_df(p_cand),
+        "GOOD_POS.NS":  make_price_df(p_good),
+    }
+    state_path = _make_state_file(open_positions=["GOOD_POS.NS", "MISSING_POS.NS"])
 
     try:
-        with patch("yfinance.download", return_value=mock_df):
-            result = check_entry_correlation(
-                candidate="CANDIDATE.NS",
-                portfolio_state_path=state_path,
-                max_correlation=0.60,
-            )
-
+        result = check_entry_correlation(
+            candidate="CANDIDATE.NS",
+            portfolio_state_path=state_path,
+            max_correlation=0.60,
+            price_data=mock_data,
+        )
         # Must not crash and must return a complete dict
         if "correlations" not in result:
             _fail(name, "Result missing 'correlations' key")
             return
 
-        # NAN_POS pair must be recorded as NaN (zero overlapping bars after dropna)
-        nan_corr = result["correlations"].get("NAN_POS.NS")
-        if nan_corr is not None and not np.isnan(nan_corr):
-            _fail(name, f"Expected NaN for NAN_POS.NS, got {nan_corr:.4f}")
+        # MISSING_POS.NS not in price_data → should be recorded as NaN
+        miss_corr = result["correlations"].get("MISSING_POS.NS")
+        if miss_corr is not None and not np.isnan(miss_corr):
+            _fail(name, f"Expected NaN for MISSING_POS.NS, got {miss_corr}")
             return
 
-        # GOOD_POS has safe correlation — the NaN pair must not override this
+        # GOOD_POS.NS has data → correlation should be computed
         good_corr = result["correlations"].get("GOOD_POS.NS")
         if good_corr is None:
             _fail(name, "GOOD_POS.NS missing from correlations")
@@ -332,11 +312,10 @@ def test_5_nan_handling() -> None:
         if np.isnan(good_corr):
             _fail(name, "Expected non-NaN correlation for GOOD_POS.NS")
             return
-        if good_corr >= 0.60:
-            _fail(name, f"Expected GOOD_POS.NS correlation < 0.60, got {good_corr:.4f}")
-            return
+
+        # Low-corr GOOD_POS.NS must not block entry
         if not result["safe"]:
-            _fail(name, "NaN pair should not block entry when valid pairs are safe")
+            _fail(name, "NaN/missing pair should not block entry when valid pair is safe")
             return
 
         _pass(name)
@@ -345,49 +324,37 @@ def test_5_nan_handling() -> None:
 
 
 # =============================================================================
-# Test 6 — Signal runner integration (fail-open path)
+# Test 6 — price_data=None falls back to yfinance (CLI path)
 # =============================================================================
 
-def test_6_fail_open_integration() -> None:
-    name = "Test 6 — Signal runner integration (fail-open)"
+def test_6_yfinance_fallback() -> None:
+    name = "Test 6 — price_data=None falls back to yfinance (CLI path)"
 
-    # Verify check_entry_correlation is importable (same check signal_runner does)
+    tickers   = ["CANDIDATE.NS", "OPENPOS.NS"]
+    state_path = _make_state_file(open_positions=["OPENPOS.NS"])
+    mock_df    = _make_yf_mock(tickers, target_corr=0.15, seed=6)
+
     try:
-        from paper_trading.correlation_check import check_entry_correlation as _fn
-        if not callable(_fn):
-            _fail(name, "check_entry_correlation is not callable")
+        with patch("yfinance.download", return_value=mock_df) as mock_dl:
+            result = check_entry_correlation(
+                candidate="CANDIDATE.NS",
+                portfolio_state_path=state_path,
+                max_correlation=0.60,
+                # price_data intentionally omitted → yfinance fallback
+            )
+
+        if not mock_dl.called:
+            _fail(name, "Expected yfinance.download to be called (CLI fallback path)")
             return
-    except ImportError as e:
-        _fail(name, f"Import failed: {e}")
-        return
-
-    # Simulate the signal_runner try/except block with a function that raises
-    logs: list = []
-    buy_was_blocked = [False]
-
-    def mock_check_raises(**kwargs):
-        raise RuntimeError("Simulated network error")
-
-    try:
-        result = mock_check_raises(candidate="TEST.NS")
         if not result["safe"]:
-            buy_was_blocked[0] = True
-            logs.append("BLOCKED")
-        else:
-            logs.append("ALLOWED")
-    except Exception as e:
-        logs.append(
-            f"CORRELATION CHECK ERROR | TEST.NS | {e} — proceeding with BUY (fail open)"
-        )
-
-    if buy_was_blocked[0]:
-        _fail(name, "Fail-open path should not block the BUY")
-        return
-    if not any("CORRELATION CHECK ERROR" in msg for msg in logs):
-        _fail(name, f"Expected fail-open error log, got: {logs}")
-        return
-
-    _pass(name)
+            _fail(name, f"Expected safe=True for low-corr mock; max_corr={result['max_correlation']}")
+            return
+        if result["max_correlation"] is None or result["max_correlation"] >= 0.60:
+            _fail(name, f"Expected max_correlation < 0.60, got {result['max_correlation']}")
+            return
+        _pass(name)
+    finally:
+        os.unlink(state_path)
 
 
 # =============================================================================
@@ -418,8 +385,8 @@ if __name__ == "__main__":
     test_2_safe_correlation()
     test_3_unsafe_correlation()
     test_4_multiple_positions_one_unsafe()
-    test_5_nan_handling()
-    test_6_fail_open_integration()
+    test_5_missing_ticker_in_price_data()
+    test_6_yfinance_fallback()
 
     _assert_live_state_untouched(mtime_before)
 

@@ -28,7 +28,6 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -40,7 +39,7 @@ def check_entry_correlation(
     portfolio_state_dict: dict = None,   # overrides file read when provided
     lookback_days: int = 120,
     max_correlation: float = 0.60,
-    data_source: str = "yfinance",
+    price_data: dict = None,
 ) -> dict:
     """
     Check if a candidate stock is correlation-safe to enter given current
@@ -54,9 +53,15 @@ def check_entry_correlation(
     Args:
         candidate:            NSE ticker to evaluate, e.g. "PERSISTENT.NS"
         portfolio_state_path: path to portfolio_state.json
+        portfolio_state_dict: optional in-memory state dict (overrides file)
         lookback_days:        calendar-day lookback window (default 120)
         max_correlation:      Pearson correlation threshold (default 0.60)
-        data_source:          "yfinance" (only supported value currently)
+        price_data:           optional dict of {ticker: pd.DataFrame} with a
+            'close' column. When provided, skips all API calls and uses this
+            data directly — pass signal_runner's dfs dict for zero-latency,
+            token-free, perfectly-consistent correlation computation. When
+            None (default), fetches via yfinance — suitable for CLI usage
+            where a Kite token may not be available.
 
     Returns:
         {
@@ -112,26 +117,50 @@ def check_entry_correlation(
             "reason":          "No open positions — correlation check not required",
         }
 
-    # ── Fetch price data via yfinance ─────────────────────────────────────────
-    # 6mo period ensures enough trading days for a 120-calendar-day lookback
-    # after accounting for weekends and NSE holidays.
+    # ── Build close price DataFrame ───────────────────────────────────────────
     tickers_to_fetch = [candidate] + open_positions
 
-    raw = yf.download(
-        tickers_to_fetch,
-        period="6mo",
-        interval="1d",
-        auto_adjust=True,
-        progress=False,
-    )
+    if price_data is not None:
+        # ── Path A: pre-fetched data from signal_runner (zero API calls) ──────
+        # DataFrames are already in memory — just extract close prices.
+        # This is the path used by signal_runner.py at 3:45 PM.
+        # Data is identical to what generated the BUY signal — perfect consistency.
+        close_series: dict[str, pd.Series] = {}
+        for ticker in tickers_to_fetch:
+            if ticker in price_data and price_data[ticker] is not None:
+                df = price_data[ticker]
+                if "close" in df.columns and len(df) >= 10:
+                    close_series[ticker] = df["close"]
+        if len(close_series) < 2:
+            return {
+                "candidate":       candidate,
+                "open_positions":  open_positions,
+                "correlations":    {},
+                "max_correlation": None,
+                "threshold":       max_correlation,
+                "safe":            True,
+                "reason":          "Insufficient pre-fetched data — correlation check inconclusive, allowing entry",
+            }
+        close_df = pd.DataFrame(close_series)
 
-    # yfinance multi-ticker download returns MultiIndex (attribute, ticker).
-    # Slice the Close level; fall back gracefully for older yfinance versions.
-    if isinstance(raw.columns, pd.MultiIndex):
-        close_df = raw["Close"]
     else:
-        # Older yfinance or single-ticker fallback
-        close_df = raw[["Close"]].rename(columns={"Close": tickers_to_fetch[0]})
+        # ── Path B: yfinance fallback (CLI usage, no token required) ──────────
+        # Used when called from command line for manual candidate evaluation.
+        # yfinance works without authentication — suitable for weekend use.
+        import yfinance as yf
+        raw = yf.download(
+            tickers_to_fetch,
+            period="6mo",
+            interval="1d",
+            auto_adjust=True,
+            progress=False,
+        )
+        if isinstance(raw.columns, pd.MultiIndex):
+            close_df = raw["Close"]
+        else:
+            close_df = raw[["Close"]].rename(
+                columns={"Close": tickers_to_fetch[0]}
+            )
 
     # ── Compute daily log returns ─────────────────────────────────────────────
     log_returns = np.log(close_df / close_df.shift(1)).iloc[1:]  # drop first NaN row
@@ -222,6 +251,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     candidate = sys.argv[1]
+    # CLI usage: price_data=None → yfinance fallback (no token needed)
+    # signal_runner usage: price_data=dfs → pre-fetched, zero API calls
     result = check_entry_correlation(candidate)
 
     print(f"\nCorrelation Check — {result['candidate']}")

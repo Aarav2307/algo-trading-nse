@@ -1344,6 +1344,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                     portfolio_state_dict=corr_state,
                     lookback_days=120,
                     max_correlation=0.60,
+                    price_data=dfs,        # pre-fetched DataFrames — zero API calls
                 )
                 if not corr_result["safe"]:
                     reason = f"Correlation block: {corr_result['reason']}"
