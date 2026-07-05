@@ -1,6 +1,0 @@
-Skipped stocks — 2026-06-12 15:27:19
-
-TATAMOTORS.NS: download failed
-MCDOWELL-N.NS: download failed
-HPCL.NS: download failed
-ZOMATO.NS: download failed
