@@ -23,3 +23,11 @@ __pycache__/
 test_kite.py
 test_kite_fetcher.py
 auth/nse_cache/
+
+# Screener runtime files — change every run
+screener/degradation_tracker.json
+screener/degradation_tracker.backup.json
+screener/degradation_tracker.corrupt*
+
+# News monitor output — generated nightly
+utils/news_flags.json
