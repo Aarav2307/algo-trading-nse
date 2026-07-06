@@ -12,6 +12,7 @@ Usage:
 Requires a fresh Kite access token: run auth/kite_login.py first.
 """
 
+import argparse
 import io
 import sys
 from contextlib import redirect_stdout
@@ -1897,8 +1898,153 @@ def build_extended_universe(
 
 
 if __name__ == "__main__":
-    COOLDOWN = 15
+    # ── Argument parsing ────────────────────────────────────────────────
+    parser = argparse.ArgumentParser(
+        description="NSE SMA crossover walk-forward validation.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Full universe validation (quarterly review):
+    python validation/walk_forward.py
+
+  Single stock validation (WF gate before universe addition):
+    python validation/walk_forward.py --ticker PERSISTENT.NS
+    python validation/walk_forward.py --ticker HCLTECH.NS --no-extended
+        """,
+    )
+    parser.add_argument(
+        "--ticker",
+        type=str,
+        default=None,
+        metavar="TICKER.NS",
+        help=(
+            "Validate a single stock before adding to universe. "
+            "Runs original + extended WF windows on this stock only. "
+            "If omitted, validates the full STOCKS universe."
+        ),
+    )
+    parser.add_argument(
+        "--no-extended",
+        action="store_true",
+        default=False,
+        help="Skip extended walk-forward (2015-19 IS). Faster for quick checks.",
+    )
+    args = parser.parse_args()
+
+    COOLDOWN     = 15
     NIFTY_FILTER = True
+
+    # ── Single-stock WF gate (--ticker mode) ───────────────────────────
+    if args.ticker is not None:
+        ticker = args.ticker.strip()
+        if not ticker.endswith(".NS"):
+            ticker += ".NS"
+
+        print(f"\n{'='*70}")
+        print(f"  WALK-FORWARD GATE — Single Stock Validation")
+        print(f"  Candidate: {ticker}")
+        print(f"  Purpose:   Validate before adding to live universe")
+        print(f"{'='*70}\n")
+
+        # Run original window on this stock only
+        print("Running ORIGINAL walk-forward (2018-22 IS / 2023-today OOS)...")
+        single_results = run_walk_forward(
+            stocks=[ticker],
+            cooldown_bars=COOLDOWN,
+            nifty_regime_filter=NIFTY_FILTER,
+        )
+
+        # Run extended window unless --no-extended
+        if not args.no_extended:
+            print("\nRunning EXTENDED walk-forward (2015-19 IS / 2020-23 OOS)...")
+            extended_results = run_extended_walk_forward(
+                stocks=[ticker],
+                cooldown_bars=COOLDOWN,
+                nifty_regime_filter=NIFTY_FILTER,
+            )
+        else:
+            extended_results = {}
+            print("\n[--no-extended flag set — skipping extended window]")
+
+        # ── WF Gate Verdict ─────────────────────────────────────────────
+        # run_walk_forward() returns {ticker: {"score": int, "oos_return": float}}
+        # run_extended_walk_forward() returns the same format
+        TOTAL_METRICS = 6
+        METRIC_MIN    = 4      # each stock must pass ≥4/6 independently
+        OOS_RET_MIN   = 4.0    # OOS total return must be ≥+4%
+
+        orig_data    = single_results.get(ticker, {})
+        orig_score   = orig_data.get("score")       # int or None
+        orig_oos_ret = orig_data.get("oos_return")  # float or None
+
+        ext_data    = extended_results.get(ticker, {}) if extended_results else {}
+        ext_score   = ext_data.get("score")
+        ext_oos_ret = ext_data.get("oos_return")
+
+        orig_metrics_ok = orig_score is not None and orig_score >= METRIC_MIN
+        orig_ret_ok     = orig_oos_ret is not None and orig_oos_ret >= OOS_RET_MIN
+        ext_metrics_ok  = (
+            True if args.no_extended          # skipped — don't penalise
+            else ext_score is None            # insufficient data — don't penalise
+            or ext_score >= METRIC_MIN
+        )
+
+        gate_pass = orig_metrics_ok and orig_ret_ok and ext_metrics_ok
+
+        print(f"\n{'='*70}")
+        print(f"  WF GATE VERDICT — {ticker}")
+        print(f"{'='*70}")
+
+        if orig_score is not None:
+            orig_ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
+            print(f"  Original window:  {orig_score}/{TOTAL_METRICS} metrics "
+                  f"| OOS return {orig_ret_str}")
+        else:
+            print(f"  Original window:  INSUFFICIENT DATA (check Kite token)")
+
+        if args.no_extended:
+            print(f"  Extended window:  SKIPPED (--no-extended)")
+        elif ext_score is not None:
+            ext_ret_str = f"{ext_oos_ret:+.1f}%" if ext_oos_ret is not None else "N/A"
+            print(f"  Extended window:  {ext_score}/{TOTAL_METRICS} metrics "
+                  f"| OOS return {ext_ret_str}")
+        else:
+            print(f"  Extended window:  INSUFFICIENT DATA (stock too young for 2015 IS)")
+
+        print()
+        if gate_pass:
+            print(f"  ✅ GATE: PASS — {ticker} is validated for universe addition")
+            print(f"     Action: add to STOCKS in paper_trading/signal_runner.py")
+            print(f"             add to STOCKS in validation/walk_forward.py")
+            print(f"             document in CLAUDE_CONTEXT Universe History")
+        else:
+            reasons = []
+            if not orig_metrics_ok:
+                score_str = str(orig_score) if orig_score is not None else "N/A"
+                reasons.append(
+                    f"original metrics {score_str}/{TOTAL_METRICS} < {METRIC_MIN} required"
+                )
+            if not orig_ret_ok:
+                ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
+                reasons.append(f"OOS return {ret_str} < +{OOS_RET_MIN:.0f}% required")
+            if not ext_metrics_ok:
+                score_str = str(ext_score) if ext_score is not None else "N/A"
+                reasons.append(
+                    f"extended metrics {score_str}/{TOTAL_METRICS} < {METRIC_MIN} required"
+                )
+            print(f"  ❌ GATE: FAIL — {ticker} does not meet validation threshold")
+            print(f"     Reasons: {'; '.join(reasons)}")
+            print(f"     Action: do NOT add to universe")
+            print(f"             monitor screener for improvement")
+            print(f"             re-test after 1-2 screener cycles")
+
+        print(f"{'='*70}\n")
+
+        # Exit after single-stock validation — never fall through to full run
+        sys.exit(0)
+
+    # ── Full universe validation (default, no --ticker) ─────────────────
+    # Everything below this point is unchanged from the original __main__ block.
 
     # Build extended universe dynamically — no manual maintenance needed.
     # Candidates: current STOCKS + historically traded stocks worth validating.
