@@ -44,7 +44,10 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
   - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
   - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
   - HCLTECH, JKTYRE, BSOFT: part of 37/50 extended — individual scores not isolated
-  - ANURAS/NEWGEN/PERSISTENT: excluded from WF — insufficient history
+  - ANURAS/NEWGEN: excluded from WF — insufficient history
+  - PERSISTENT.NS: WF validated Jul 6 2026 — 5/6 original (OOS +11.7%),
+    5/6 extended (OOS +10.2%) — GATE PASS
+    Command: python validation/walk_forward.py --ticker PERSISTENT.NS
 - walk_forward.py universe updated Jun 26: BAJAJ-AUTO, HCLTECH, COLPAL, JKTYRE, BSOFT
 - Run walk_forward.py quarterly — next run due October 2026
 
