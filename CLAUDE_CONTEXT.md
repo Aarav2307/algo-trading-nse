@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
 Last updated: 2026-07-05
 
-## Current Trading Universe (8 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS, PERSISTENT.NS
+## Current Trading Universe (7 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -15,6 +15,10 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - Removed Jun 24: WHIRLPOOL (fails min_abs_oos_ret +3.5% vs +4% threshold, payoff 1.48 below 1.5)
 - Removed Jun 24: HEROMOTOCO (2/5 extended WF, never generated entry signal since added Jun 16)
 - Removed Jun 24: SIEMENS (3/5 both WF windows, OOS return ~0%, position closed Jun 24 at Rs3,688)
+- Removed Jul 7 2026: JKTYRE.NS — WF FAIL (2/6 original, OOS -0.3%,
+  expectancy -Rs83/trade, H=0.214 mean-reverting)
+  HURST_SKIP fired Jul 6 on golden cross — Hurst gate prevented bad entry
+  Replace at next screener cycle with validated candidate
 
 ## Paper Trading Status (as of 2026-07-05)
 - Started: 2026-06-02 (33 trading days as of Jul 5)
@@ -29,7 +33,7 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
   - TMPV: -₹1,297 (Jun 17, Chandelier stop)
   - SIEMENS: -₹157 (Jun 24, death cross, filled at ₹3,688)
   - BAJAJ-AUTO: -₹441 gross (Jun 29, death cross, filled at ₹9,892 — gapped UP)
-- All 8 stocks waiting for golden cross entry signal
+- All 7 stocks waiting for golden cross entry signal (JKTYRE removed Jul 7)
 - repair_portfolio_state.py: no longer needed — BAJAJ-AUTO filled cleanly Jun 29
 
 ## Walk-Forward Validation Results
@@ -39,16 +43,18 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, JKTYRE.NS, BSOFT.NS,
 - OOS end date is dynamic (date.today()) — always includes latest live data
 - 6 metrics per stock: OOS>IS return, Sharpe>0, payoff>1.5, win rate>40%, expectancy>0, min OOS +4%
 - Individual stock results:
-  - BAJAJ-AUTO: OOS +13.5% — strongest performer, passes all 6 metrics
-  - COLPAL: 10/12 validated separately (Jun 24 — both WF windows)
+  - BAJAJ-AUTO.NS: 6/6 original OOS +13.5% — WF validated (original validation)
+  - COLPAL.NS: 10/12 both windows — WF validated Jun 24 2026
+  - HCLTECH.NS: 6/6 original OOS +5.5%, 4/6 extended — WF validated Jul 6 2026
+  - BSOFT.NS: 6/6 original OOS +8.5%, 5/6 extended — WF validated Jul 6 2026
+  - PERSISTENT.NS: 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
+    Command: python validation/walk_forward.py --ticker PERSISTENT.NS
+  - JKTYRE.NS: REMOVED Jul 7 2026 — WF FAIL 2/6 original (OOS -0.3%,
+    expectancy -Rs83/trade). Do not re-add without new WF validation.
   - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
   - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
-  - HCLTECH, JKTYRE, BSOFT: part of 37/50 extended — individual scores not isolated
   - ANURAS/NEWGEN: excluded from WF — insufficient history
-  - PERSISTENT.NS: WF validated Jul 6 2026 — 5/6 original (OOS +11.7%),
-    5/6 extended (OOS +10.2%) — GATE PASS
-    Command: python validation/walk_forward.py --ticker PERSISTENT.NS
-- walk_forward.py universe updated Jun 26: BAJAJ-AUTO, HCLTECH, COLPAL, JKTYRE, BSOFT
+- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure

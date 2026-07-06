@@ -55,10 +55,10 @@ from strategies.sma_crossover import generate_signals
 # Re-run walk_forward.py quarterly, or after any universe addition/removal.
 STOCKS = [
     "BAJAJ-AUTO.NS",   # OOS +13.5%, strong across both WF windows
-    "HCLTECH.NS",      # clean, no flags
+    "HCLTECH.NS",      # 6/6 original OOS +5.5%, 4/6 extended — WF validated Jul 6 2026
     "COLPAL.NS",       # WF validated 10/12
-    "JKTYRE.NS",       # clean, no flags
-    "BSOFT.NS",        # 4/5 extended WF; standout OOS performer
+    "BSOFT.NS",        # 6/6 original OOS +8.5%, 5/6 extended — WF validated Jul 6 2026
+    "PERSISTENT.NS",   # 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
 ]
 
 
@@ -2059,12 +2059,12 @@ Examples:
         "BAJAJ-AUTO.NS",   # strong WF, removed from live Jun 2026 — include for validation
         "HCLTECH.NS",
         "COLPAL.NS",
-        "JKTYRE.NS",
         "BSOFT.NS",
         "PERSISTENT.NS",   # added Jun 2026 — will qualify when history builds
         "ANURAS.NS",       # listed post-2019 — will fail bar check automatically
         "NEWGEN.NS",       # listed 2018 — will fail bar check automatically
         # Historically traded, removed from live universe
+        "JKTYRE.NS",       # removed Jul 7 2026 — WF FAIL 2/6 (OOS -0.3%, expectancy -Rs83)
         "TMPV.NS",
         "WHIRLPOOL.NS",
         "SIEMENS.NS",

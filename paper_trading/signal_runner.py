@@ -76,7 +76,6 @@ STOCKS: List[str] = [
     "COLPAL.NS",
     "ANURAS.NS",
     "NEWGEN.NS",
-    "JKTYRE.NS",
     "BSOFT.NS",
     "PERSISTENT.NS",
 ]
