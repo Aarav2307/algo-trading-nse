@@ -341,8 +341,8 @@ def _metrics(equity_curve: pd.DataFrame, portfolio: Portfolio) -> dict:
 
 def _covid_note(equity_curve: pd.DataFrame) -> str:
     """Summarise drawdown during the COVID crash (Feb–Apr 2020)."""
-    lo = pd.Timestamp("2020-02-01")
-    hi = pd.Timestamp("2020-04-30")
+    lo = pd.Timestamp("2020-02-01", tz=equity_curve.index.tzinfo)
+    hi = pd.Timestamp("2020-04-30", tz=equity_curve.index.tzinfo)
     mask = (equity_curve.index >= lo) & (equity_curve.index <= hi)
     if not mask.any():
         return ""
