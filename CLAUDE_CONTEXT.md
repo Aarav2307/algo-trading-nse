@@ -95,6 +95,39 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
 - MONITOR = already in golden cross — wait for next cycle before adding
 - Divergence detection: flags stocks where 2yr and 80d SMA windows disagree
 
+### Mandatory WF Gate Before Universe Addition
+NEVER add a stock to STOCKS in signal_runner.py without running WF validation first.
+Screener ADD recommendation = candidate for testing, NOT approval to add.
+
+Step 1 — Run single-stock validation:
+  python validation/walk_forward.py --ticker CANDIDATE.NS
+
+Step 2 — Gate criteria (both must pass):
+  - Original window: ≥4/6 metrics AND OOS return ≥+4%
+  - Extended window: ≥4/6 metrics (if sufficient history exists)
+
+Step 3 — If PASS:
+  - Add to STOCKS in paper_trading/signal_runner.py
+  - Add to STOCKS in validation/walk_forward.py
+  - Document in CLAUDE_CONTEXT Universe History with scores and date
+
+Step 4 — If FAIL:
+  - Do NOT add to universe
+  - Note reason in CLAUDE_CONTEXT
+  - Re-test after 2 screener cycles (minimum 4 weeks)
+
+Additional flags:
+  --no-extended: skip extended window (faster, use for quick checks)
+  Example: python validation/walk_forward.py --ticker HCLTECH.NS --no-extended
+
+Stocks validated Jul 6-7 2026 using this gate:
+  PERSISTENT.NS: PASS (5/6 original OOS +11.7%, 5/6 extended OOS +10.2%)
+  HCLTECH.NS:    PASS (6/6 original OOS +5.5%,  4/6 extended OOS +2.5%)
+  BSOFT.NS:      PASS (6/6 original OOS +8.5%,  5/6 extended OOS +11.4%)
+  NEWGEN.NS:     PASS (4/6 original OOS +10.0%, 5/6 extended OOS +17.6%)
+  JKTYRE.NS:     FAIL (2/6 original OOS -0.3%,  expectancy -Rs83/trade)
+                 → Removed from universe Jul 7 2026
+
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
 - Wait for 6 months clean paper trading data (currently at ~33 days as of Jul 5)
@@ -499,6 +532,27 @@ Test suite (verified on server Jul 5 2026):
 - To pre-warm next year in November 2026:
   python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
 - Never hardcode future years — let the API provide them
+
+### Live Hurst Quality Gate (signal_runner.py)
+- compute_hurst() called at BUY entry time in _process_stock()
+- Gate fires AFTER regime filter, BEFORE BUY_CANDIDATE collection
+- If H < HURST_THRESHOLD (0.48): signal = HURST_SKIP, entry suppressed
+- Fail-open: if computation errors, entry proceeds (never block on error)
+- HURST_THRESHOLD imported from screener.auto_screener — single source of truth
+- Motivation: stocks can degrade after universe addition (BAJAJ-AUTO H=0.371,
+  JKTYRE H=0.214, BSOFT H=0.388 in current BEAR market)
+
+BEAR market Hurst suppression pattern (verified Jul 7 2026):
+  Most universe stocks show H below 0.48 in BEAR markets and recover
+  above 0.48 in BULL markets — this is normal regime behavior, not
+  structural failure. Do NOT remove stocks based on current low Hurst alone.
+  Verified pattern:
+  - BAJAJ-AUTO: H=0.374 (2022 BEAR) → H=0.571 (2024 BULL) — temporary
+  - BSOFT:      H=0.394 (2022 BEAR) → H=0.543 (2024 BULL) — temporary
+  - PERSISTENT: H=0.476 (2022 BEAR) → H=0.536 (2024 BULL) — mildest effect
+  - NEWGEN:     H=0.501 (current), strong H=0.624 seen Mar 2025 — OK
+  JKTYRE was a genuine structural failure (H=0.214, negative expectancy)
+  — different from temporary BEAR suppression.
 
 ### Transaction Costs (verified Zerodha Jun 2026, zerodha.com/charges)
 - Delivery is used for all trades (CNC orders via AMO)
