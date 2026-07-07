@@ -274,11 +274,25 @@ def _warn_if_market_open() -> None:
 # Pre-trade risk flags (news_monitor output)
 # =============================================================================
 
+def _expected_last_news_monitor_date(today: date) -> date:
+    """
+    The most recent weekday news_monitor should have run on, as of `today`.
+    Monday  -> expects Friday's run (3 days prior)
+    Tue-Fri -> expects yesterday's run (1 day prior)
+    """
+    if today.weekday() == 0:  # Monday
+        return today - timedelta(days=3)
+    else:
+        return today - timedelta(days=1)
+
+
 def load_news_flags() -> dict:
     """
     Load pre-trade risk flags from news_monitor output.
     Returns empty dict on any failure — never crash signal_runner.
-    Warns if flags file is older than 20 hours (stale).
+    Warns if the flags file is from before the most recent expected
+    news_monitor run (weekday-aware — handles the normal ~21h daily gap
+    and the ~65h Friday-to-Monday weekend gap without false positives).
     """
     try:
         if not NEWS_FLAGS_FILE.exists():
@@ -287,9 +301,14 @@ def load_news_flags() -> dict:
         with open(NEWS_FLAGS_FILE) as f:
             data = json.load(f)
         generated_at = datetime.strptime(data["generated_at"], "%Y-%m-%d %H:%M")
-        age_hours = (datetime.now() - generated_at).total_seconds() / 3600
-        if age_hours > 20:
-            print(f"[news_monitor] WARNING: Flags file is {age_hours:.0f}h old — may be stale")
+        file_date = generated_at.date()
+        expected_date = _expected_last_news_monitor_date(date.today())
+        if file_date < expected_date:
+            print(
+                f"[news_monitor] WARNING: Flags file is stale — from {file_date}, "
+                f"expected a run on or after {expected_date}. "
+                "news_monitor may have failed to run."
+            )
         return data.get("flags", {})
     except Exception as e:
         print(f"[news_monitor] WARNING: Could not load flags: {e} — proceeding without checks")

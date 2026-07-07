@@ -3,7 +3,7 @@ utils/test_news_monitor.py — Unit tests for news_monitor.py and
 signal_runner's load_news_flags().
 
 Run: python utils/test_news_monitor.py
-All 9 must pass.
+All 14 must pass.
 """
 
 import io
@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import tempfile
+from contextlib import redirect_stdout
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -371,7 +372,7 @@ def test_9_load_news_flags_warns_on_stale() -> None:
         _fail(name, f"Import failed: {e}")
         return
 
-    stale_time = (datetime.now() - timedelta(hours=25)).strftime("%Y-%m-%d %H:%M")
+    stale_time = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M")
     stale_data = {
         "generated_at":     stale_time,
         "universe_checked": ["BAJAJ-AUTO.NS"],
@@ -425,6 +426,101 @@ def test_9_load_news_flags_warns_on_stale() -> None:
 
 
 # =============================================================================
+# Tests 10-13 — weekday-aware staleness logic in _expected_last_news_monitor_date
+# =============================================================================
+
+from paper_trading.signal_runner import _expected_last_news_monitor_date as _exp_date
+
+
+def test_10_monday_expects_friday_run():
+    """On a Monday, a flags file from the prior Friday must be fresh."""
+    monday = date(2026, 7, 6)   # weekday() == 0 (Monday)
+    friday = date(2026, 7, 3)   # weekday() == 4 (Friday)
+    assert monday.weekday() == 0
+    assert friday.weekday() == 4
+    assert _exp_date(monday) == friday
+
+
+def test_11_tuesday_expects_monday_run():
+    """On a Tuesday, only yesterday's (Monday) run counts as fresh."""
+    tuesday = date(2026, 7, 7)  # weekday() == 1 (Tuesday)
+    monday  = date(2026, 7, 6)  # weekday() == 0 (Monday)
+    assert tuesday.weekday() == 1
+    assert monday.weekday() == 0
+    assert _exp_date(tuesday) == monday
+
+
+def test_12_monday_flags_from_thursday_is_stale():
+    """A flags file older than the expected Friday run must warn on Monday."""
+    monday   = date(2026, 7, 6)
+    thursday = date(2026, 7, 2)  # Thursday — older than expected Friday Jul 3
+    assert thursday.weekday() == 3
+    assert thursday < _exp_date(monday)  # Thursday is before expected Friday
+
+
+def test_13_wednesday_flags_from_monday_is_stale():
+    """On a Wednesday, a flags file from Monday (2 days old) should warn,
+    since Tuesday's run should have refreshed it."""
+    wednesday = date(2026, 7, 8)  # weekday() == 2 (Wednesday)
+    monday    = date(2026, 7, 6)  # weekday() == 0 (Monday)
+    tuesday   = date(2026, 7, 7)  # weekday() == 1 (Tuesday) — what Wednesday expects
+    assert wednesday.weekday() == 2
+    assert _exp_date(wednesday) == tuesday
+    assert monday < tuesday  # Monday is before expected Tuesday → stale
+
+
+# =============================================================================
+# Test 14 — integration: Monday reading Friday's flags must NOT warn
+# =============================================================================
+
+def test_14_load_news_flags_no_warning_on_monday_reading_friday_flags() -> None:
+    """
+    Integration-level regression test for the original bug: a Monday run
+    reading the preceding Friday's flags file must NOT print a staleness
+    warning, even though the file is ~65 hours old by clock time.
+    """
+    name = "test_14_load_news_flags_no_warning_on_monday_reading_friday_flags"
+    try:
+        import paper_trading.signal_runner as sr
+    except Exception as e:
+        _fail(name, f"Import failed: {e}")
+        return
+
+    friday_generated_at = "2026-07-03 18:30"  # a real Friday
+    monday_today = date(2026, 7, 6)            # a real Monday
+    assert monday_today.weekday() == 0  # sanity check it's really Monday
+
+    flags_data = {
+        "generated_at":     friday_generated_at,
+        "universe_checked": ["BAJAJ-AUTO.NS"],
+        "flags":            {},
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+        json.dump(flags_data, tmp)
+        tmp_path = tmp.name
+
+    try:
+        with patch.object(sr, "NEWS_FLAGS_FILE", Path(tmp_path)), \
+             patch("paper_trading.signal_runner.date") as mock_date:
+            mock_date.today.return_value = monday_today
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                result = sr.load_news_flags()
+
+            output = captured.getvalue()
+            if "WARNING" in output and "stale" in output.lower():
+                _fail(name, f"Expected no staleness warning, got: {output!r}")
+                return
+    finally:
+        os.unlink(tmp_path)
+
+    _pass(name)
+
+
+# =============================================================================
 # Runner
 # =============================================================================
 
@@ -443,6 +539,11 @@ if __name__ == "__main__":
     test_7_expired_manual_block_ignored()
     test_8_load_news_flags_fails_open()
     test_9_load_news_flags_warns_on_stale()
+    test_10_monday_expects_friday_run()
+    test_11_tuesday_expects_monday_run()
+    test_12_monday_flags_from_thursday_is_stale()
+    test_13_wednesday_flags_from_monday_is_stale()
+    test_14_load_news_flags_no_warning_on_monday_reading_friday_flags()
 
     print()
     print(f"  Results: {_PASS} passed, {_FAIL} failed")
