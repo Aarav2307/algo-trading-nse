@@ -38,6 +38,7 @@ import json
 import math
 import os
 import sys
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -365,6 +366,14 @@ def _fetch_stock_data(today: date) -> Dict[str, pd.DataFrame]:
     for ticker in STOCKS:
         try:
             df = get_ohlcv(ticker, start, end)
+            # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+            # 60 req/min cap), mirroring screener/auto_screener.py's identical
+            # pattern (see that file's fetch loop). Applied regardless of downstream
+            # data-quality guards below, since the API call itself already consumed
+            # quota against the rate limit.
+            # NB: adds ~1.1s × len(STOCKS) to each run (7 stocks ≈ 7.7s today;
+            # scales linearly as the universe grows).
+            time.sleep(1.1)
 
             # Guard: need at least SMA_SLOW bars to generate signals
             if len(df) < SMA_SLOW:

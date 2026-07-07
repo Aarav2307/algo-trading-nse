@@ -30,6 +30,14 @@ _AUTH_DIR  = Path(__file__).parent.parent / "auth"
 _TOKEN_FILE = _AUTH_DIR / "access_token.txt"
 _CACHE_FILE = _AUTH_DIR / "nse_instruments.json"
 
+# Network timeout (seconds) for all Kite API calls made through this client.
+# Without this, a hung Zerodha API (maintenance, network stall) blocks the
+# 3:45 PM signal run indefinitely — no AMO orders get queued for tomorrow's
+# open. Confirmed via KiteConnect.__init__ signature inspection that
+# `timeout` is a direct constructor kwarg in the installed pykiteconnect
+# version (see docstring/commit context — do not remove this comment).
+KITE_REQUEST_TIMEOUT_SECONDS = 15
+
 
 def _auto_refresh_token(max_retries: int = 1) -> bool:
     """
@@ -82,13 +90,14 @@ def _load_kite() -> KiteConnect:
             "auth/access_token.txt not found. Run auth/kite_login.py first."
         )
 
-    access_token = _TOKEN_FILE.read_text().splitlines()[0].strip()
+    lines = _TOKEN_FILE.read_text().splitlines()
+    access_token = lines[0].strip() if lines else ""
     if not access_token:
         raise ValueError(
             "auth/access_token.txt is empty. Run auth/kite_login.py first."
         )
 
-    kite = KiteConnect(api_key=api_key)
+    kite = KiteConnect(api_key=api_key, timeout=KITE_REQUEST_TIMEOUT_SECONDS)
     kite.set_access_token(access_token)
     return kite
 

@@ -257,8 +257,10 @@ def _check_circuit_breaker(ticker: str, open_price: float, prev_close: float) ->
     Check if a stock has hit a circuit breaker at open.
     NSE circuit limits: 2%, 5%, 10%, 20% depending on stock category.
 
-    A circuit breaker is suspected if open price moved > 19% from prev close
+    A circuit breaker is suspected if open price moved >= 20% from prev close
     (lower circuit = stock can't be sold, upper circuit = can't be bought).
+    20% is NSE's standard upper/lower circuit band for individual stocks,
+    distinguishing a genuine circuit event from an ordinary large overnight gap.
 
     Returns:
         (True, reason) if circuit breaker suspected
@@ -269,7 +271,7 @@ def _check_circuit_breaker(ticker: str, open_price: float, prev_close: float) ->
 
     pct_move = abs(open_price - prev_close) / prev_close * 100
 
-    if pct_move >= 19.0:
+    if pct_move >= 20.0:
         direction = "upper" if open_price > prev_close else "lower"
         return True, (
             f"Possible {direction} circuit breaker: open moved {pct_move:.1f}% "
