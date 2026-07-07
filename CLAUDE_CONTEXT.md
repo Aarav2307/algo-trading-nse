@@ -53,8 +53,12 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
     expectancy -Rs83/trade). Do not re-add without new WF validation.
   - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
   - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
-  - ANURAS/NEWGEN: excluded from WF — insufficient history
-- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT
+  - NEWGEN.NS: 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
+    WF validated Jul 7 2026 (listed Jan 2018, sufficient IS history confirmed)
+  - ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window
+    Cannot validate with current IS window definition
+    Re-evaluate at October 2026 quarterly review with updated IS window
+- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
@@ -109,7 +113,8 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
 ## System Limitations
 - No news/merger monitoring — corporate_actions.py only checks scheduled NSE ex-dates
 - No F&O support (future project)
-- ANURAS has insufficient walk-forward history (listed post-2019) — monitor carefully
+- ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window — cannot validate
+  Re-evaluate at October 2026 quarterly review with updated IS window
 - HEROMOTOCO removed Jun 24 — 2/5 extended WF, never generated entry signal
 - SIEMENS removed Jun 24 — 3/5 both windows, position closed Jun 24 at Rs3,688
 - Gap-down circuit breaker: COMPLETED (Jun 26) — GAP_BREAKER_THRESHOLD=3%
@@ -120,7 +125,8 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
 - Correlation threshold 0.60 may be too loose for stress scenarios — review after 6 months
 - Hurst threshold stays at 0.48 — raising to 0.55 filters entire current universe to zero stocks
   (verified Jun 26: all 6 live stocks have H between 0.415-0.549, none pass 0.55)
-- NEWGEN listed Jan 2018 — only 226 IS bars, excluded from extended walk-forward
+- NEWGEN.NS: WF validated Jul 7 2026 — 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
+  Listed Jan 2018, sufficient IS history confirmed at validation
 
 ### Stocks Removed (Jun 24 2026)
 - WHIRLPOOL: OOS return +3.5% fails min_abs_oos_ret threshold (+4%),

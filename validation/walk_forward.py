@@ -41,7 +41,7 @@ from strategies.sma_crossover import generate_signals
 # Current validated universe as of 2026-06-26.
 # Excluded from WF (insufficient history):
 #   ANURAS.NS    — only ~440 IS bars (listed post-2019)
-#   NEWGEN.NS    — only ~226 IS bars (listed Jan 2018)
+#   NEWGEN.NS    — WF validated Jul 7 2026 (4/6 original OOS +10.0%, 5/6 extended OOS +17.6%)
 #   PERSISTENT.NS — just added to live system, no WF history yet
 # Removed from live system (not in WF):
 #   TMPV, WHIRLPOOL, SIEMENS, HEROMOTOCO, BOSCHLTD, CUMMINSIND, RPOWER
@@ -59,6 +59,7 @@ STOCKS = [
     "COLPAL.NS",       # WF validated 10/12
     "BSOFT.NS",        # 6/6 original OOS +8.5%, 5/6 extended — WF validated Jul 6 2026
     "PERSISTENT.NS",   # 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
+    "NEWGEN.NS",       # WF validated Jul 7 2026 — 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
 ]
 
 
@@ -2062,7 +2063,7 @@ Examples:
         "BSOFT.NS",
         "PERSISTENT.NS",   # added Jun 2026 — will qualify when history builds
         "ANURAS.NS",       # listed post-2019 — will fail bar check automatically
-        "NEWGEN.NS",       # listed 2018 — will fail bar check automatically
+        "NEWGEN.NS",       # WF validated Jul 7 2026 — sufficient history confirmed
         # Historically traded, removed from live universe
         "JKTYRE.NS",       # removed Jul 7 2026 — WF FAIL 2/6 (OOS -0.3%, expectancy -Rs83)
         "TMPV.NS",
