@@ -64,7 +64,8 @@ The system runs in two daily phases, fully automated:
 │  6. Corporate actions check — ex-dates in next 2 days    │
 │  7. Phase 1: collect BUY candidates (golden cross)       │
 │  8. Risk manager — check stops on all open positions     │
-│  9. Phase 2: rank BUY candidates, correlation check,     │
+│  9. Phase 2: rank BUY candidates, live Hurst gate        │
+│     (H < 0.48 → HURST_SKIP), correlation check,         │
 │     cash gate (min Rs1,000), execute in rank order       │
 │ 10. ETF overlay rebalance — NIFTYBEES tier adjustment    │
 │ 11. AMO orders — limit orders for tomorrow's open        │
@@ -118,6 +119,7 @@ Utilities
 
 Validation
   validation/walk_forward.py       → IS vs OOS walk-forward, 6 metrics, dynamic OOS end date
+                                     --ticker flag for single-stock WF gate
   validation/etf_overlay_backtest.py → ETF overlay backtest (349 stocks)
   validation/etf_tier_grid_search.py → Tier configuration grid search
 
@@ -322,6 +324,15 @@ algo-trading/
 ## Infrastructure & Automation
 
 The system runs unattended on a **AWS Lightsail Ubuntu 22.04 instance** in the Mumbai region (`ap-south-1`), co-located with NSE for low-latency data access.
+
+### Universe Addition Workflow
+Before adding any stock to the live universe, run walk-forward validation:
+```bash
+python validation/walk_forward.py --ticker CANDIDATE.NS
+```
+Gate criteria: ≥4/6 metrics AND OOS return ≥+4% in original window.
+Screener ADD recommendation = candidate for testing, not approval.
+Use `--no-extended` to skip the extended window for a faster check.
 
 ### Cron Schedule (server time = UTC)
 
