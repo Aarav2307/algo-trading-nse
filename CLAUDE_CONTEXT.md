@@ -1,5 +1,5 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-05
+Last updated: 2026-07-07
 
 ## Current Trading Universe (7 stocks)
 BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
@@ -248,7 +248,7 @@ Stocks validated Jul 6-7 2026 using this gate:
 - Fix: added LIVE_TRADING_MODE flag (default False) to morning_fill_check.py
 - When True: queries kite.orders() for actual order status (COMPLETE/REJECTED/CANCELLED)
 - When False: existing simulation logic unchanged — no paper trading regression
-- Added _check_circuit_breaker(): flags orders where open moved >19% from prev close
+- Added _check_circuit_breaker(): flags orders where open moved >=20% from prev close
 - Added _fetch_live_order_status(): queries Zerodha API with graceful fallback to simulation
 - Added REJECTED/CANCELLED section in morning report requiring manual attention
 - order_id column added to amo_orders.csv via _ensure_csv_header() migration
@@ -452,6 +452,44 @@ Fixed from second audit:
   Email subject shows ⚠️ STALE DATA if cache was used
   Cache pre-populated with 500 tickers
 
+#### Audit1 findings resolved (Jul 7 2026):
+- Audit1 Finding #16: RESOLVED (Jul 7)
+  Circuit breaker threshold corrected: pct_move >= 19.0 → pct_move >= 20.0
+  in _check_circuit_breaker() (paper_trading/morning_fill_check.py)
+  NSE's actual upper/lower circuit band is 20%; 19% was misclassifying
+  large-but-ordinary gaps as circuit breaker events
+  5 new unit tests added (test_gap_breaker.py tests 10-14), all passing
+- Audit1 Finding #17: RESOLVED (Jul 7)
+  Kite API timeout added: KITE_REQUEST_TIMEOUT_SECONDS = 15 passed to
+  KiteConnect(api_key=..., timeout=...) constructor in _load_kite()
+  (data/kite_fetcher.py). Prevents indefinite hang if Zerodha API stalls
+  during the 3:45 PM signal run.
+  Verified end-to-end: a Kite timeout raises an exception that is NOT a
+  ConnectionError/FileNotFoundError, so it correctly falls through
+  signal_runner.py's generic except Exception handler in
+  _fetch_stock_data() (skip ticker + continue) rather than the FATAL
+  sys.exit(1) branch — no new whole-run crash risk introduced.
+  Bonus fix found during testing: _load_kite() had a pre-existing
+  IndexError bug on an empty access_token.txt file (bare .splitlines()[0]
+  raised IndexError before the intended ValueError guard could ever fire).
+  Fixed to check for empty lines first; ValueError with the original
+  helpful message now fires correctly.
+  4 new unit tests added (data/test_kite_fetcher_timeout.py), all passing
+- Audit1 Finding #19: RESOLVED (Jul 7)
+  Rate limiting added to signal_runner.py's _fetch_stock_data(): time.sleep(1.1)
+  after every Kite API call, matching screener/auto_screener.py's existing
+  pattern (~55 req/min, safe under Kite's 60 req/min cap). Previously this
+  loop had zero pacing between per-ticker fetches.
+  Adds ~7.7s to the current 7-stock universe's evening run; scales linearly
+  as the universe grows (noted in-code).
+  3 new unit tests added (paper_trading/test_signal_runner_fetch.py), all passing
+- Bonus fix (not from either audit, found during Finding #17 testing): Jul 7
+  test_gap_breaker.py's test_5_gap_exit_pnl_correct was calling
+  transaction_costs(...)["total"] — but transaction_costs() returns a bare
+  float, not a dict (transaction_cost_breakdown() is the dict-returning
+  function). This was a stale test bug, not a library regression. Fixed to
+  call transaction_costs(exec_price, shares, "sell", "delivery") directly.
+
 Remaining from second audit (not yet fixed):
 - Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
   Risk: full NIFTY exposure while stock entries suppressed
@@ -491,12 +529,15 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified on server Jul 5 2026):
-- test_etf_overlay.py: 23/23 ✅
-- test_gap_breaker.py: 9/9 ✅
+Test suite (verified locally and on server Jul 7 2026):
+- test_etf_overlay.py: 30/30 ✅
+- test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
 - test_costs.py: 7/7 ✅
 - test_correlation_check.py: 6/6 ✅
-- Total: 49/49 tests passing (added Tests 24-27 for ETF VWAP avg_price)
+- test_news_monitor.py: 9/9 ✅
+- test_signal_runner_fetch.py: 3/3 ✅ (new)
+- test_kite_fetcher_timeout.py: 4/4 ✅ (new)
+- Total: 73/73 tests passing
 
 ---
 
