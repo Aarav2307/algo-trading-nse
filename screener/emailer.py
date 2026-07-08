@@ -26,6 +26,47 @@ SENDGRID_TO        = os.getenv("SENDGRID_TO_EMAIL", "aaravpagarwal07@gmail.com")
 
 # ── HTML template ─────────────────────────────────────────────────────────────
 
+def _build_remove_row(s: dict) -> str:
+    """
+    Build the HTML table row(s) for a single REMOVE-recommended stock.
+    Returns the main <tr> plus an optional caution <tr> when any of the
+    stock's counted flags coincided with a NIFTY regime transition.
+    Extracted from build_html() so it can be unit-tested independently.
+    """
+    flags     = s.get("consecutive_flags", 1)
+    flags_str = f"Flagged {flags} consecutive screen{'s' if flags != 1 else ''}"
+    gap_val   = s.get("gap")
+    gap_disp  = f"{gap_val}%" if gap_val is not None else "N/A"
+    main_row = f"""
+        <tr style="border-bottom: 1px solid #ecf0f1;">
+            <td style="padding: 10px; font-weight: bold; color: #e74c3c;">{s['ticker']}</td>
+            <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['hurst']}</td>
+            <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['adx']}</td>
+            <td style="padding: 10px; text-align: center;">{gap_disp}</td>
+            <td style="padding: 10px; color: #e74c3c;">{s['reason']}</td>
+            <td style="padding: 10px; color: #7f8c8d; font-size: 12px;">{flags_str}</td>
+        </tr>"""
+    # Annotation: if any counted flags coincided with a regime transition, add
+    # a visible caution row — annotation only, REMOVE recommendation unchanged.
+    annotated = [
+        (d, a) for d, a in s.get("flag_annotations", {}).items()
+        if a.get("regime_transition_nearby")
+    ]
+    if not annotated:
+        return main_row
+    dates_str = ", ".join(d for d, _ in annotated)
+    caution_row = f"""
+        <tr style="background: #fffbf0;">
+            <td colspan="6" style="padding: 6px 14px; color: #e67e22; font-size: 12px;">
+                ⚠️ CAUTION: {len(annotated)} of {flags} flags for {s['ticker']} occurred
+                within 5 days of a NIFTY regime transition ({dates_str}).
+                ADX often dips mechanically during transitions — verify this reflects
+                genuine decay before removing.
+            </td>
+        </tr>"""
+    return main_row + caution_row
+
+
 def build_html(results: dict) -> str:
     meta     = results["meta"]
     adds     = results["adds"]
@@ -117,21 +158,6 @@ def build_html(results: dict) -> str:
             <td style="padding: 10px; text-align: center;">{s['vol']}%</td>
             <td style="padding: 10px; text-align: center;">{s['avg_corr']}</td>
             {status_cell}
-        </tr>"""
-
-    def remove_row(s: dict) -> str:
-        flags     = s.get("consecutive_flags", 1)
-        flags_str = f"Flagged {flags} consecutive screen{'s' if flags != 1 else ''}"
-        gap_val   = s.get("gap")
-        gap_disp  = f"{gap_val}%" if gap_val is not None else "N/A"
-        return f"""
-        <tr style="border-bottom: 1px solid #ecf0f1;">
-            <td style="padding: 10px; font-weight: bold; color: #e74c3c;">{s['ticker']}</td>
-            <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['hurst']}</td>
-            <td style="padding: 10px; text-align: center; color: #e74c3c;">{s['adx']}</td>
-            <td style="padding: 10px; text-align: center;">{gap_disp}</td>
-            <td style="padding: 10px; color: #e74c3c;">{s['reason']}</td>
-            <td style="padding: 10px; color: #7f8c8d; font-size: 12px;">{flags_str}</td>
         </tr>"""
 
     # ── Table headers ─────────────────────────────────────────────────────────
@@ -246,7 +272,7 @@ def build_html(results: dict) -> str:
 
     # ── REMOVE section ────────────────────────────────────────────────────────
     if removes:
-        remove_rows_html = "".join(remove_row(s) for s in removes)
+        remove_rows_html = "".join(_build_remove_row(s) for s in removes)
         remove_section = f"""
         <h2 style="color: #e74c3c; border-left: 4px solid #e74c3c; padding-left: 12px;">
             ❌ REMOVE Recommendations ({len(removes)})

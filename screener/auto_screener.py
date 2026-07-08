@@ -57,6 +57,20 @@ END_DATE             = date.today().strftime("%Y-%m-%d")
 SMA_FAST             = 20
 SMA_SLOW             = 50
 DEGRADATION_TRACKER  = _ROOT / "screener" / "degradation_tracker.json"
+# Calendar-day window around a NIFTY regime transition within which degradation
+# flags are annotated as potentially mechanical (ADX dips ~3-4 trading days ≈
+# 5 calendar days after an SMA-based BULL↔BEAR flip).  Matches EARNINGS_DAYS_AHEAD
+# precedent in news_monitor.py.  Annotation only — never suppresses flags.
+#
+# Known asymmetry (accepted limitation, not a bug): live annotation only ever
+# catches POST-transition flags (days_since_transition >= 0).  A flag that fires
+# before the transition cannot be annotated at the time it is recorded because
+# signal_runner.py only writes regime_transition_date when the flip actually
+# occurs — the future transition date is not knowable in advance.  Pre-transition
+# proximity (days_since_transition < 0) can only be added retroactively via
+# manual backfill after the transition has been observed, exactly as was done
+# for the 2026-07-05 flags in degradation_tracker.json on 2026-07-09.
+REGIME_TRANSITION_WINDOW = 5
 # Must match paper_trading/signal_runner.py LOOKBACK_CALENDAR_DAYS exactly.
 # The signal runner fetches this many calendar days of history when generating
 # entry/exit signals. Using the same window here ensures screener and live
@@ -429,6 +443,34 @@ def compute_vol(df: pd.DataFrame) -> float:
     except Exception:
         return 0.0
 
+# ── Regime-transition annotation helper ──────────────────────────────────────
+
+def _days_since_regime_transition(screen_date: date) -> Optional[int]:
+    """
+    Returns (screen_date - regime_transition_date).days from portfolio_state.json's
+    regime_transition_date field — the date the NIFTY regime last actually changed.
+
+    Positive = flag occurred N days AFTER the transition.
+    Negative = flag occurred N days BEFORE the transition (only possible in
+               retroactive backfills; live operation always produces non-negative).
+
+    Returns None if the state file is unavailable, the field is missing, or
+    any error occurs.  Fail-open: never crash the screener or block a flag.
+
+    READ-ONLY: never writes to portfolio_state.json.
+    """
+    try:
+        with open(PORTFOLIO_STATE) as f:
+            state = json.load(f)
+        transition_str = state.get("regime_transition_date")
+        if not transition_str:
+            return None
+        transition_date = date.fromisoformat(transition_str)
+        return (screen_date - transition_date).days
+    except Exception:
+        return None
+
+
 # ── NIFTY 500 fetch ───────────────────────────────────────────────────────────
 
 def fetch_nifty500() -> tuple[dict[str, str], bool]:
@@ -773,6 +815,7 @@ def run_screen() -> dict:
             print(f"[tracker] {ticker}: resetting consecutive flags — last screen was {days_since_last_screen} days ago (not consecutive)")
             entry["consecutive_flags"] = 0
             entry["flag_history"]      = []
+            entry["flag_annotations"]  = {}
 
         # Update tracker based on current health
         if is_degraded:
@@ -781,12 +824,21 @@ def run_screen() -> dict:
             # Add to flag history (keep last 10 only)
             entry["flag_history"].append(today_str)
             entry["flag_history"] = entry["flag_history"][-10:]
+            # Annotate if this flag falls within REGIME_TRANSITION_WINDOW days of a
+            # NIFTY regime transition — annotation only, never suppresses the flag.
+            _trans_days = _days_since_regime_transition(today)
+            if _trans_days is not None and 0 <= _trans_days <= REGIME_TRANSITION_WINDOW:
+                entry.setdefault("flag_annotations", {})[today_str] = {
+                    "regime_transition_nearby": True,
+                    "days_since_transition":    _trans_days,
+                }
         else:
-            # Stock is healthy — reset counter
+            # Stock is healthy — reset counter and all annotations
             if entry["consecutive_flags"] > 0:
                 print(f"[tracker] {ticker}: regime healthy again — resetting consecutive flags from {entry['consecutive_flags']} to 0")
             entry["consecutive_flags"] = 0
             entry["flag_history"]      = []
+            entry["flag_annotations"]  = {}
 
         # Update last_screen_date regardless of health
         entry["last_screen_date"] = today_str
@@ -813,6 +865,7 @@ def run_screen() -> dict:
                     "reason":            reason,
                     "consecutive_flags": entry["consecutive_flags"],
                     "flag_history":      entry["flag_history"],
+                    "flag_annotations":  entry.get("flag_annotations", {}),
                 })
 
     # Save tracker with all updates — must happen before return
@@ -879,6 +932,18 @@ if __name__ == "__main__":
         for s in results['removes']:
             flags = s.get('consecutive_flags', '?')
             print(f"  {s['ticker']:<22} {s['reason']} — flagged {flags} consecutive screen(s)")
+            annotated = [
+                (d, a) for d, a in s.get('flag_annotations', {}).items()
+                if a.get('regime_transition_nearby')
+            ]
+            if annotated:
+                dates_str = ', '.join(d for d, _ in annotated)
+                print(
+                    f"  ⚠️  CAUTION: {len(annotated)} of {flags} flags for "
+                    f"{s['ticker']} occurred within {REGIME_TRANSITION_WINDOW} days of a "
+                    f"NIFTY regime transition ({dates_str}). ADX often dips mechanically "
+                    f"during transitions — verify this reflects genuine decay before removing."
+                )
 
         print(f"\nMeta: {results['meta']}")
     else:

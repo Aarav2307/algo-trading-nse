@@ -1536,6 +1536,12 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
     if not is_backfill:
         portfolio.state["last_run_date"]   = today.isoformat()
         portfolio.state["last_run_time"]   = _get_ist_now().strftime("%H:%M")  # IST HH:MM
+        # Track regime transitions: only write regime_transition_date when the
+        # regime actually changes, so the screener's annotation logic can detect
+        # degradation flags that coincide with a genuine BULL↔BEAR flip.
+        _prev_regime = portfolio.state.get("market_regime", "UNKNOWN")
+        if market_regime not in ("UNKNOWN",) and market_regime != _prev_regime:
+            portfolio.state["regime_transition_date"] = today.isoformat()
         portfolio.state["market_regime"]   = market_regime
         portfolio.state["last_regime_date"] = today.isoformat()
         portfolio.save()
