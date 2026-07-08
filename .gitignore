@@ -38,3 +38,10 @@ screener/universe_expansion.py
 screener/universe_expansion_results.txt
 screener/correlation_results.csv
 screener/skipped.txt
+
+# Universe scan runtime output — changes every run
+screener/logs/
+screener/screen_error.csv
+screener/screen_failed.csv
+screener/universe_scan_report_*.md
+screener/stage1_results_*.json
