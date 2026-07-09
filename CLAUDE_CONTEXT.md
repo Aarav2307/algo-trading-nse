@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-07
+Last updated: 2026-07-09
 
-## Current Trading Universe (7 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
+## Current Trading Universe (8 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -19,6 +19,8 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   expectancy -Rs83/trade, H=0.214 mean-reverting)
   HURST_SKIP fired Jul 6 on golden cross — Hurst gate prevented bad entry
   Replace at next screener cycle with validated candidate
+- Added Jul 9 2026: CHOLAHLDNG.NS (screener ADD recommendation Jul 8 2026,
+  WF validated: original 5/6 OOS +15.4%, extended 5/6 OOS +9.1%)
 
 ## Paper Trading Status (as of 2026-07-05)
 - Started: 2026-06-02 (33 trading days as of Jul 5)
@@ -58,7 +60,9 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   - ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window
     Cannot validate with current IS window definition
     Re-evaluate at October 2026 quarterly review with updated IS window
-- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN
+  - CHOLAHLDNG.NS: 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
+    WF validated Jul 8 2026 — added to universe Jul 9 2026
+- walk_forward.py STOCKS updated Jul 9: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN, CHOLAHLDNG
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
@@ -127,6 +131,15 @@ Stocks validated Jul 6-7 2026 using this gate:
   NEWGEN.NS:     PASS (4/6 original OOS +10.0%, 5/6 extended OOS +17.6%)
   JKTYRE.NS:     FAIL (2/6 original OOS -0.3%,  expectancy -Rs83/trade)
                  → Removed from universe Jul 7 2026
+
+Stocks validated Jul 8 2026 using this gate:
+  CHOLAHLDNG.NS: PASS (5/6 original OOS +15.4%, 5/6 extended OOS +9.1%)
+                 → Added to universe Jul 9 2026
+  (Same 2026-07-08 screener batch — 4 other ADD candidates tested, all FAILED WF gate, not added:
+  TMPV.NS:       FAIL (3/6 original OOS +0.5%,  5/6 extended OOS +6.2%)
+  SOBHA.NS:      FAIL (3/6 original OOS +0.3%,  3/6 extended OOS +3.8%)
+  GODREJCP.NS:   FAIL (4/6 both windows, OOS +0.8%/+1.8% below +4% floor)
+  BDL.NS:        FAIL (1/6 original, 0/6 extended — clean rejection))
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
@@ -490,6 +503,36 @@ Fixed from second audit:
   function). This was a stale test bug, not a library regression. Fixed to
   call transaction_costs(exec_price, shares, "sell", "delivery") directly.
 
+#### Regime-transition annotation — COMPLETED (Jul 9 2026):
+Context: 2026-07-05 and 2026-07-08 screener runs flagged NEWGEN.NS and
+  BSOFT.NS for degradation (ADX below threshold), triggering the
+  "2 consecutive screens = REMOVE recommendation" path — coinciding with the
+  2026-07-07 NIFTY BULL flip. Investigation confirmed the flags were likely
+  mechanical ADX dip from the regime transition, not structural stock decay.
+  Neither stock was removed.
+Decision: annotate flags that coincide with a recent NIFTY regime transition,
+  never suppress them. The REMOVE recommendation and consecutive_flags counter
+  fire exactly as before — a human sees the context immediately in the email
+  report and in the tracker JSON, and makes the call.
+Implementation:
+  - signal_runner.py now writes regime_transition_date to portfolio_state.json
+    ONLY when market_regime actually changes (previously last_regime_date was
+    written unconditionally on every run, making it useless as a transition marker)
+  - _days_since_regime_transition() helper in auto_screener.py reads this field;
+    returns None (fail-open) if the field is absent or the file is unreadable
+  - flag_annotations parallel field added to degradation_tracker.json entries:
+    {"2026-07-08": {"regime_transition_nearby": true, "days_since_transition": 1}}
+    Kept separate from existing flat flag_history list to avoid breaking readers
+  - Email report shows ⚠️ CAUTION row below any REMOVE-recommended stock whose
+    flags were annotated — visible, not blocking
+  - Known asymmetry (accepted): live annotation only catches post-transition flags
+    (days_since_transition ≥ 0). Pre-transition proximity requires retroactive
+    backfill, as was done manually for the Jul 5 flags on Jul 9.
+  - REGIME_TRANSITION_WINDOW = 5 calendar days (matches EARNINGS_DAYS_AHEAD precedent)
+  9 new unit tests added (screener/test_degradation_annotation.py), all passing
+  NEWGEN.NS and BSOFT.NS backfilled in degradation_tracker.json — both remain
+  in the universe, both flags preserved in tracker
+
 Remaining from second audit (not yet fixed):
 - Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
   Risk: full NIFTY exposure while stock entries suppressed
@@ -529,15 +572,16 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified locally and on server Jul 7 2026):
+Test suite (verified locally Jul 9 2026):
 - test_etf_overlay.py: 30/30 ✅
 - test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
 - test_costs.py: 7/7 ✅
 - test_correlation_check.py: 6/6 ✅
-- test_news_monitor.py: 9/9 ✅
+- test_news_monitor.py: 14/14 ✅ (was 9/9 — added tests 10-14 for weekday-aware staleness check)
 - test_signal_runner_fetch.py: 3/3 ✅ (new)
 - test_kite_fetcher_timeout.py: 4/4 ✅ (new)
-- Total: 73/73 tests passing
+- test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
+- Total: 87/87 tests passing
 
 ---
 
