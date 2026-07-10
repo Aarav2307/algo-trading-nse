@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
-## Current Trading Universe (8 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS
+## Current Trading Universe (9 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -21,6 +21,24 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   Replace at next screener cycle with validated candidate
 - Added Jul 9 2026: CHOLAHLDNG.NS (screener ADD recommendation Jul 8 2026,
   WF validated: original 5/6 OOS +15.4%, extended 5/6 OOS +9.1%)
+  NOTE: crossed to golden cross the SAME DAY it was added, but was deployed
+  to the server AFTER that day's 3:45 PM signal run had already executed —
+  entry was missed. See "Deployment Timing Lesson" below.
+- Added Jul 10 2026: COHANCE.NS (from Jul 8 screener WATCHLIST — already in death
+  cross at screening time, not yet crossed as of Jul 10).
+  WF validated: original 6/6 OOS +8.0% (strongest score of the week),
+  extended SKIPPED — insufficient historical data (only 20 bars in 2015-2019
+  window, needs ≥200). Deployed ~1hr before that day's signal run while still
+  in death cross — zero timing gap (contrast with CHOLAHLDNG.NS above).
+
+### Deployment Timing Lesson (Jul 9-10 2026)
+CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
+that same day — the code change wasn't deployed to the server until AFTER that
+day's signal run had already executed, so the entry was missed. Lesson: when
+adding a validated stock, deploy to the server IMMEDIATELY after committing,
+not at a later point in the session. Applied successfully for COHANCE.NS on
+Jul 10 (deployed ~1hr before that day's run, while still in death cross — no
+timing gap).
 
 ## Paper Trading Status (as of 2026-07-05)
 - Started: 2026-06-02 (33 trading days as of Jul 5)
@@ -62,7 +80,9 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
     Re-evaluate at October 2026 quarterly review with updated IS window
   - CHOLAHLDNG.NS: 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
     WF validated Jul 8 2026 — added to universe Jul 9 2026
-- walk_forward.py STOCKS updated Jul 9: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN, CHOLAHLDNG
+  - COHANCE.NS: 6/6 original OOS +8.0%, extended SKIPPED (insufficient data,
+    only 20 bars in 2015-2019 window) — WF validated Jul 9-10 2026, added Jul 10 2026
+- walk_forward.py STOCKS updated Jul 10: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN, CHOLAHLDNG, COHANCE
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
@@ -140,6 +160,24 @@ Stocks validated Jul 8 2026 using this gate:
   SOBHA.NS:      FAIL (3/6 original OOS +0.3%,  3/6 extended OOS +3.8%)
   GODREJCP.NS:   FAIL (4/6 both windows, OOS +0.8%/+1.8% below +4% floor)
   BDL.NS:        FAIL (1/6 original, 0/6 extended — clean rejection))
+
+Stocks validated Jul 9-10 2026 using this gate:
+  COHANCE.NS:    PASS (6/6 original OOS +8.0%, extended SKIPPED —
+                 insufficient data, only 20 bars in 2015-19 window)
+                 → Added to universe Jul 10 2026, still in death cross at
+                 add time — zero timing gap
+  ALKEM.NS:      PASS (4/6 original OOS +5.7%, 4/6 extended OOS +2.6%)
+                 → NOT yet added — already in golden cross (+0.39% gap) as
+                 of Jul 9; would need to wait for next cross cycle
+  GLAXO.NS:      PASS (5/6 original OOS +8.5%, 4/6 extended OOS +0.6%)
+                 → NOT yet added — already in golden cross (+1.24% gap)
+  CASTROLIND.NS: PASS (5/6 original OOS +5.3%, 5/6 extended OOS +4.5%)
+                 → NOT yet added — already in golden cross (+0.41% gap)
+  PAYTM.NS:      PASS (4/6 original OOS +8.0%, extended SKIPPED —
+                 insufficient data, IPO Nov 2021)
+                 → NOT yet added — already in golden cross (+2.60% gap)
+  (Same batch — 5 other candidates tested, all FAILED WF, not added:
+  EIHOTEL.NS, CRISIL.NS, RAMCOCEM.NS, HAL.NS, DMART.NS from Jul 8 WATCHLIST)
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
@@ -533,6 +571,25 @@ Implementation:
   NEWGEN.NS and BSOFT.NS backfilled in degradation_tracker.json — both remain
   in the universe, both flags preserved in tracker
 
+#### Walk-forward extended-window crash — RESOLVED (Jul 10 2026):
+run_extended_walk_forward() returned {"score": "N/A", ...} (a string, not
+  int or None) for candidates with insufficient data in the 2015-2019 extended
+  IS window (e.g. recent IPOs, or stocks with too few pre-2015 bars). The gate
+  verdict section assumed score was always int or None, so "N/A" >= METRIC_MIN
+  raised an unhandled TypeError, crashing the entire WF run for that candidate.
+  Confirmed on PAYTM.NS (IPO Nov 2021 — zero bars in 2015-2019 IS window) and
+  COHANCE.NS (only 20 bars available in Jan 2015).
+Fix: normalize "N/A" → None immediately after extracting score from the return
+  dict, before any numeric comparison. Extended window now displays as
+  "SKIPPED — insufficient historical data (N bars available, need ≥ M)" instead
+  of crashing or silently passing/failing. Gate correctly evaluates on the
+  original window alone in this case, per the existing documented rule
+  ("extended window ≥4/6 IF sufficient history exists"). Also surfaces the
+  error string in both return dicts (run_walk_forward and run_extended_walk_forward)
+  so callers receive structured diagnostics instead of losing the error detail.
+  4 new regression tests added (validation/test_walk_forward_insufficient_data.py),
+  91/91 tests passing.
+
 Remaining from second audit (not yet fixed):
 - Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
   Risk: full NIFTY exposure while stock entries suppressed
@@ -572,7 +629,7 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified locally Jul 9 2026):
+Test suite (verified locally Jul 10 2026):
 - test_etf_overlay.py: 30/30 ✅
 - test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
 - test_costs.py: 7/7 ✅
@@ -581,7 +638,8 @@ Test suite (verified locally Jul 9 2026):
 - test_signal_runner_fetch.py: 3/3 ✅ (new)
 - test_kite_fetcher_timeout.py: 4/4 ✅ (new)
 - test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
-- Total: 87/87 tests passing
+- test_walk_forward_insufficient_data.py: 4/4 ✅ (new — WF extended-window crash fix)
+- Total: 91/91 tests passing
 
 ---
 
