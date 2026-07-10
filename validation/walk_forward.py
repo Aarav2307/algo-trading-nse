@@ -1292,7 +1292,11 @@ def run_walk_forward(
         is_r  = all_results[ticker]["is"]
         oos_r = all_results[ticker]["oos"]
         if is_r.get("error") or oos_r.get("error"):
-            results[ticker] = {"score": "N/A", "oos_return": "N/A"}
+            results[ticker] = {
+                "score":      "N/A",
+                "oos_return": "N/A",
+                "error":      is_r.get("error") or oos_r.get("error"),
+            }
         else:
             score = sum(
                 _pass(m, is_r["metrics"], oos_r["metrics"])
@@ -1384,7 +1388,11 @@ def run_extended_walk_forward(
             emit(f"  In-sample:     {is_r.get('error', 'OK')}")
             emit(f"  Out-of-sample: {oos_r.get('error', 'OK')}")
             emit()
-            results[ticker] = {"score": "N/A", "oos_return": "N/A"}
+            results[ticker] = {
+                "score":      "N/A",
+                "oos_return": "N/A",
+                "error":      is_r.get("error") or oos_r.get("error"),
+            }
             continue
 
         is_m  = is_r["metrics"]
@@ -1976,18 +1984,31 @@ Examples:
         OOS_RET_MIN   = 4.0    # OOS total return must be ≥+4%
 
         orig_data    = single_results.get(ticker, {})
-        orig_score   = orig_data.get("score")       # int or None
-        orig_oos_ret = orig_data.get("oos_return")  # float or None
+        orig_score   = orig_data.get("score")       # int, or "N/A" if orig window had no data
+        orig_oos_ret = orig_data.get("oos_return")  # float, or "N/A" if orig window had no data
 
         ext_data    = extended_results.get(ticker, {}) if extended_results else {}
-        ext_score   = ext_data.get("score")
-        ext_oos_ret = ext_data.get("oos_return")
+        ext_score   = ext_data.get("score")         # int, or "N/A" if ext window had no data
+        ext_oos_ret = ext_data.get("oos_return")    # float, or "N/A" if ext window had no data
+        ext_error   = ext_data.get("error")         # error message when ext data insufficient
+
+        # Normalize "N/A" strings → None. Both run_walk_forward() and
+        # run_extended_walk_forward() return "N/A" strings (not None) when a window
+        # has insufficient data (e.g. stock IPO'd after 2015 → zero bars in the
+        # 2015-2019 extended IS window). None is the canonical insufficient-data
+        # sentinel used by all downstream guards; without this, "N/A" >= METRIC_MIN
+        # raises TypeError. Applies defensively to orig_ too for stocks with
+        # truly zero original-window data.
+        if orig_score   == "N/A": orig_score   = None
+        if orig_oos_ret == "N/A": orig_oos_ret = None
+        if ext_score    == "N/A": ext_score    = None
+        if ext_oos_ret  == "N/A": ext_oos_ret  = None
 
         orig_metrics_ok = orig_score is not None and orig_score >= METRIC_MIN
         orig_ret_ok     = orig_oos_ret is not None and orig_oos_ret >= OOS_RET_MIN
         ext_metrics_ok  = (
             True if args.no_extended          # skipped — don't penalise
-            else ext_score is None            # insufficient data — don't penalise
+            else ext_score is None            # insufficient data — don't penalise (per gate docs)
             or ext_score >= METRIC_MIN
         )
 
@@ -2011,7 +2032,16 @@ Examples:
             print(f"  Extended window:  {ext_score}/{TOTAL_METRICS} metrics "
                   f"| OOS return {ext_ret_str}")
         else:
-            print(f"  Extended window:  INSUFFICIENT DATA (stock too young for 2015 IS)")
+            # ext_score is None — insufficient historical data for the 2015-2019/2020-2023
+            # extended windows (e.g. stock listed after 2015, or too few bars in IS window).
+            # This is SKIPPED (not FAIL) — per the WF gate: "extended window ≥4/6 metrics
+            # IF sufficient history exists". Gate evaluates on original window only.
+            if ext_error:
+                print(f"  Extended window:  SKIPPED — insufficient historical data "
+                      f"({ext_error})")
+            else:
+                print(f"  Extended window:  SKIPPED — insufficient historical data "
+                      f"(stock too young for 2015-2019 IS window)")
 
         print()
         if gate_pass:
