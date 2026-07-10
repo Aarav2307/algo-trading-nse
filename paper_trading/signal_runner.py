@@ -80,6 +80,7 @@ STOCKS: List[str] = [
     "BSOFT.NS",
     "PERSISTENT.NS",
     "CHOLAHLDNG.NS",   # WF validated Jul 8 2026 — 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
+    "COHANCE.NS",      # WF validated Jul 9-10 2026 — 6/6 original OOS +8.0%, extended SKIPPED (insufficient data, only 20 bars in 2015-19 window)
 ]
 
 INITIAL_CAPITAL = 100_000.0    # ₹
@@ -391,7 +392,7 @@ def _fetch_stock_data(today: date) -> Dict[str, pd.DataFrame]:
             # pattern (see that file's fetch loop). Applied regardless of downstream
             # data-quality guards below, since the API call itself already consumed
             # quota against the rate limit.
-            # NB: adds ~1.1s × len(STOCKS) to each run (8 stocks ≈ 8.8s today;
+            # NB: adds ~1.1s × len(STOCKS) to each run (9 stocks ≈ 9.9s today;
             # scales linearly as the universe grows).
             time.sleep(1.1)
 

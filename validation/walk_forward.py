@@ -61,6 +61,7 @@ STOCKS = [
     "PERSISTENT.NS",   # 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
     "NEWGEN.NS",       # WF validated Jul 7 2026 — 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
     "CHOLAHLDNG.NS",   # WF validated Jul 8 2026 — 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
+    "COHANCE.NS",      # WF validated Jul 9-10 2026 — 6/6 original OOS +8.0%, extended SKIPPED (insufficient data, only 20 bars in 2015-19 window)
 ]
 
 
