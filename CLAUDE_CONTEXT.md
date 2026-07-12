@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Current Trading Universe (9 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -30,6 +30,32 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   extended SKIPPED — insufficient historical data (only 20 bars in 2015-2019
   window, needs ≥200). Deployed ~1hr before that day's signal run while still
   in death cross — zero timing gap (contrast with CHOLAHLDNG.NS above).
+- Removed Jul 12 2026: NEWGEN.NS — 3 consecutive degradation flags (Jul 5, Jul 8,
+  Jul 12), ADX=19.1 (below 22.0 degradation threshold and 25.0 screener entry bar),
+  FALLING trend, Hurst still healthy (0.541) — an ADX/trend-strength decline, not
+  a Hurst-driven removal like JKTYRE's.
+  First two flags (Jul 5, Jul 8) coincided with NIFTY's Jul 7 regime transition and
+  were deliberately held, per the regime-transition annotation feature (commit
+  3044b88) — judged likely transition noise. Held on explicit condition that a third
+  consecutive flag after the regime stabilized would change the assessment.
+  NIFTY stable BULL for 5+ trading days by Jul 12; the Jul 12 flag carries NO
+  regime-transition annotation, confirming the system does not attribute it to
+  transition noise.
+  Clean differential: BSOFT.NS was flagged on the identical two prior dates under
+  the same regime conditions and recovered on this same Jul 12 screen ("regime
+  healthy again"). NEWGEN did not — real evidence of stock-specific decay, not a
+  shared external cause.
+  NEWGEN's SMA20/SMA50 gap faded steadily since Jul 1 (+1.01% → +0.29%),
+  consistent with this conclusion. Zero open position at removal — clean exit.
+  Screener's own Jul 12 REMOVE recommendation concurred.
+- Added Jul 12 2026: MAPMYINDIA.NS (screener ADD recommendation Jul 12, from a
+  batch that also included HAL.NS, DMART.NS, HINDUNILVR.NS, CLEAN.NS — all four
+  FAILED WF, only MAPMYINDIA passed).
+  WF validated: original 5/6 OOS +7.0%, extended SKIPPED — insufficient historical
+  data (no bars in 2015-2019 IS window, same pattern as COHANCE.NS and PAYTM.NS).
+  Confirmed still in death cross at add time (SMA20=901.72, SMA50=906.37,
+  gap -0.51%) — deployed same-day, catching the next golden cross live with zero
+  timing gap.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
@@ -74,7 +100,8 @@ timing gap).
   - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
   - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
   - NEWGEN.NS: 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
-    WF validated Jul 7 2026 (listed Jan 2018, sufficient IS history confirmed)
+    WF validated Jul 7 2026. REMOVED Jul 12 2026 — 3 consecutive ADX flags,
+    ADX=19.1 FALLING (stock-specific decay confirmed, not regime noise).
   - ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window
     Cannot validate with current IS window definition
     Re-evaluate at October 2026 quarterly review with updated IS window
@@ -82,7 +109,9 @@ timing gap).
     WF validated Jul 8 2026 — added to universe Jul 9 2026
   - COHANCE.NS: 6/6 original OOS +8.0%, extended SKIPPED (insufficient data,
     only 20 bars in 2015-2019 window) — WF validated Jul 9-10 2026, added Jul 10 2026
-- walk_forward.py STOCKS updated Jul 10: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN, CHOLAHLDNG, COHANCE
+  - MAPMYINDIA.NS: 5/6 original OOS +7.0%, extended SKIPPED (insufficient data,
+    no bars in 2015-2019 window) — WF validated Jul 12 2026, added Jul 12 2026
+- walk_forward.py STOCKS updated Jul 12: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, CHOLAHLDNG, COHANCE, MAPMYINDIA
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
@@ -178,6 +207,19 @@ Stocks validated Jul 9-10 2026 using this gate:
                  → NOT yet added — already in golden cross (+2.60% gap)
   (Same batch — 5 other candidates tested, all FAILED WF, not added:
   EIHOTEL.NS, CRISIL.NS, RAMCOCEM.NS, HAL.NS, DMART.NS from Jul 8 WATCHLIST)
+
+Stocks validated Jul 12 2026 using this gate:
+  MAPMYINDIA.NS: PASS (5/6 original OOS +7.0%, extended SKIPPED —
+                 insufficient data, no bars in 2015-19 window)
+                 → Added to universe Jul 12 2026, still in death cross
+                 at add time (gap -0.51%) — zero timing gap
+  HINDUNILVR.NS: FAIL (5/6 original OOS +1.4% — below +4% floor;
+                 0/6 extended OOS -7.2% — clean rejection despite
+                 deceptively solid-looking original window)
+  CLEAN.NS:      FAIL (1/6 original OOS -3.0%; extended SKIPPED —
+                 insufficient data)
+  (HAL.NS and DMART.NS from this same batch were already tested Jul 9
+  — both FAILED, see Jul 9-10 entry above)
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
@@ -629,7 +671,7 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified locally Jul 10 2026):
+Test suite (verified locally Jul 12 2026):
 - test_etf_overlay.py: 30/30 ✅
 - test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
 - test_costs.py: 7/7 ✅
@@ -639,7 +681,8 @@ Test suite (verified locally Jul 10 2026):
 - test_kite_fetcher_timeout.py: 4/4 ✅ (new)
 - test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
 - test_walk_forward_insufficient_data.py: 4/4 ✅ (new — WF extended-window crash fix)
-- Total: 91/91 tests passing
+- test_run_screen_integration.py: 3/3 ✅ (new — run_screen() NameError + get_current_universe regression)
+- Total: 94/94 tests passing
 
 ---
 
