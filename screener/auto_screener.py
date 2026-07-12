@@ -553,16 +553,26 @@ def fetch_nifty500() -> tuple[dict[str, str], bool]:
     )
     return {}, True  # empty — caller must handle gracefully
 
-# ── Current universe from portfolio state ─────────────────────────────────────
+# ── Current universe ──────────────────────────────────────────────────────────
 
 def get_current_universe() -> list[str]:
-    """Read current trading universe from portfolio_state.json."""
-    try:
-        with open(PORTFOLIO_STATE) as f:
-            state = json.load(f)
-        return list(state["positions"].keys())
-    except Exception:
-        return []
+    """
+    Return the current tradeable universe from signal_runner.STOCKS.
+
+    This is NOT the same as "stocks with open positions". A stock can be in
+    the universe with zero shares held (flat, waiting for a signal). The old
+    implementation read portfolio_state.json's positions dict, which retains
+    stale entries for removed stocks (SIEMENS, JKTYRE) and misses new additions
+    (CHOLAHLDNG, COHANCE) until a position actually opens in them — causing
+    the screener to compute correlation checks against the wrong baseline.
+
+    Deferred import (not top-level) to avoid a circular dependency:
+    signal_runner.py already imports compute_hurst from this module.
+    The import is safe here because get_current_universe() is only called
+    at run time (inside run_screen()), never at module load time.
+    """
+    from paper_trading.signal_runner import STOCKS as _LIVE_UNIVERSE  # noqa: PLC0415
+    return list(_LIVE_UNIVERSE)
 
 # ── Correlation check ─────────────────────────────────────────────────────────
 
@@ -826,7 +836,7 @@ def run_screen() -> dict:
             entry["flag_history"] = entry["flag_history"][-10:]
             # Annotate if this flag falls within REGIME_TRANSITION_WINDOW days of a
             # NIFTY regime transition — annotation only, never suppresses the flag.
-            _trans_days = _days_since_regime_transition(today)
+            _trans_days = _days_since_regime_transition(date.fromisoformat(today_str))
             if _trans_days is not None and 0 <= _trans_days <= REGIME_TRANSITION_WINDOW:
                 entry.setdefault("flag_annotations", {})[today_str] = {
                     "regime_transition_nearby": True,
