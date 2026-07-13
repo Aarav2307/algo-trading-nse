@@ -45,3 +45,7 @@ screener/screen_error.csv
 screener/screen_failed.csv
 screener/universe_scan_report_*.md
 screener/stage1_results_*.json
+
+# WF batch orchestrator runtime files — disposable run artifacts
+validation/wf_test_history.json
+validation/wf_batch_report_*.md
