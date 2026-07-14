@@ -1,4 +1,4 @@
-Walk-Forward Validation — generated 2026-07-10 14:11:07
+Walk-Forward Validation — generated 2026-07-12 21:16:04
 
 
 ================================================================================
@@ -8,7 +8,7 @@ Walk-Forward Validation — generated 2026-07-10 14:11:07
 ================================================================================
   Stocks:      COHANCE.NS
   In-sample:   2018-01-01 → 2023-01-01 (excl)
-  OOS:         2023-01-01 → 2026-07-10 (excl)
+  OOS:         2023-01-01 → 2026-07-12 (excl)
   Strategy:    SMA 20/50 crossover
   Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum
   Cooldown:    15-bar after RM exits
@@ -20,13 +20,13 @@ Walk-Forward Validation — generated 2026-07-10 14:11:07
 ================================================================================
   COHANCE.NS
 ================================================================================
-  Data:  700 bars in-sample  |  871 bars out-of-sample
+  Data:  700 bars in-sample  |  872 bars out-of-sample
   NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only 0.0%. Risk system protected capital well.
 
   Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2026)        Result
   ──────────────────────────────────────────────────────────────────────────────────────────
   Total return                      +8.9%                      +8.0%                  [PASS]
-  vs Buy & Hold             -37.9pp  (B&H +46.8%)      +18.3pp  (B&H -10.3%)          [PASS]
+  vs Buy & Hold             -37.9pp  (B&H +46.8%)       +15.9pp  (B&H -7.9%)          [PASS]
   Max drawdown                      -5.1%                      -2.4%                  [PASS]
   Payoff ratio                      5.62:1                     5.76:1                 [PASS]
   Expectancy/trade                 ₹+1,324                    ₹+2,025                 [PASS]
@@ -80,10 +80,11 @@ Walk-Forward Validation — generated 2026-07-10 14:11:07
   COLPAL.NS                   N/A                    N/A          
   BSOFT.NS                    N/A                    N/A          
   PERSISTENT.NS               N/A                    N/A          
-  NEWGEN.NS                   N/A                    N/A          
   CHOLAHLDNG.NS               N/A                    N/A          
+  COHANCE.NS                 -1.94             +1.26  (150d in)   
+  MAPMYINDIA.NS               N/A                    N/A          
   ────────────────────────────────────────────────────────────────
-  Equal-weight                N/A                    N/A          
+  Equal-weight               -1.94             +1.26  (150d in)      ← 871d overlap
 
   Full-period Sharpe penalises the strategy for cash days (earns 0%, risk-free = 6.5%).
   In-position Sharpe strips out flat cash days — measures quality of entries/exits only.
@@ -94,22 +95,22 @@ Walk-Forward Validation — generated 2026-07-10 14:11:07
   Universe: 10 stocks tested
   Cooldown values: [10, 15, 20, 25] bars
   Eligibility: IS + OOS bars >= 1,250 (~5 years)
-  IS window:   2018-01-01 → 2023-01-01  |  OOS: 2023-01-01 → 2026-07-10
+  IS window:   2018-01-01 → 2023-01-01  |  OOS: 2023-01-01 → 2026-07-12
   NIFTY filter: ACTIVE
 ================================================================================
 
   DATA ELIGIBILITY CHECK (IS + OOS bars >= 1,250):
 
-  ✓  TMPV.NS                 IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  WHIRLPOOL.NS            IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  SIEMENS.NS              IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  BAJAJ-AUTO.NS           IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  CUMMINSIND.NS           IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  HCLTECH.NS              IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  BOSCHLTD.NS             IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  COLPAL.NS               IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
-  ✓  ANURAS.NS               IS=  440  OOS= 871  total= 1311  from 2021-03-24  — INCLUDED
-  ✓  HEROMOTOCO.NS           IS= 1238  OOS= 871  total= 2109  from 2018-01-01  — INCLUDED
+  ✓  TMPV.NS                 IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  WHIRLPOOL.NS            IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  SIEMENS.NS              IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  BAJAJ-AUTO.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  CUMMINSIND.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  HCLTECH.NS              IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  BOSCHLTD.NS             IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  COLPAL.NS               IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  ANURAS.NS               IS=  440  OOS= 872  total= 1312  from 2021-03-24  — INCLUDED
+  ✓  HEROMOTOCO.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
 
   Qualifying: 10  |  Skipped: 0
 
@@ -205,7 +206,7 @@ Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4
 Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
 Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
 Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
-NIFTY Filter: ACTIVE — 538/871 bull days (62% in uptrend)
+NIFTY Filter: ACTIVE — 539/872 bull days (62% in uptrend)
 ============================================================
   [AMO] 2023-05-16 | BUY deferred → fill at 2023-05-17 open | chan=₹460.63
   [SIZING] 2023-05-17 (AMO open)| entry=₹474.94 | chan=₹460.63 (chandelier) | dist=₹14.30 | risk=₹1500 → 42 shr [position_cap]
