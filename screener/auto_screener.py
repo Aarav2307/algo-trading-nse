@@ -24,7 +24,7 @@ import math
 import argparse
 import json
 import time
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -57,6 +57,7 @@ END_DATE             = date.today().strftime("%Y-%m-%d")
 SMA_FAST             = 20
 SMA_SLOW             = 50
 DEGRADATION_TRACKER  = _ROOT / "screener" / "degradation_tracker.json"
+CANDIDATES_FILE      = _ROOT / "screener" / "latest_candidates.json"
 # Calendar-day window around a NIFTY regime transition within which degradation
 # flags are annotated as potentially mechanical (ADX dips ~3-4 trading days ≈
 # 5 calendar days after an SMA-based BULL↔BEAR flip).  Matches EARNINGS_DAYS_AHEAD
@@ -600,6 +601,37 @@ def compute_correlation(
     except Exception:
         return 0.0, 0.0
 
+# ── Candidates file writer ────────────────────────────────────────────────────
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _write_candidates_file(results: dict) -> None:
+    """Write ADD/WATCH tickers atomically to screener/latest_candidates.json.
+
+    Called alongside send_report() after each real (non-dry-run) screen so the
+    post-screener WF batch pipeline can read candidates without manual copy-paste.
+    Fail-open: a write failure logs a warning but never crashes the screener run.
+    """
+    try:
+        add_tickers       = [s["ticker"] for s in results.get("adds",    [])]
+        watchlist_tickers = [s["ticker"] for s in results.get("watches", [])]
+        data = {
+            "screen_date":       date.today().isoformat(),
+            "run_time_ist":      datetime.now(_IST).isoformat(timespec="seconds"),
+            "add_tickers":       add_tickers,
+            "watchlist_tickers": watchlist_tickers,
+        }
+        # Atomic write: write to .tmp then rename (POSIX rename is atomic on same fs)
+        tmp = CANDIDATES_FILE.parent / (CANDIDATES_FILE.name + ".tmp")
+        with open(tmp, "w") as f:
+            json.dump(data, f, indent=2)
+        tmp.rename(CANDIDATES_FILE)
+        print(f"[candidates] Written {len(add_tickers)} ADD + {len(watchlist_tickers)} WATCH → {CANDIDATES_FILE.name}")
+    except Exception as e:
+        print(f"[candidates] WARNING: failed to write candidates file: {e}", file=sys.stderr)
+
+
 # ── Main screening pipeline ───────────────────────────────────────────────────
 
 def run_screen() -> dict:
@@ -958,3 +990,4 @@ if __name__ == "__main__":
         print(f"\nMeta: {results['meta']}")
     else:
         send_report(results)
+        _write_candidates_file(results)

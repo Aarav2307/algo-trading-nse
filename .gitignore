@@ -50,3 +50,8 @@ screener/stage1_results_*.json
 validation/wf_test_history.json
 validation/wf_batch_report_*.md
 validation/wf_gate_errors.log
+validation/scheduled_run_status.json
+
+# Screener candidates file — written after each real screen run
+screener/latest_candidates.json
+screener/latest_candidates.json.tmp
