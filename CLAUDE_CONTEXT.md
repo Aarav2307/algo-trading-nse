@@ -1,5 +1,5 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-12
+Last updated: 2026-07-15
 
 ## Current Trading Universe (9 stocks)
 BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS
@@ -671,18 +671,84 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified locally Jul 12 2026):
+#### WF Batch Automation — COMPLETED (Jul 14-15 2026)
+Problem: testing screener ADD/WATCHLIST candidates required manually running
+  walk_forward.py --ticker X once per stock, scrolling past ~150-200 lines of
+  cooldown-sensitivity-analysis noise per run to find the verdict, then manually
+  checking crossover state for anything that passed. Pure mechanical overhead,
+  repeated 4 times this week (Jul 8, 9, 9-10, 12 batches), including wasted
+  re-testing of the same tickers (HAL.NS, DMART.NS tested twice).
+
+Built in three pieces:
+- validation/walk_forward.py --json flag: suppresses human-readable output
+  (including the cooldown-sensitivity diagnostic, which is not load-bearing for
+  the single-ticker gate verdict and makes its own live API calls), emits one
+  JSON line with the gate verdict. Added skip_diagnostics param to
+  run_walk_forward(). Human-readable path completely unchanged when --json is
+  not passed. 5 new tests (validation/test_walk_forward_json_output.py).
+- validation/post_screener_pipeline.py (new): takes --tickers from a screener
+  email, caches results in validation/wf_test_history.json (skips re-testing
+  within --retest-after-days, default 3), runs each via walk_forward.py --json
+  as a subprocess (not in-process, so --json remains the single source of truth
+  for gate logic), checks crossover state for every PASS, writes a dated markdown
+  report. Read-only w.r.t. the live system — never modifies STOCKS, never
+  commits, never deploys. Deliberately does NOT call run_screen() directly, since
+  that function writes degradation_tracker.json unconditionally and takes ~9 min
+  for a full 500-stock fetch — unsuitable for free/frequent orchestration.
+  27 tests total (validation/test_post_screener_pipeline.py), including hardening:
+  180s subprocess timeout, explicit returncode check, malformed-JSON handling,
+  persistent error logging to validation/wf_gate_errors.log.
+  Bug caught during development: three tests calling main() without --dry-run were
+  writing real report files into the actual validation/ directory (REPORT_DIR was
+  never patched to tmp_path). Fixed with patch.object; added regression test
+  proving no file ever lands in the real directory.
+- screener/auto_screener.py + validation/run_scheduled_wf_batch.py (new):
+  auto_screener.py now writes screener/latest_candidates.json atomically
+  (tmp + rename) alongside every real screen's email send. The new wrapper reads
+  that file, rejects it if missing or >1 day stale, caps processing to
+  MAX_CANDIDATES_PER_RUN=10 (hardcoded constant, NOT a CLI flag — deliberately
+  not silently bypassable), calls pipeline_main() directly, and writes
+  validation/scheduled_run_status.json with pass/fail counts.
+  4 tests (screener/test_candidates_file.py) + 7 tests
+  (validation/test_run_scheduled_wf_batch.py), including a proactive "never
+  writes to real directory" test applying the lesson from the REPORT_DIR bug.
+
+DELIBERATE DECISION — no cron trigger: considered and explicitly rejected adding
+  run_scheduled_wf_batch.py to cron for automatic triggering after the 6 PM
+  screener run. Reasoning: this system had TWO separate silent unattended-job
+  failures in the same week this automation was built — the auto_screener.py
+  NameError crash that killed the Jul 12 Sunday screener with zero output, and
+  the get_current_universe() stale-data bug that silently corrupted correlation
+  checks for an unknown period. A third unattended job before this system has a
+  track record of reliable unattended operation is not an acceptable risk-reward
+  trade. Trigger stays manual. Revisit after a longer period of demonstrated
+  reliability.
+
+Live-verified end to end (Jul 14 2026 close):
+  - COHANCE.NS: GOLDEN +0.14%, PASS — thin crossover; Hurst was 0.471 on Jul 14
+    signal run (below 0.48 threshold → HURST_SKIP). Check Hurst recovery before
+    assuming this will produce a live entry.
+  - MAPMYINDIA.NS: GOLDEN +1.96%, PASS
+
+Total new tests from this work: 5 (--json flag) + 27 (pipeline + hardening) +
+  4 (candidates file) + 7 (scheduled wrapper) = 43. Suite grew from 94 → 137.
+
+Test suite (verified locally Jul 15 2026):
 - test_etf_overlay.py: 30/30 ✅
+- test_post_screener_pipeline.py: 27/27 ✅ (new — WF batch orchestrator + hardening)
+- test_news_monitor.py: 14/14 ✅ (was 9/9 — added tests 10-14 for weekday-aware staleness check)
 - test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
+- test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
+- test_run_scheduled_wf_batch.py: 7/7 ✅ (new — manual WF batch wrapper)
 - test_costs.py: 7/7 ✅
 - test_correlation_check.py: 6/6 ✅
-- test_news_monitor.py: 14/14 ✅ (was 9/9 — added tests 10-14 for weekday-aware staleness check)
-- test_signal_runner_fetch.py: 3/3 ✅ (new)
-- test_kite_fetcher_timeout.py: 4/4 ✅ (new)
-- test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
+- test_walk_forward_json_output.py: 5/5 ✅ (new — --json flag + skip_diagnostics)
 - test_walk_forward_insufficient_data.py: 4/4 ✅ (new — WF extended-window crash fix)
+- test_candidates_file.py: 4/4 ✅ (new — screener candidates file atomic writer)
+- test_kite_fetcher_timeout.py: 4/4 ✅ (new)
 - test_run_screen_integration.py: 3/3 ✅ (new — run_screen() NameError + get_current_universe regression)
-- Total: 94/94 tests passing
+- test_signal_runner_fetch.py: 3/3 ✅ (new)
+- Total: 137/137 tests passing
 
 ---
 
