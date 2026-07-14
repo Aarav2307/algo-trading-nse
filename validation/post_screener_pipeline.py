@@ -39,6 +39,10 @@ REPORT_DIR   = _ROOT / "validation"
 # SMA50 needs at least 50 trading days; 6 months gives comfortable headroom.
 _CROSSOVER_LOOKBACK_MONTHS = 6
 
+# Single-ticker WF validation completes in 1-2 min on live runs; 180s gives
+# comfortable headroom without hanging indefinitely on a Kite API stall.
+WF_GATE_TIMEOUT_SECONDS = 180
+
 
 # =============================================================================
 # Cache helpers
@@ -73,11 +77,33 @@ def is_within_cache(history: dict, ticker: str, retest_after_days: int) -> bool:
 # WF gate — subprocess approach (guarantees zero logic duplication)
 # =============================================================================
 
+def _log_wf_gate_error(ticker: str, detail: str) -> None:
+    """Append full error detail to a persistent log so nothing is lost
+    even when the raised exception message is truncated for readability.
+    Never raises itself — best-effort logging must never crash the pipeline."""
+    log_path = _ROOT / "validation" / "wf_gate_errors.log"
+    try:
+        with open(log_path, "a") as f:
+            f.write(
+                f"\n{'='*70}\n"
+                f"{datetime.now().isoformat()} — {ticker}\n"
+                f"{'='*70}\n"
+                f"{detail}\n"
+            )
+    except OSError:
+        pass
+
+
 def run_wf_gate(ticker: str, no_extended: bool = False) -> dict:
     """
-    Run walk_forward.py --ticker X --json as a subprocess and return the parsed
-    verdict dict. Subprocess is chosen over in-process reimplementation so the
-    --json mode remains the single source of truth for gate logic.
+    Run walk_forward.py --ticker X --json as a subprocess and return the
+    parsed verdict dict. Subprocess is chosen over in-process reimplementation
+    so --json mode remains the single source of truth for gate logic.
+
+    Raises RuntimeError on: timeout, non-zero exit, or no/invalid JSON output.
+    Full stderr is always written to validation/wf_gate_errors.log (append
+    mode) before raising, so nothing is lost even when the raised exception
+    message is truncated for readability.
     """
     cmd = [
         sys.executable,
@@ -88,17 +114,57 @@ def run_wf_gate(ticker: str, no_extended: bool = False) -> dict:
     if no_extended:
         cmd.append("--no-extended")
 
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(_ROOT))
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(_ROOT),
+            timeout=WF_GATE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as e:
+        _log_wf_gate_error(ticker, f"TIMEOUT after {WF_GATE_TIMEOUT_SECONDS}s")
+        raise RuntimeError(
+            f"WF gate subprocess for {ticker} timed out after "
+            f"{WF_GATE_TIMEOUT_SECONDS}s (possible Kite API stall or "
+            f"network issue). See validation/wf_gate_errors.log for detail."
+        ) from e
+
+    if result.returncode != 0:
+        _log_wf_gate_error(
+            ticker,
+            f"exit code {result.returncode}\nSTDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}",
+        )
+        raise RuntimeError(
+            f"WF gate subprocess for {ticker} exited with code "
+            f"{result.returncode}. Full output logged to "
+            f"validation/wf_gate_errors.log. "
+            f"stderr (last 500 chars): {result.stderr[-500:]!r}"
+        )
 
     for line in result.stdout.splitlines():
         stripped = line.strip()
         if stripped.startswith("{"):
-            return json.loads(stripped)
+            try:
+                return json.loads(stripped)
+            except json.JSONDecodeError as e:
+                _log_wf_gate_error(
+                    ticker,
+                    f"malformed JSON line: {stripped}\nerror: {e}",
+                )
+                raise RuntimeError(
+                    f"WF gate for {ticker} produced a line starting with '{{' "
+                    f"but it was not valid JSON. Full output logged to "
+                    f"validation/wf_gate_errors.log. "
+                    f"(preview: {stripped[:200]!r})"
+                ) from e
 
+    _log_wf_gate_error(
+        ticker,
+        f"exit code 0 but no JSON line found\nSTDOUT:\n{result.stdout}\n"
+        f"STDERR:\n{result.stderr}",
+    )
     raise RuntimeError(
-        f"WF gate produced no JSON for {ticker}.\n"
-        f"stdout: {result.stdout!r}\n"
-        f"stderr: {result.stderr[-500:]!r}"
+        f"WF gate produced no JSON for {ticker} (exit code 0, but no "
+        f"JSON line found). Full output logged to validation/wf_gate_errors.log."
     )
 
 

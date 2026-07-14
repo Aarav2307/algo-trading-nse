@@ -7,6 +7,7 @@ All Kite API calls and WF subprocess calls are mocked — no live network access
 """
 
 import json
+import subprocess
 import sys
 import tempfile
 from datetime import date, timedelta
@@ -126,6 +127,7 @@ def test_run_wf_gate_parses_json():
     """run_wf_gate extracts the JSON line from subprocess stdout."""
     wf_json = _sample_wf_pass()
     mock_result = MagicMock()
+    mock_result.returncode = 0
     mock_result.stdout = "some preamble noise\n" + json.dumps(wf_json) + "\n"
     mock_result.stderr = ""
 
@@ -143,6 +145,7 @@ def test_run_wf_gate_parses_json():
 def test_run_wf_gate_no_extended_flag():
     """--no-extended is forwarded to the subprocess command."""
     mock_result = MagicMock()
+    mock_result.returncode = 0
     mock_result.stdout = json.dumps(_sample_wf_pass()) + "\n"
     mock_result.stderr = ""
 
@@ -154,14 +157,77 @@ def test_run_wf_gate_no_extended_flag():
 
 
 def test_run_wf_gate_raises_on_no_json():
-    """RuntimeError raised when subprocess produces no JSON line."""
+    """RuntimeError raised when subprocess exits 0 but produces no JSON line."""
     mock_result = MagicMock()
+    mock_result.returncode = 0
     mock_result.stdout = "no json here at all\n"
     mock_result.stderr = ""
 
     with patch("subprocess.run", return_value=mock_result):
         with pytest.raises(RuntimeError, match="no JSON"):
             run_wf_gate("FAKE.NS")
+
+
+def test_run_wf_gate_raises_on_nonzero_returncode():
+    """A non-zero subprocess exit code must raise RuntimeError, even if
+    stdout happens to contain something JSON-like."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stdout = '{"this": "should not matter"}\n'
+    mock_result.stderr = "Traceback (most recent call last):\n...crash...\n"
+
+    with patch("subprocess.run", return_value=mock_result):
+        with pytest.raises(RuntimeError, match="exited with code 1"):
+            run_wf_gate("FAKE.NS")
+
+
+def test_run_wf_gate_raises_on_malformed_json_line():
+    """A line starting with '{' that isn't valid JSON must raise a clear
+    RuntimeError, not an unhandled JSONDecodeError."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = '{"ticker": "FAKE.NS", truncated garbage\n'
+    mock_result.stderr = ""
+
+    with patch("subprocess.run", return_value=mock_result):
+        with pytest.raises(RuntimeError, match="not valid JSON"):
+            run_wf_gate("FAKE.NS")
+
+
+def test_run_wf_gate_raises_on_timeout():
+    """subprocess.TimeoutExpired must be caught and re-raised as a clear
+    RuntimeError mentioning the timeout, not an unhandled exception."""
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(
+        cmd=["fake"], timeout=180
+    )):
+        with pytest.raises(RuntimeError, match="timed out"):
+            run_wf_gate("FAKE.NS")
+
+
+def test_run_wf_gate_logs_full_error_detail(tmp_path):
+    """Full stderr must be written to the error log file even when the
+    raised exception message is truncated for readability."""
+    import validation.post_screener_pipeline as psp
+
+    long_stderr = "x" * 2000  # longer than the 500-char truncation in exception message
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+    mock_result.stdout = ""
+    mock_result.stderr = long_stderr
+
+    log_path = tmp_path / "validation" / "wf_gate_errors.log"
+    (tmp_path / "validation").mkdir()
+
+    with patch("subprocess.run", return_value=mock_result), \
+         patch.object(psp, "_ROOT", tmp_path):
+        try:
+            run_wf_gate("FAKE.NS")
+        except RuntimeError:
+            pass
+
+    assert log_path.exists(), "Error log file was not created"
+    logged = log_path.read_text()
+    assert long_stderr in logged, "Full stderr was not preserved in the log"
 
 
 # =============================================================================
