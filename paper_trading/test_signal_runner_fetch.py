@@ -75,3 +75,29 @@ def test_news_flags_file_is_absolute_and_cwd_independent():
         f"NEWS_FLAGS_FILE.exists() is cwd-dependent: "
         f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
     )
+
+
+def test_manual_blocks_file_is_absolute_and_cwd_independent():
+    """
+    Regression test: same relative-path bug class as NEWS_FLAGS_FILE
+    (fixed in commit 57f112d) also existed for MANUAL_BLOCKS_FILE.
+    """
+    import os
+    from paper_trading.signal_runner import MANUAL_BLOCKS_FILE
+
+    assert MANUAL_BLOCKS_FILE.is_absolute(), (
+        f"MANUAL_BLOCKS_FILE is not absolute: {MANUAL_BLOCKS_FILE!r}"
+    )
+
+    original_cwd = os.getcwd()
+    exists_from_root = MANUAL_BLOCKS_FILE.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = MANUAL_BLOCKS_FILE.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"MANUAL_BLOCKS_FILE.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )

@@ -148,7 +148,7 @@ LOG_CSV            = Path("paper_trading/signal_log.csv")
 LOGS_DIR           = Path("paper_trading/logs")
 TOKEN_FILE         = Path("auth/access_token.txt")
 NEWS_FLAGS_FILE    = _ROOT / "utils" / "news_flags.json"
-MANUAL_BLOCKS_FILE = Path("utils/manual_blocks.json")
+MANUAL_BLOCKS_FILE = _ROOT / "utils" / "manual_blocks.json"
 
 # IST = UTC+5:30
 _IST_OFFSET = timedelta(hours=5, minutes=30)
