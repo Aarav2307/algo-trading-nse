@@ -24,8 +24,8 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-STATE_FILE   = Path("paper_trading/portfolio_state.json")
-BACKUP_DIR   = Path("paper_trading/state_backups")
+STATE_FILE   = _ROOT / "paper_trading" / "portfolio_state.json"
+BACKUP_DIR   = _ROOT / "paper_trading" / "state_backups"
 INITIAL_CAPITAL = 100_000.0
 
 # Expected trade log entries (±₹5 tolerance)

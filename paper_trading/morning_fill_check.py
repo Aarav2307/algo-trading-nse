@@ -39,9 +39,9 @@ from utils.market_calendar import is_trading_day
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-AMO_CSV         = Path("paper_trading/amo_orders.csv")
-STATE_FILE      = Path("paper_trading/portfolio_state.json")
-TOKEN_FILE      = Path("auth/access_token.txt")
+AMO_CSV         = _ROOT / "paper_trading" / "amo_orders.csv"
+STATE_FILE      = _ROOT / "paper_trading" / "portfolio_state.json"
+TOKEN_FILE      = _ROOT / "auth" / "access_token.txt"
 
 # RM exit reasons — these come through in the AMO order's "notes" field.
 # When a SELL fills with one of these notes, we must also trigger cooldown
@@ -51,7 +51,7 @@ _STRATEGY_EXIT_NOTES = frozenset({"STRATEGY_SIGNAL"})
 
 # AMO limit buffer — must match signal_runner.py AMO_CONFIG["limit_buffer_pct"]
 _AMO_LIMIT_BUFFER = 0.005   # 0.5% buffer below close for SELL AMO requeue
-_AMO_ORDER_LOG    = Path("paper_trading/amo_orders.csv")
+_AMO_ORDER_LOG    = _ROOT / "paper_trading" / "amo_orders.csv"
 
 # Gap-down circuit breaker threshold for SELL AMOs.
 # If a stock opens more than this % below the SELL limit price,

@@ -288,7 +288,7 @@ def test_relative_path_scan_pass_clean_file(tmp_path):
         'SOME_FILE = _ROOT / "utils" / "something.json"\n'
         'ABS_FILE  = Path("/absolute/path")\n'
     )
-    with patch.object(shc, "_SCAN_FILES", [clean]):
+    with patch.object(shc, "_discover_scan_files", return_value=[clean]):
         r = shc.check_relative_path_constants()
     assert r.status == "PASS"
     assert "0 relative-path" in r.message
@@ -297,7 +297,7 @@ def test_relative_path_scan_pass_clean_file(tmp_path):
 def test_relative_path_scan_warn_finds_relative(tmp_path):
     bad = tmp_path / "bad.py"
     bad.write_text('SOME_FILE = Path("utils/some.json")\n')
-    with patch.object(shc, "_SCAN_FILES", [bad]):
+    with patch.object(shc, "_discover_scan_files", return_value=[bad]):
         r = shc.check_relative_path_constants()
     assert r.status == "WARN"
     assert len(r.details["hits"]) == 1
@@ -310,7 +310,7 @@ def test_relative_path_scan_skips_commented_lines(tmp_path):
         '# SOME_FILE = Path("utils/some.json")  <- this is a comment, skip it\n'
         'REAL = Path(__file__).parent / "data"\n'
     )
-    with patch.object(shc, "_SCAN_FILES", [f]):
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
         r = shc.check_relative_path_constants()
     assert r.status == "PASS"
 
@@ -322,10 +322,56 @@ def test_relative_path_scan_multiple_hits(tmp_path):
         'FILE_B = Path(\'data/b.json\')\n'
         'FILE_C = _ROOT / "data" / "c.json"\n'   # absolute, should not match
     )
-    with patch.object(shc, "_SCAN_FILES", [f]):
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
         r = shc.check_relative_path_constants()
     assert r.status == "WARN"
     assert len(r.details["hits"]) == 2
+
+
+def test_relative_path_scan_finds_hit_in_non_original_scope_file(tmp_path):
+    """A relative-path constant in any file (not just the original 6) is caught."""
+    outside = tmp_path / "new_module.py"
+    outside.write_text('DATA_FILE = Path("data/cache.json")\n')
+    with patch.object(shc, "_discover_scan_files", return_value=[outside]):
+        r = shc.check_relative_path_constants()
+    assert r.status == "WARN"
+    assert "new_module.py" in r.details["hits"][0]
+
+
+# ── _discover_scan_files exclusion tests ─────────────────────────────────────
+
+def test_discover_scan_files_excludes_venv():
+    """No file under a venv/ directory appears in the scan list."""
+    files = shc._discover_scan_files()
+    venv_files = [f for f in files if "venv" in f.parts]
+    assert venv_files == [], f"venv files leaked into scan: {venv_files}"
+
+
+def test_discover_scan_files_excludes_pycache():
+    """No file under __pycache__/ appears in the scan list."""
+    files = shc._discover_scan_files()
+    cache_files = [f for f in files if "__pycache__" in f.parts]
+    assert cache_files == [], f"__pycache__ files leaked into scan: {cache_files}"
+
+
+def test_discover_scan_files_excludes_test_files():
+    """No test_*.py or *_test.py file appears in the scan list."""
+    files = shc._discover_scan_files()
+    test_files = [
+        f for f in files
+        if f.name.startswith("test_") or f.name.endswith("_test.py")
+    ]
+    assert test_files == [], f"test files leaked into scan: {test_files}"
+
+
+def test_discover_scan_files_returns_nonempty_sorted_list():
+    """The function returns a non-empty sorted list covering multiple source dirs."""
+    files = shc._discover_scan_files()
+    assert len(files) > 0, "Expected source files to be found"
+    assert files == sorted(files), "Result must be sorted"
+    # Verify files span at least two directories
+    dirs = {f.parent for f in files}
+    assert len(dirs) >= 2, f"Expected files from multiple dirs, got: {dirs}"
 
 
 # ── Exception isolation ───────────────────────────────────────────────────────
@@ -351,7 +397,7 @@ def test_exception_in_one_check_does_not_crash_others(tmp_path):
     with patch.object(shc, "LOGS_DIR",             log_dir), \
          patch.object(shc, "DEGRADATION_TRACKER",  tracker_file), \
          patch.object(shc, "CANDIDATES_FILE",      candidates_missing), \
-         patch.object(shc, "_SCAN_FILES",          [clean_py]), \
+         patch.object(shc, "_discover_scan_files", return_value=[clean_py]), \
          patch.object(shc, "_load_stocks",         return_value=_TWO_STOCKS), \
          patch.object(shc, "_load_screener_universe", side_effect=_boom):
 

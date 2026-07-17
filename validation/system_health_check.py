@@ -32,18 +32,24 @@ CANDIDATES_FILE     = _ROOT / "screener" / "latest_candidates.json"
 _CANDIDATES_FEATURE_DATE = date(2026, 7, 15)
 _CANDIDATES_STALE_DAYS   = 4   # normal Wed→Sun or Sun→Wed gap
 
-# Files to scan for relative-path constants (Check 6).
-_SCAN_FILES = [
-    _ROOT / "screener"      / "auto_screener.py",
-    _ROOT / "screener"      / "emailer.py",
-    _ROOT / "utils"         / "news_monitor.py",
-    _ROOT / "paper_trading" / "signal_runner.py",
-    # validation/*.py excluding test files — test string literals would false-positive
-    *sorted(
-        f for f in (_ROOT / "validation").glob("*.py")
-        if not f.name.startswith("test_")
-    ),
-]
+# Directories excluded from the relative-path constant scan (Check 6).
+_SCAN_EXCLUDE_DIRS = {"venv", "__pycache__", ".git", ".pytest_cache", "node_modules"}
+
+
+def _discover_scan_files() -> list[Path]:
+    """All .py source files in the repo, excluding venv/caches/test files.
+
+    Test files are excluded because their string-literal test data (e.g.
+    write_text('FOO = Path("relative")')) would produce false positives.
+    """
+    files = []
+    for p in _ROOT.rglob("*.py"):
+        if any(part in _SCAN_EXCLUDE_DIRS for part in p.parts):
+            continue
+        if p.name.startswith("test_") or p.name.endswith("_test.py"):
+            continue
+        files.append(p)
+    return sorted(files)
 
 _IST = timedelta(hours=5, minutes=30)
 
@@ -335,7 +341,7 @@ def check_relative_path_constants() -> CheckResult:
     try:
         hits = []
         scanned = 0
-        for fpath in _SCAN_FILES:
+        for fpath in _discover_scan_files():
             if not fpath.exists():
                 continue
             scanned += 1
