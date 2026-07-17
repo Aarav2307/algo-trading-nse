@@ -685,35 +685,29 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Known anomaly — unresolved, single occurrence (Jul 13 2026):
-  On Monday Jul 13, signal_runner.py's daily log reported
-  "[news_monitor] No flags file found — skipping pre-trade checks" —
-  a complete absence, not a staleness warning. Investigated thoroughly:
-    - news_monitor.py's own execution log confirms it ran successfully and
-      completed cleanly at 13:00 UTC on Fri Jul 10 (the most recent prior
-      run before Monday) — no crash, no error, clean start/completion
-      timestamps.
-    - signal_runner.py's weekday-aware staleness check
-      (_expected_last_news_monitor_date, commit a73a459) was traced by hand
-      and confirmed to be working correctly — it is a SEPARATE code path
-      from the "file not found" branch that actually fired here.
-    - The file's current state (checked Jul 17) shows normal, healthy
-      persistence — last write Jul 16 13:00, matching a known-good run.
-    - No evidence of an ongoing or systemic persistence problem.
-  CONCLUSION: root cause NOT determined. This appears to be a single,
-  unreproduced anomaly (a transient disk-write/read timing issue, or a
-  possible weekend-window quirk, are plausible but UNCONFIRMED
-  hypotheses — do not treat either as fact). Bug A (stale hardcoded
-  universe list in news_monitor.py, unrelated to this anomaly) was found
-  and fixed during this investigation, but does NOT explain this specific
-  incident.
-  ACTION: no fix applied, since no confirmed root cause exists to fix.
-  If "[news_monitor] No flags file found" or a similar absence recurs on
-  any future date where a prior clean run is confirmed, that is the
-  trigger to investigate further — with a second real data point, this
-  would no longer be a single anomaly and would deserve deeper
-  investigation (e.g. checking file timestamps immediately after each
-  run for several consecutive days, rather than after the fact).
+Root-caused and fixed (Jul 17 2026): the Jul 13 "[news_monitor] No flags
+  file found" anomaly (initially documented earlier today as unresolved/
+  single-occurrence) was found to have a SECOND occurrence on Jul 8, disproving
+  the "single anomaly" conclusion. Root cause confirmed:
+    signal_runner.py's NEWS_FLAGS_FILE was defined as a RELATIVE path
+    (Path("utils/news_flags.json")), while news_monitor.py correctly used an
+    ABSOLUTE path. A relative path only resolves correctly if the process's
+    working directory happens to be the project root at check time — any
+    invocation from a different cwd causes .exists() to return False even though
+    the real file was present and correctly written the entire time. This
+    explains both incidents: news_monitor.py ran and wrote successfully both
+    nights (confirmed via its own execution logs, Jul 7 13:00 and Jul 10 13:00),
+    yet the file appeared "missing" to signal_runner.py on the following read.
+  Fixed: NEWS_FLAGS_FILE changed to _ROOT / "utils" / "news_flags.json" in
+    signal_runner.py, matching news_monitor.py's existing absolute-path pattern.
+    Regression test added (test_17 in test_news_monitor.py) that changes cwd to
+    /tmp before checking NEWS_FLAGS_FILE.exists() and asserts the result is
+    stable — this is the test that would have caught this bug originally.
+  Lesson: the initial Jul 13 investigation correctly followed the evidence
+    available at the time and correctly refused to guess at an unconfirmed cause.
+    The initial data point (single occurrence) was genuinely insufficient to find
+    this. Finding the Jul 8 second occurrence during a broader week-level log
+    review was what made the pattern, and therefore the real cause, visible.
 
 #### WF Batch Automation — COMPLETED (Jul 14-15 2026)
 Problem: testing screener ADD/WATCHLIST candidates required manually running

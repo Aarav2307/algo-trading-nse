@@ -48,3 +48,30 @@ def test_fetch_stock_data_no_extra_sleep_on_fatal_auth_error():
         with pytest.raises(SystemExit):
             _fetch_stock_data(date.today())
         assert mock_sleep.call_count == 0
+
+
+def test_news_flags_file_is_absolute_and_cwd_independent():
+    """
+    Regression test for the Jul 8/13 'No flags file found' bug: the
+    reader's file path must be absolute so it resolves correctly
+    regardless of the process's working directory at check time.
+    """
+    import os
+    from paper_trading.signal_runner import NEWS_FLAGS_FILE
+
+    assert NEWS_FLAGS_FILE.is_absolute(), (
+        f"NEWS_FLAGS_FILE is not absolute: {NEWS_FLAGS_FILE!r}"
+    )
+
+    original_cwd = os.getcwd()
+    exists_from_root = NEWS_FLAGS_FILE.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = NEWS_FLAGS_FILE.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"NEWS_FLAGS_FILE.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )

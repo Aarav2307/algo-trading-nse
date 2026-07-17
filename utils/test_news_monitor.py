@@ -600,6 +600,8 @@ if __name__ == "__main__":
     test_12_monday_flags_from_thursday_is_stale()
     test_13_wednesday_flags_from_monday_is_stale()
     test_14_load_news_flags_no_warning_on_monday_reading_friday_flags()
+    test_15_universe_is_signal_runner_stocks()
+    # test_16 uses pytest tmp_path fixture — runs via pytest only
 
     print()
     print(f"  Results: {_PASS} passed, {_FAIL} failed")

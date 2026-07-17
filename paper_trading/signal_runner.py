@@ -147,7 +147,7 @@ STATE_FILE         = Path("paper_trading/portfolio_state.json")
 LOG_CSV            = Path("paper_trading/signal_log.csv")
 LOGS_DIR           = Path("paper_trading/logs")
 TOKEN_FILE         = Path("auth/access_token.txt")
-NEWS_FLAGS_FILE    = Path("utils/news_flags.json")
+NEWS_FLAGS_FILE    = _ROOT / "utils" / "news_flags.json"
 MANUAL_BLOCKS_FILE = Path("utils/manual_blocks.json")
 
 # IST = UTC+5:30
