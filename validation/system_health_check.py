@@ -15,7 +15,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
@@ -369,7 +369,7 @@ def check_relative_path_constants() -> CheckResult:
 # ── Report ────────────────────────────────────────────────────────────────────
 
 def _render(results: list[CheckResult]) -> None:
-    now_ist = datetime.utcnow() + _IST
+    now_ist = datetime.now(timezone.utc).replace(tzinfo=None) + _IST
     print(f"\n=== System Health Check — {now_ist.strftime('%Y-%m-%d %H:%M')} IST ===\n")
 
     counts: dict[str, int] = {"PASS": 0, "WARN": 0, "FAIL": 0}
