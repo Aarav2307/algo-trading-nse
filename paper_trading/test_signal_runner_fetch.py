@@ -101,3 +101,99 @@ def test_manual_blocks_file_is_absolute_and_cwd_independent():
         f"MANUAL_BLOCKS_FILE.exists() is cwd-dependent: "
         f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
     )
+
+
+def test_state_file_is_absolute_and_cwd_independent():
+    """
+    Regression test: STATE_FILE must be absolute — highest-stakes of this bug
+    class. A cwd-dependent path could cause the system to silently read/write
+    portfolio state to the wrong location.
+    Also asserts .exists() from the project root: confirms the path resolves to
+    the real portfolio state file, not just that it happens to be absolute.
+    """
+    import os
+    from paper_trading.signal_runner import STATE_FILE
+
+    assert STATE_FILE.is_absolute(), (
+        f"STATE_FILE is not absolute: {STATE_FILE!r}"
+    )
+
+    original_cwd = os.getcwd()
+    exists_from_root = STATE_FILE.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = STATE_FILE.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"STATE_FILE.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )
+    assert exists_from_root, (
+        f"STATE_FILE not found from project root — "
+        f"portfolio state missing at {STATE_FILE}"
+    )
+
+
+def test_log_csv_is_absolute_and_cwd_independent():
+    """Regression test: LOG_CSV must be absolute (same bug class as NEWS_FLAGS_FILE)."""
+    import os
+    from paper_trading.signal_runner import LOG_CSV
+
+    assert LOG_CSV.is_absolute(), f"LOG_CSV is not absolute: {LOG_CSV!r}"
+
+    original_cwd = os.getcwd()
+    exists_from_root = LOG_CSV.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = LOG_CSV.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"LOG_CSV.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )
+
+
+def test_logs_dir_is_absolute_and_cwd_independent():
+    """Regression test: LOGS_DIR must be absolute (same bug class as NEWS_FLAGS_FILE)."""
+    import os
+    from paper_trading.signal_runner import LOGS_DIR
+
+    assert LOGS_DIR.is_absolute(), f"LOGS_DIR is not absolute: {LOGS_DIR!r}"
+
+    original_cwd = os.getcwd()
+    exists_from_root = LOGS_DIR.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = LOGS_DIR.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"LOGS_DIR.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )
+
+
+def test_token_file_is_absolute_and_cwd_independent():
+    """Regression test: TOKEN_FILE must be absolute (same bug class as NEWS_FLAGS_FILE)."""
+    import os
+    from paper_trading.signal_runner import TOKEN_FILE
+
+    assert TOKEN_FILE.is_absolute(), f"TOKEN_FILE is not absolute: {TOKEN_FILE!r}"
+
+    original_cwd = os.getcwd()
+    exists_from_root = TOKEN_FILE.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = TOKEN_FILE.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"TOKEN_FILE.exists() is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )
