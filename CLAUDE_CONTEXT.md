@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
-## Current Trading Universe (9 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS
+## Current Trading Universe (10 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS, EMAMILTD.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -56,6 +56,20 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   Confirmed still in death cross at add time (SMA20=901.72, SMA50=906.37,
   gap -0.51%) — deployed same-day, catching the next golden cross live with zero
   timing gap.
+- Added Jul 17 2026: EMAMILTD.NS (screener ADD recommendation Jul 15 2026,
+  same batch as ESCORTS.NS, BRITANNIA.NS, HINDUNILVR.NS, CLEAN.NS — all
+  four already-tested/FAILED from prior batches; EMAMILTD.NS was the one
+  genuinely new candidate in this batch).
+  WF validated: original 6/6 OOS +9.0%, extended 5/6 OOS +13.6%.
+  Was DEATH cross (-0.25%) at WF validation time (Jul 15); crossover
+  traced day-by-day and confirmed genuine/smooth: -2.17% (Jul 9) through
+  +0.05% GOLDEN (Jul 16-17) — a real, monotonic crossover, not a data
+  artifact. Live Hurst confirmed healthy at 0.641 (Jul 17), well clear
+  of the 0.48 gate — unlike COHANCE.NS's razor-thin Hurst miss on its
+  own crossover, this one should clear the live entry gate if the
+  crossover holds through close.
+  Deployed same-day for zero timing gap, per the lesson from
+  CHOLAHLDNG.NS's Jul 9 miss.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
