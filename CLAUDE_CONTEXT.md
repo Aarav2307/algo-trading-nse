@@ -685,6 +685,36 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
+Known anomaly — unresolved, single occurrence (Jul 13 2026):
+  On Monday Jul 13, signal_runner.py's daily log reported
+  "[news_monitor] No flags file found — skipping pre-trade checks" —
+  a complete absence, not a staleness warning. Investigated thoroughly:
+    - news_monitor.py's own execution log confirms it ran successfully and
+      completed cleanly at 13:00 UTC on Fri Jul 10 (the most recent prior
+      run before Monday) — no crash, no error, clean start/completion
+      timestamps.
+    - signal_runner.py's weekday-aware staleness check
+      (_expected_last_news_monitor_date, commit a73a459) was traced by hand
+      and confirmed to be working correctly — it is a SEPARATE code path
+      from the "file not found" branch that actually fired here.
+    - The file's current state (checked Jul 17) shows normal, healthy
+      persistence — last write Jul 16 13:00, matching a known-good run.
+    - No evidence of an ongoing or systemic persistence problem.
+  CONCLUSION: root cause NOT determined. This appears to be a single,
+  unreproduced anomaly (a transient disk-write/read timing issue, or a
+  possible weekend-window quirk, are plausible but UNCONFIRMED
+  hypotheses — do not treat either as fact). Bug A (stale hardcoded
+  universe list in news_monitor.py, unrelated to this anomaly) was found
+  and fixed during this investigation, but does NOT explain this specific
+  incident.
+  ACTION: no fix applied, since no confirmed root cause exists to fix.
+  If "[news_monitor] No flags file found" or a similar absence recurs on
+  any future date where a prior clean run is confirmed, that is the
+  trigger to investigate further — with a second real data point, this
+  would no longer be a single anomaly and would deserve deeper
+  investigation (e.g. checking file timestamps immediately after each
+  run for several consecutive days, rather than after the fact).
+
 #### WF Batch Automation — COMPLETED (Jul 14-15 2026)
 Problem: testing screener ADD/WATCHLIST candidates required manually running
   walk_forward.py --ticker X once per stock, scrolling past ~150-200 lines of

@@ -31,6 +31,7 @@ screener/degradation_tracker.corrupt*
 
 # News monitor output — generated nightly
 utils/news_flags.json
+utils/news_monitor_errors.log
 
 # Local analysis tools — not part of live system
 screener/correlation_check.py

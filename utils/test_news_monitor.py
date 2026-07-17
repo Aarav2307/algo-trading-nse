@@ -3,7 +3,7 @@ utils/test_news_monitor.py — Unit tests for news_monitor.py and
 signal_runner's load_news_flags().
 
 Run: python utils/test_news_monitor.py
-All 14 must pass.
+All 16 must pass.
 """
 
 import io
@@ -23,6 +23,9 @@ from utils.news_monitor import (
     fetch_earnings_flags,
     fetch_surveillance_flags,
     run_monitor,
+    _get_universe,
+    _log_crash,
+    ERROR_LOG_FILE,
     NEWS_FLAGS_FILE,
     MANUAL_BLOCKS_FILE,
 )
@@ -517,6 +520,59 @@ def test_14_load_news_flags_no_warning_on_monday_reading_friday_flags() -> None:
     finally:
         os.unlink(tmp_path)
 
+    _pass(name)
+
+
+# =============================================================================
+# Test 15 — universe source: _get_universe() must equal signal_runner.STOCKS
+# =============================================================================
+
+def test_15_universe_is_signal_runner_stocks() -> None:
+    """_get_universe() must return signal_runner.STOCKS, not portfolio_state positions."""
+    name = "test_15_universe_is_signal_runner_stocks"
+    try:
+        from paper_trading.signal_runner import STOCKS
+        result = _get_universe()
+        expected = list(STOCKS)
+        if result != expected:
+            _fail(name, f"Got {result!r}, expected {expected!r}")
+            return
+    except Exception as e:
+        _fail(name, f"Exception: {e}")
+        return
+    _pass(name)
+
+
+# =============================================================================
+# Test 16 — crash logging: _log_crash() writes traceback to ERROR_LOG_FILE
+# =============================================================================
+
+def test_16_crash_is_logged_to_error_file(tmp_path) -> None:
+    """_log_crash() must write the exception traceback to ERROR_LOG_FILE.
+    Verified by patching ERROR_LOG_FILE to a tmp_path location."""
+    name = "test_16_crash_is_logged_to_error_file"
+    log_path = tmp_path / "news_monitor_errors.log"
+    import utils.news_monitor as nm
+    try:
+        with patch.object(nm, "ERROR_LOG_FILE", log_path):
+            try:
+                raise RuntimeError("simulated news_monitor crash")
+            except RuntimeError as exc:
+                nm._log_crash(exc)
+
+        if not log_path.exists():
+            _fail(name, "ERROR_LOG_FILE was not created")
+            return
+        content = log_path.read_text()
+        if "RuntimeError" not in content:
+            _fail(name, f"Expected 'RuntimeError' in log, got: {content!r}")
+            return
+        if "simulated news_monitor crash" not in content:
+            _fail(name, f"Expected crash message in log, got: {content!r}")
+            return
+    except Exception as e:
+        _fail(name, f"Exception: {e}")
+        return
     _pass(name)
 
 

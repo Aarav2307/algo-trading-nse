@@ -14,6 +14,7 @@ Cron: 0 13 * * 1-5  /home/ubuntu/algo-trading/utils/run_news_monitor.sh
 import io
 import json
 import sys
+import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -26,8 +27,30 @@ from utils.market_calendar import is_trading_day
 
 NEWS_FLAGS_FILE    = Path(__file__).parent / "news_flags.json"
 MANUAL_BLOCKS_FILE = Path(__file__).parent / "manual_blocks.json"
+ERROR_LOG_FILE     = Path(__file__).parent / "news_monitor_errors.log"
 SURVEILLANCE_BANDS = {"2", "5"}   # tight circuit = under surveillance
 EARNINGS_DAYS_AHEAD = 5           # flag if board meeting within 5 trading days
+
+
+def _get_universe() -> list:
+    """Return the live STOCKS list from signal_runner.py via direct import."""
+    from paper_trading.signal_runner import STOCKS
+    return list(STOCKS)
+
+
+def _log_crash(exc: Exception) -> None:
+    """Append a full traceback to ERROR_LOG_FILE. Fail-open: OSError is silenced."""
+    detail = traceback.format_exc()
+    try:
+        with open(ERROR_LOG_FILE, "a") as f:
+            f.write(
+                f"\n{'=' * 70}\n"
+                f"{datetime.now().isoformat()}\n"
+                f"{'=' * 70}\n"
+                f"{detail}\n"
+            )
+    except OSError:
+        pass
 
 
 def fetch_surveillance_flags(universe: list[str]) -> dict:
@@ -217,18 +240,11 @@ def run_monitor(universe: list[str]) -> dict:
 
 
 if __name__ == "__main__":
-    state_path = _ROOT / "paper_trading" / "portfolio_state.json"
     try:
-        with open(state_path) as f:
-            state = json.load(f)
-        universe = list(state["positions"].keys())
-    except Exception as e:
-        print(f"[news_monitor] WARNING: Could not read portfolio state: {e}")
-        universe = [
-            "BAJAJ-AUTO.NS", "HCLTECH.NS", "COLPAL.NS", "ANURAS.NS",
-            "NEWGEN.NS", "JKTYRE.NS", "BSOFT.NS", "PERSISTENT.NS",
-        ]
-
-    print(f"[news_monitor] Universe: {universe}")
-    result = run_monitor(universe)
-    print(json.dumps(result, indent=2, default=str))
+        universe = _get_universe()
+        print(f"[news_monitor] Universe: {universe}")
+        result = run_monitor(universe)
+        print(json.dumps(result, indent=2, default=str))
+    except Exception as exc:
+        _log_crash(exc)
+        raise
