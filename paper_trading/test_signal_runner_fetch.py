@@ -197,3 +197,26 @@ def test_token_file_is_absolute_and_cwd_independent():
         f"TOKEN_FILE.exists() is cwd-dependent: "
         f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
     )
+
+
+def test_amo_config_order_log_file_is_absolute_and_cwd_independent():
+    """AMO_CONFIG['order_log_file'] must be an absolute path — same bug class as the 6 Path() fixes."""
+    import os
+    from pathlib import Path
+    from paper_trading.signal_runner import AMO_CONFIG
+
+    p = Path(AMO_CONFIG["order_log_file"])
+    assert p.is_absolute(), f"AMO_CONFIG['order_log_file'] is not absolute: {p!r}"
+
+    original_cwd = os.getcwd()
+    exists_from_root = p.exists()
+    try:
+        os.chdir("/tmp")
+        exists_from_tmp = p.exists()
+    finally:
+        os.chdir(original_cwd)
+
+    assert exists_from_root == exists_from_tmp, (
+        f"AMO_CONFIG['order_log_file'] is cwd-dependent: "
+        f"from root={exists_from_root}, from /tmp={exists_from_tmp}"
+    )
