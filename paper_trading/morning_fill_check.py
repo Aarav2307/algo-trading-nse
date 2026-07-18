@@ -678,8 +678,6 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
                 print(f"  ⚠️  Verify position manually in Zerodha dashboard")
 
-            _update_csv_row(order_date, ticker, order_type,
-                            "FILLED", str(round(open_px, 4)), today.isoformat())
             if apply_fills:
                 _update_portfolio_fill(
                     ticker, order_type, shares, open_px, today,
@@ -687,6 +685,8 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                     is_rm_exit=is_rm_exit,
                     portfolio_obj=_portfolio,
                 )
+            _update_csv_row(order_date, ticker, order_type,
+                            "FILLED", str(round(open_px, 4)), today.isoformat())
 
         elif result["status"] in ("REJECTED", "CANCELLED"):
             detail = f"| {result['reason']}{rm_tag}"
@@ -738,14 +738,14 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                         f"| gap {gap_magnitude*100:.1f}% > {GAP_BREAKER_THRESHOLD*100:.0f}% threshold "
                         f"— exiting at open{rm_tag}"
                     )
-                    _update_csv_row(order_date, ticker, order_type,
-                                    "GAP_EXIT", str(round(open_px, 4)), today.isoformat())
                     _update_portfolio_fill(
                         ticker, order_type, shares, open_px, today,
                         exit_reason="GAP_EXIT",
                         is_rm_exit=is_rm_exit,
                         portfolio_obj=_portfolio,
                     )
+                    _update_csv_row(order_date, ticker, order_type,
+                                    "GAP_EXIT", str(round(open_px, 4)), today.isoformat())
 
                 elif is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES:
                     # Small gap — true miss, requeue for tomorrow's open at an updated limit.
@@ -846,4 +846,9 @@ Examples:
     args = parser.parse_args()
 
     check_date = date.fromisoformat(args.date) if args.date else None
-    run_morning_check(check_date=check_date, apply_fills=args.apply)
+    try:
+        run_morning_check(check_date=check_date, apply_fills=args.apply)
+    except Exception as exc:
+        from utils.alerts import send_crash_alert
+        send_crash_alert("morning_fill_check.py", exc)
+        raise

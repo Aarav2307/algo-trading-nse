@@ -935,59 +935,64 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="Print report without sending email")
     args = parser.parse_args()
 
-    results = run_screen()
+    try:
+        results = run_screen()
 
-    # Import emailer here to avoid circular imports
-    from screener.emailer import send_report
+        # Import emailer here to avoid circular imports
+        from screener.emailer import send_report
 
-    if args.dry_run:
-        print("\n" + "="*70)
-        print("DRY RUN — Report would be emailed to aaravpagarwal07@gmail.com")
-        print("="*70)
+        if args.dry_run:
+            print("\n" + "="*70)
+            print("DRY RUN — Report would be emailed to aaravpagarwal07@gmail.com")
+            print("="*70)
 
-        print(f"\nADD ({len(results['adds'])}) — death cross on 80-day window, closest to golden flip:")
-        for s in results['adds']:
-            divflag = "  ⚠ DIVERGENT (2yr=GOLDEN, 80d=DEATH — verify)" if s.get('divergent') else ""
-            print(
-                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
-                f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
-                f"  Corr={s['avg_corr']}{divflag}"
-            )
-
-        print(f"\nMONITOR ({len(results.get('monitors', []))}) — golden cross on 80-day window (missed entry, wait for next cycle):")
-        for s in results.get('monitors', []):
-            divflag = "  ⚠ DIVERGENT (2yr=DEATH, 80d=GOLDEN — verify)" if s.get('divergent') else ""
-            print(
-                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
-                f"  Gap-Short=+{s['gap_short']}%  Gap-Long={'+' if (s['gap_long'] or 0) > 0 else ''}{s['gap_long']}%"
-                f"  Corr={s['avg_corr']}{divflag}"
-            )
-
-        print(f"\nWATCH ({len(results['watches'])}) — death cross on 80-day window, further from flip:")
-        for s in results['watches']:
-            print(
-                f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
-                f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
-            )
-
-        print(f"\nREMOVE ({len(results['removes'])}):")
-        for s in results['removes']:
-            flags = s.get('consecutive_flags', '?')
-            print(f"  {s['ticker']:<22} {s['reason']} — flagged {flags} consecutive screen(s)")
-            annotated = [
-                (d, a) for d, a in s.get('flag_annotations', {}).items()
-                if a.get('regime_transition_nearby')
-            ]
-            if annotated:
-                dates_str = ', '.join(d for d, _ in annotated)
+            print(f"\nADD ({len(results['adds'])}) — death cross on 80-day window, closest to golden flip:")
+            for s in results['adds']:
+                divflag = "  ⚠ DIVERGENT (2yr=GOLDEN, 80d=DEATH — verify)" if s.get('divergent') else ""
                 print(
-                    f"  ⚠️  CAUTION: {len(annotated)} of {flags} flags for "
-                    f"{s['ticker']} occurred within {REGIME_TRANSITION_WINDOW} days of a "
-                    f"NIFTY regime transition ({dates_str}). ADX often dips mechanically "
-                    f"during transitions — verify this reflects genuine decay before removing."
+                    f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                    f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
+                    f"  Corr={s['avg_corr']}{divflag}"
                 )
 
-        print(f"\nMeta: {results['meta']}")
-    else:
-        send_report(results)
-        _write_candidates_file(results)
+            print(f"\nMONITOR ({len(results.get('monitors', []))}) — golden cross on 80-day window (missed entry, wait for next cycle):")
+            for s in results.get('monitors', []):
+                divflag = "  ⚠ DIVERGENT (2yr=DEATH, 80d=GOLDEN — verify)" if s.get('divergent') else ""
+                print(
+                    f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                    f"  Gap-Short=+{s['gap_short']}%  Gap-Long={'+' if (s['gap_long'] or 0) > 0 else ''}{s['gap_long']}%"
+                    f"  Corr={s['avg_corr']}{divflag}"
+                )
+
+            print(f"\nWATCH ({len(results['watches'])}) — death cross on 80-day window, further from flip:")
+            for s in results['watches']:
+                print(
+                    f"  {s['ticker']:<22} H={s['hurst']}  ADX={s['adx']}"
+                    f"  Gap-Short={s['gap_short']}%  Gap-Long={s['gap_long']}%"
+                )
+
+            print(f"\nREMOVE ({len(results['removes'])}):")
+            for s in results['removes']:
+                flags = s.get('consecutive_flags', '?')
+                print(f"  {s['ticker']:<22} {s['reason']} — flagged {flags} consecutive screen(s)")
+                annotated = [
+                    (d, a) for d, a in s.get('flag_annotations', {}).items()
+                    if a.get('regime_transition_nearby')
+                ]
+                if annotated:
+                    dates_str = ', '.join(d for d, _ in annotated)
+                    print(
+                        f"  ⚠️  CAUTION: {len(annotated)} of {flags} flags for "
+                        f"{s['ticker']} occurred within {REGIME_TRANSITION_WINDOW} days of a "
+                        f"NIFTY regime transition ({dates_str}). ADX often dips mechanically "
+                        f"during transitions — verify this reflects genuine decay before removing."
+                    )
+
+            print(f"\nMeta: {results['meta']}")
+        else:
+            send_report(results)
+            _write_candidates_file(results)
+    except Exception as exc:
+        from utils.alerts import send_crash_alert
+        send_crash_alert("auto_screener.py", exc)
+        raise
