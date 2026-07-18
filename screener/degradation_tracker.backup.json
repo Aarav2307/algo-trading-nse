@@ -1,0 +1,74 @@
+{
+  "ANURAS.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-12"
+  },
+  "BAJAJ-AUTO.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-12"
+  },
+  "BSOFT.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-08",
+    "last_screen_date": "2026-07-12"
+  },
+  "CHOLAHLDNG.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-12",
+    "last_screen_date": "2026-07-12"
+  },
+  "COHANCE.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-12",
+    "last_screen_date": "2026-07-12"
+  },
+  "COLPAL.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-12"
+  },
+  "HCLTECH.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-12"
+  },
+  "NEWGEN.NS": {
+    "consecutive_flags": 3,
+    "flag_history": [
+      "2026-07-05",
+      "2026-07-08",
+      "2026-07-12"
+    ],
+    "last_flagged": "2026-07-12",
+    "last_screen_date": "2026-07-12"
+  },
+  "PERSISTENT.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-24",
+    "last_screen_date": "2026-07-12"
+  },
+  "_meta": {
+    "created": "2026-06-21",
+    "last_screen_date": "2026-07-12",
+    "screen_count": 7,
+    "version": "2"
+  }
+}

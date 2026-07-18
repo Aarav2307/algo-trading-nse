@@ -1,0 +1,27 @@
+News monitor started: 2026-07-08 13:00:01
+[news_monitor] Universe: ['BAJAJ-AUTO.NS', 'HCLTECH.NS', 'COLPAL.NS', 'ANURAS.NS', 'NEWGEN.NS', 'BSOFT.NS', 'PERSISTENT.NS']
+[news_monitor] Checking 7 stocks: BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
+[news_monitor] Checked 7 stocks — 0 surveillance, 1 earnings risk, 0 manual blocks
+{
+  "generated_at": "2026-07-08 13:00",
+  "universe_checked": [
+    "BAJAJ-AUTO.NS",
+    "HCLTECH.NS",
+    "COLPAL.NS",
+    "ANURAS.NS",
+    "NEWGEN.NS",
+    "BSOFT.NS",
+    "PERSISTENT.NS"
+  ],
+  "flags": {
+    "HCLTECH.NS": {
+      "type": "EARNINGS_RISK",
+      "detail": "Board meeting 13-Jul-2026 \u2014 Q results",
+      "auto_block": false,
+      "meeting_date": "13-Jul-2026",
+      "trading_days_away": 4,
+      "source": "NSE corporate-board-meetings API"
+    }
+  }
+}
+News monitor completed: 2026-07-08 13:00:02

@@ -1,0 +1,522 @@
+# Claude Context — NSE Algo Trading System
+Last updated: 2026-07-05
+
+## Current Trading Universe (7 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
+
+## Universe History
+- Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
+- Added Jun 12: CUMMINSIND, HCLTECH
+- Added Jun 16: BOSCHLTD, COLPAL, ANURAS, HEROMOTOCO
+- Added Jun 17: NEWGEN, JKTYRE, BSOFT, RPOWER
+- Removed Jun 17: RPOWER (governance risk), BOSCHLTD (walk-forward 1/5)
+- Removed Jun 18: TMPV (Hurst degraded H=0.468, 2 consecutive screens), CUMMINSIND (Hurst degraded H=0.472)
+- Added Jun 24: PERSISTENT.NS (replacing SIEMENS slot, screener validated H=0.519 ADX=30.8 corr=0.231)
+- Removed Jun 24: WHIRLPOOL (fails min_abs_oos_ret +3.5% vs +4% threshold, payoff 1.48 below 1.5)
+- Removed Jun 24: HEROMOTOCO (2/5 extended WF, never generated entry signal since added Jun 16)
+- Removed Jun 24: SIEMENS (3/5 both WF windows, OOS return ~0%, position closed Jun 24 at Rs3,688)
+- Removed Jul 7 2026: JKTYRE.NS — WF FAIL (2/6 original, OOS -0.3%,
+  expectancy -Rs83/trade, H=0.214 mean-reverting)
+  HURST_SKIP fired Jul 6 on golden cross — Hurst gate prevented bad entry
+  Replace at next screener cycle with validated candidate
+
+## Paper Trading Status (as of 2026-07-05)
+- Started: 2026-06-02 (33 trading days as of Jul 5)
+- Portfolio: Rs243.49 cash + 359 NIFTYBEES units (verified from server Jul 5)
+- ETF: 359 NIFTYBEES units @ 100% tier (0 open positions)
+- Open positions: 0
+- Total trades: 4 (confirmed from portfolio_state.json)
+- NIFTY regime: BEAR as of last_run 2026-07-03
+- NIFTY SMA gap closing rapidly — -0.07% on Jul 3, BULL flip imminent
+- Confirmed completed trades: 4
+  - WHIRLPOOL: -₹188 (Jun 3, death cross)
+  - TMPV: -₹1,297 (Jun 17, Chandelier stop)
+  - SIEMENS: -₹157 (Jun 24, death cross, filled at ₹3,688)
+  - BAJAJ-AUTO: -₹441 gross (Jun 29, death cross, filled at ₹9,892 — gapped UP)
+- All 7 stocks waiting for golden cross entry signal (JKTYRE removed Jul 7)
+- repair_portfolio_state.py: no longer needed — BAJAJ-AUTO filled cleanly Jun 29
+
+## Walk-Forward Validation Results
+- Last run score: 17/24 (71%) — SYSTEM VALIDATED (threshold 65%)
+  Note: 17/24 was run on original 4-stock universe with dynamic OOS (date.today())
+  Has NOT been rerun on current 5-stock universe — next run due October 2026
+- OOS end date is dynamic (date.today()) — always includes latest live data
+- 6 metrics per stock: OOS>IS return, Sharpe>0, payoff>1.5, win rate>40%, expectancy>0, min OOS +4%
+- Individual stock results:
+  - BAJAJ-AUTO.NS: 6/6 original OOS +13.5% — WF validated (original validation)
+  - COLPAL.NS: 10/12 both windows — WF validated Jun 24 2026
+  - HCLTECH.NS: 6/6 original OOS +5.5%, 4/6 extended — WF validated Jul 6 2026
+  - BSOFT.NS: 6/6 original OOS +8.5%, 5/6 extended — WF validated Jul 6 2026
+  - PERSISTENT.NS: 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
+    Command: python validation/walk_forward.py --ticker PERSISTENT.NS
+  - JKTYRE.NS: REMOVED Jul 7 2026 — WF FAIL 2/6 original (OOS -0.3%,
+    expectancy -Rs83/trade). Do not re-add without new WF validation.
+  - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
+  - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
+  - NEWGEN.NS: 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
+    WF validated Jul 7 2026 (listed Jan 2018, sufficient IS history confirmed)
+  - ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window
+    Cannot validate with current IS window definition
+    Re-evaluate at October 2026 quarterly review with updated IS window
+- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN
+- Run walk_forward.py quarterly — next run due October 2026
+
+## Infrastructure
+- AWS Lightsail Mumbai: ubuntu@13.205.133.169
+- SSH key: ~/.ssh/LightsailDefaultKey-ap-south-1.pem
+- Cron: 15 10 * * 1-5 (3:45 PM IST signal run), 50 3 * * 1-5 (9:20 AM IST morning fill check), 30 12 * * 0,3 (6 PM IST Wed+Sun screener)
+- Server path: /home/ubuntu/algo-trading/
+- Local path: /Users/aaravagarwal/algo-trading/
+- Python on server: python3 (not python)
+- Venv on server: ~/algo-trading/venv
+
+## Key Workflow Notes
+- Always SCP files from server before git push (server is source of truth)
+- CRITICAL: Before SCP-ing ANY file to the server that touches paper_trading/,
+  ALWAYS run the backup script first:
+  ssh -i ~/.ssh/LightsailDefaultKey-ap-south-1.pem ubuntu@13.205.133.169 \
+    "bash ~/algo-trading/paper_trading/backup_state.sh"
+- This creates a timestamped backup in paper_trading/state_backups/
+- Never SCP portfolio_state.json directly — it is in .gitignore and
+  the server version is always the source of truth
+- correlation_check.py is a full module — checks candidate against live open positions
+  CLI: python paper_trading/correlation_check.py TICKER.NS
+  In signal_runner: uses in-memory state (not file) — catches same-day BUY pairs correctly
+- repair_portfolio_state.py — one-time emergency repair script, keep for future use
+  Located at: paper_trading/repair_portfolio_state.py
+  BAJAJ-AUTO filled cleanly Jun 29 — script was not needed
+- universe_expansion.py does not exist on server
+- bars_held=0 mid-day is normal — updates at 3:45 PM signal run
+- morning_fill_check.py and corporate_actions.py are fully dynamic
+- Check logs at: ~/algo-trading/paper_trading/logs/YYYY-MM-DD.log
+- Screener logs at: ~/algo-trading/paper_trading/logs/screen_YYYY-MM-DD.log
+- Screener now uses dynamic NIFTY 500 (504 stocks) — no hardcoded universe
+- ADD recommendations = death cross stocks closest to golden flip (system will catch entry)
+- MONITOR = already in golden cross — wait for next cycle before adding
+- Divergence detection: flags stocks where 2yr and 80d SMA windows disagree
+
+## Going Live Checklist (future)
+- Minimum capital: Rs50,000 recommended
+- Wait for 6 months clean paper trading data (currently at ~33 days as of Jul 5)
+  Note: NIFTY BULL flip imminent (SMA gap -0.07% on Jul 3) — entries expected soon
+- Implement SL-M orders for exits before going live (gap-down protection)
+- Implement ATR-based position sizing before going live
+- Complete at least 30 full trade cycles (entry + exit) — currently 3 confirmed
+- Flip PAPER_TRADING_MODE=False in signal_runner.py
+- Set LIVE_TRADING_MODE=True in morning_fill_check.py
+- Disable dry-run in engine/order_manager.py
+- Reset portfolio_state.json with real capital
+- Archive current paper trading logs before reset
+- MAX_CONCURRENT_POSITIONS=4 already set for Rs50,000 capital
+- Position sizer calibrated for Rs50,000 — BAJAJ-AUTO at Rs10,000+ uses ~20% cap per trade
+
+## System Limitations
+- No news/merger monitoring — corporate_actions.py only checks scheduled NSE ex-dates
+- No F&O support (future project)
+- ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window — cannot validate
+  Re-evaluate at October 2026 quarterly review with updated IS window
+- HEROMOTOCO removed Jun 24 — 2/5 extended WF, never generated entry signal
+- SIEMENS removed Jun 24 — 3/5 both windows, position closed Jun 24 at Rs3,688
+- Gap-down circuit breaker: COMPLETED (Jun 26) — GAP_BREAKER_THRESHOLD=3%
+  If open price >3% below AMO limit: exit at open (GAP_EXIT), not requeued
+  9/9 unit tests passing (paper_trading/test_gap_breaker.py)
+  Note: SL-M orders still needed for real-money live trading (paper trading uses simulation)
+- Position sizing not volatility-adjusted — all positions get equal capital regardless of volatility
+- Correlation threshold 0.60 may be too loose for stress scenarios — review after 6 months
+- Hurst threshold stays at 0.48 — raising to 0.55 filters entire current universe to zero stocks
+  (verified Jun 26: all 6 live stocks have H between 0.415-0.549, none pass 0.55)
+- NEWGEN.NS: WF validated Jul 7 2026 — 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
+  Listed Jan 2018, sufficient IS history confirmed at validation
+
+### Stocks Removed (Jun 24 2026)
+- WHIRLPOOL: OOS return +3.5% fails min_abs_oos_ret threshold (+4%),
+  payoff ratio 1.48 below 1.5 threshold, rolling WARNING.
+  Walk-forward score 10/12 but fails minimum return floor.
+- HEROMOTOCO: 2/5 extended walk-forward, weak payoff and expectancy.
+  Never generated entry signal since added Jun 16.
+- SIEMENS: pending removal — exit AMO queued, position closes Jun 25.
+  3/5 both windows, OOS return ~0%, rolling WARNING.
+
+## Quant Research Fixes (Jun 17)
+### Fix 1: Exit pricing bias — COMPLETED
+- Problem: RM exits (Chandelier, Hard Stop, Time Stop) were booking at today's close price, but real execution happens at next morning's open via AMO
+- Fix: Deferred RM exits to next-day open in both engine/backtester.py and paper_trading/signal_runner.py, matching how strategy entries already worked
+- Walk-forward rerun after fix: 15/20 PASS — identical to original
+- Detail changes: TMPV OOS return -1.5pp (expected, realistic), BAJAJ-AUTO unchanged, WHIRLPOOL -0.4pp
+- Net verdict: fix is safe, backtest and paper trading now model AMO fills identically end-to-end
+
+### Remaining fixes from quant review (priority order):
+2. Add portfolio-level NIFTY regime filter — if NIFTY SMA20 < SMA50, reduce position sizes or go to cash
+3. Validate cooldown period — backtest 10/15/20/25 bar cooldowns, pick best
+4. Fix transaction costs — add SEBI fees, exchange charges, GST, stamp duty
+5. Remove RPOWER — governance risk unquantifiable
+6. Extend paper trading — minimum 6 months before going live
+
+### Fix 2: NIFTY portfolio-level regime filter — COMPLETED
+- Problem: system entered long positions even during NIFTY bear markets, swimming against the tide
+- Fix: added NIFTY SMA20/SMA50 check before every BUY signal in backtester.py and signal_runner.py
+- If NIFTY SMA20 < SMA50: suppress all new entries, log "Market regime filter: NIFTY in death cross"
+- Walk-forward result: 15/20 → 17/20 (75% → 85%) — WHIRLPOOL and SIEMENS each gained 1 pass
+- Config flag: nifty_regime_filter=True in walk_forward.py line 79, toggleable
+- Market regime shown in daily report header and persisted in portfolio_state.json
+
+### Fix 3: Cooldown validation — COMPLETED
+- Tested 10/15/20/25 bars across 9 qualifying stocks (ANURAS skipped, only 440 IS bars)
+- Results: 10=33/45, 15=33/45, 20=31/45, 25=34/45
+- Decision: keep 15 bars — ties with 10 on score but better trade quality (+4.39% vs +4.81% with 8 fewer low-quality trades)
+- 25 bars marginal +1 point but within statistical noise
+- Side finding: BOSCHLTD scored 1/5 — low vol compounder, not SMA crossover candidate, flag for removal
+- Side finding: ANURAS has insufficient history for validation — monitor carefully
+
+### Fix 4: Transaction costs — COMPLETED
+- Old model: brokerage ₹20 + STT 0.025% + slippage 0.05% = ₹45 per ₹1,00,000 round-trip
+- New model: added SEBI fee 0.0001%, NSE exchange 0.00335%, GST 18% on brokerage, stamp duty 0.015% buy-side
+- New total: ₹94.09 per ₹1,00,000 round-trip — old model understated by 2x
+- Walk-forward: 17/20 unchanged — strategy survives realistic costs
+- OOS returns dipped 0.1-0.3pp per stock, within rounding on PASS thresholds
+
+### Fix 5: Removed RPOWER and BOSCHLTD — COMPLETED
+- RPOWER removed: governance risk (promoter pledging, debt restructuring history) — asymmetric downside unquantifiable by the model
+- BOSCHLTD removed: walk-forward score 1/5 — low volatility compounder, not SMA crossover candidate
+- Both had 0 open positions at time of removal — clean exit
+- Universe now 12 stocks: TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO, CUMMINSIND, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
+
+### Fix 6: Data source mismatch — COMPLETED
+- Problem: screener used 2-year window for SMA gap, signal_runner uses 120-day window — different calculations
+- Fix: added compute_sma_gap_short() using last 120 calendar days, matching signal_runner exactly
+- Both gap_short (80-day) and gap_long (2-year) now shown in email and dry-run
+- cross classification now uses gap_short — what the trading system actually sees
+- Divergence detection added: flags stocks where 2yr and 80d windows disagree on cross direction
+- Step 6 verified: SIGNAL_LOOKBACK_DAYS == LOOKBACK_CALENDAR_DAYS == 120 ✅
+- Today's screen: 0 divergent stocks — short and long windows agree on all candidates
+
+### Fix 7: Simultaneous signal allocation — COMPLETED
+- Problem: when multiple BUY signals fire same day, list-order bias determined which stocks got capital
+- Fix: added two-phase pipeline — Phase 1 collects all BUY signals, Phase 2 allocates in rank order
+- Ranking weights: Hurst 40%, gap proximity 40%, volatility 20%
+- MAX_CONCURRENT_POSITIONS = 4 (conservative for ₹50,000 capital)
+- can_open_position() gates: position limit + cash availability check
+- RM exits are NEVER gated — always execute regardless of position count
+- Skipped signals logged to signal_log.csv with reason and rank score
+- Walk-forward: 17/20 unchanged (ranking only affects paper trading execution path)
+- Test verified: STOCK_C (91.4) → STOCK_A (85.2) → STOCK_B (62.1) correct sort order
+
+### Fix 10 Update: Extended test on 10 stocks — COMPLETED
+- 10-stock extended (2015-19 IS / 2020-23 OOS): 37/50 (74%) — SYSTEM VALIDATED
+- All 10 stocks delivered positive OOS returns through COVID crash and 2022 selloff
+- BSOFT standout: +44.5% OOS, 4/5, 76.9% win rate during hardest macro period
+- HEROMOTOCO weak: 2/5, poor payoff and expectancy — flag for future removal
+- SIEMENS consistent 3/5 underperformer across both windows — flag for removal
+- NEWGEN and ANURAS excluded: insufficient history (listed 2018 and post-2019)
+- Conclusion: strategy is genuinely robust across bull and bear market periods
+
+### Fix 9: AMO verification in morning fill check — COMPLETED
+- Problem: paper trading assumed fills based on open price; live trading needs actual Zerodha confirmation
+- Fix: added LIVE_TRADING_MODE flag (default False) to morning_fill_check.py
+- When True: queries kite.orders() for actual order status (COMPLETE/REJECTED/CANCELLED)
+- When False: existing simulation logic unchanged — no paper trading regression
+- Added _check_circuit_breaker(): flags orders where open moved >19% from prev close
+- Added _fetch_live_order_status(): queries Zerodha API with graceful fallback to simulation
+- Added REJECTED/CANCELLED section in morning report requiring manual attention
+- order_id column added to amo_orders.csv via _ensure_csv_header() migration
+- LIVE_TRADING_MODE = False confirmed via assertion test
+- To activate for live trading: set LIVE_TRADING_MODE = True in morning_fill_check.py
+
+### Fix 12: Degradation tracker integrity — COMPLETED
+- Problem: tracker had no protection against corruption, server restarts, stale entries, or non-consecutive flags
+- Fix: full integrity system with 4 protections:
+  1. Atomic writes (write to .tmp then rename — no partial writes)
+  2. Backup chain (degradation_tracker.backup.json always has previous good version)
+  3. Corrupt file recovery (saves .corrupt_DATE.json backup, starts fresh)
+  4. Schema v1→v2 migration (adds last_screen_date, flag_history fields)
+- Stale entry cleanup: stocks removed from universe auto-deleted from tracker
+- Consecutive gap check: if last screen > 5 days ago, reset counter (not truly consecutive)
+- Open position guard: never recommends REMOVE if shares > 0
+- All 4 integrity tests passed: empty file, corrupt file, save/reload, backup existence
+- v1→v2 migration ran automatically on first dry-run: 13 entries migrated, BOSCHLTD cleaned up
+
+### Fix 11: Remove TMPV and CUMMINSIND — COMPLETED
+- Both flagged by degradation tracker for 2 consecutive screens (H < 0.52)
+- TMPV: already exited via Chandelier stop Jun 17, 0 shares at removal
+- CUMMINSIND: never generated entry signal after being added, 0 shares at removal
+- Universe now 10 stocks: WHIRLPOOL, SIEMENS, BAJAJ-AUTO, HCLTECH, COLPAL, ANURAS, HEROMOTOCO, NEWGEN, JKTYRE, BSOFT
+
+### Minimum Absolute OOS Return Metric — COMPLETED (Jun 18)
+- Problem: strategy losing money could pass validation if OOS lost less than IS
+- Fix: added 6th walk-forward metric — OOS total return must be ≥+4% cumulative to PASS
+- Updated _pass() with "min_abs_oos_ret" case, row() calls in both WF functions, METRICS_KEYS list
+- Max score updated from 20→24 (4 stocks × 6 metrics), validation threshold 17/24
+- Unit tests confirmed: SIEMENS +0.1% FAIL, WHIRLPOOL +3.5% FAIL, TMPV +9.2% PASS, BAJAJ-AUTO +13.5% PASS
+- New overall score: 19/24 (79%) — SYSTEM VALIDATED
+- WHIRLPOOL and SIEMENS correctly penalised — confirms existing flag for future removal
+
+### Auto Token Refresh — COMPLETED (Jun 18)
+- Problem: Kite token expires midnight IST daily, requiring manual kite_login.py locally
+- Fix: added _auto_refresh_token() to data/kite_fetcher.py
+- When TokenException caught: runs auth/auto_login.py as subprocess, retries API call once
+- Works on both server (automated TOTP) and local machine (same .env TOTP secret)
+- Zero manual intervention needed — fully transparent to all callers
+- Side fix: .env was missing newline between ZERODHA_TOTP_SECRET and SENDGRID_API_KEY — TOTP was 118 chars instead of 32, causing pyotp failures. Fixed on both local and server.
+- Tested: expired token → auto-refresh → retry → 12 bars loaded ✅
+
+### Finding #1 Fix: Double cash deduction on BUY fills — COMPLETED (Jun 19)
+- Problem: signal_runner deducted cash at close price; morning_fill_check deducted again at open price
+- Fix: signal_runner now calls queue_pending_buy() — no cash deduction, no position opened
+- Cash deducted exactly once when morning_fill_check calls confirm_buy_fill() at actual open price
+- New methods in paper_portfolio.py: queue_pending_buy(), cancel_pending_buy(), confirm_buy_fill()
+- pending_buy field added to all position dicts (migration runs automatically on load)
+- MISSED BUY AMOs call cancel_pending_buy() — position reset to flat, stock re-eligible for signals
+- Unit tests: 3/3 passed (no cash deduction on queue, correct deduction on confirm, cancel resets)
+- Walk-forward: 19/24 unchanged — no regression
+
+### Finding #2 Fix: Orphaned RM SELL position — COMPLETED (Jun 19)
+- Problem: MISSED RM SELL AMO left position stuck with pending_rm_exit=True forever
+- Fix: morning_fill_check re-queues SELL AMO at updated limit (today close × 0.995) after MISS
+- Max 3 requeues before CRITICAL alert for manual intervention
+- RM check_exit() continues running during pending_rm_exit — stops remain active
+- New methods: requeue_rm_sell() in paper_portfolio.py
+- New fields: rm_sell_requeue_count in position dict (migration runs on load)
+- Unit tests: 3/3 passed
+
+### Finding #3 Fix: Missing NSE holidays — COMPLETED (Jun 19)
+- Problem: Jan-May 2026 holidays deleted from market_calendar.py causing wrong trading day checks
+- Fix: restored all 2026 holidays (Republic Day, Holi, Good Friday, Ambedkar Jayanti, Maharashtra Day)
+- Added NEVER REMOVE comment to holiday list — no performance reason to delete past holidays
+- Added verify_holiday_coverage() — checks 4 fixed annual holidays at startup
+- Signal_runner calls verify_holiday_coverage() at startup and warns if any missing
+- All 8 holiday tests passed ✅
+- Note: Aug 15 2026 is Saturday — weekend guard makes holiday entry redundant but harmless
+
+### Finding #6 Fix: Auth check kills before auto-refresh — COMPLETED (Jun 19)
+- Problem: _check_auth() called sys.exit(1) on stale token before kite_fetcher auto-refresh could help
+- Fix: replaced sys.exit(1) with _attempt_auto_refresh() — runs auto_login.py as subprocess
+- sys.exit(1) only fires if auto-refresh also fails (true unrecoverable error)
+- Tested: 10-hour-old token → auto-refresh → _check_auth completes cleanly ✅
+- Walk-forward: 19/24 unchanged
+- Combined with kite_fetcher auto-refresh: token expiry is now fully transparent everywhere
+
+### Finding #13 Fix: Duplicate AMO orders — COMPLETED (Jun 19)
+- Problem: signal_runner run twice same day creates duplicate DRY_RUN rows; morning_fill_check processes both, double-deducting cash
+- Fix 1: _load_pending_orders() deduplicates by (date, ticker, order_type) — keeps most recent row, warns on duplicates
+- Fix 2: SELL branch in _update_portfolio_fill() has idempotency guard — skips if shares already 0
+- BUY duplicates also caught by pending_buy=False guard from Finding #1 fix
+- Unit tests: 2/2 passed (duplicate removed, non-duplicate preserved, most recent kept)
+- Walk-forward: 19/24 unchanged
+
+### Finding #5 Fix: Trade P&L inflated by buy-side costs — COMPLETED (Jun 20)
+- Problem: net_pnl in trade log only subtracted sell-side costs; buy-side costs (~Rs25 per Rs100k) were deducted from cash but not from net_pnl
+- Fix: added entry_cost field to position dict, stored at open_position() and confirm_buy_fill()
+- close_position() and morning_fill_check now compute: net_pnl = gross_pnl - sell_cost - entry_cost
+- entry_cost added to trade log dict for full transparency
+- Migration: existing positions get entry_cost=0.0 (conservative — won't retroactively fix old trades)
+- Unit test: Rs-36.44 (old) → Rs-61.89 (new) — Rs25.45 overstatement eliminated ✅
+- Walk-forward: 19/24 unchanged
+
+### Finding #8 Fix: Walk-forward OOS window stale — COMPLETED (Jun 20)
+- Problem: OOS hardcoded to end 2026-01-01, missing 120+ days of live performance
+- Fix: OOS end date now dynamic (_TODAY = date.today()) — always extends to today
+- Score change: 19/24 → 17/24 (79% → 71%) — more honest, includes 2026 live data
+- WHIRLPOOL payoff ratio dropped 2.46→1.48 (below 1.5 threshold) in extended window
+- SIEMENS OOS return essentially 0% — confirms existing removal flag
+- System still VALIDATED at 71% (threshold 65%)
+- Added run_rolling_live_check(): 90-day early warning system
+- Rolling check (last 300 days): 6 HEALTHY, 4 WARNING (WHIRLPOOL, SIEMENS, COLPAL, BSOFT), 0 CRITICAL
+- Run walk_forward.py quarterly to keep validation current
+
+### Finding #4 Fix: ADD list sorted by wrong gap — COMPLETED (Jun 20)
+- Problem: ADD/MONITOR lists sorted by gap_long (2-year window) but signal_runner uses gap_short (80-day)
+- Fix: both sort keys changed to gap_short with None guard
+- Unit test confirmed: STOCK_B (gap_short=-0.5%) now correctly ranks above STOCK_A (gap_short=-8.0%)
+- ADD list now correctly predicts which stocks will cross soonest in live trading
+
+### Finding #7 Fix: Hurst computed on prices not returns — COMPLETED (Jun 20)
+- Problem: auto_screener.py and signal_runner.py computed Hurst on raw prices (non-stationary, biased upward); regime_classifier.py correctly used log returns
+- Fix: both now use log returns — np.diff(np.log(close)) — matching regime_classifier.py exactly
+- Calibration: log-return Hurst is 0.05-0.11 lower than raw-price Hurst for same stocks
+- Thresholds recalibrated: HURST_THRESHOLD 0.55→0.48, HURST_DEGRADE 0.52→0.45
+- Random walk verification: H=0.469 (no upward bias confirmed)
+- ADD/MONITOR/WATCH lists now show H values 0.48-0.53 (correctly calibrated)
+- Walk-forward: 17/24 unchanged
+
+### ETF Overlay — COMPLETED (Jun 21)
+- Backtest: all_core_pass=true (Sharpe Δ+8.996, overlay DD -14.3% vs threshold -17.2%, ETF cost 0.094%/yr)
+- DD criterion revised: overlay_dd < niftybees_dd + 2pp (old 8pp threshold was against artificially-low cash baseline)
+- Rebalance guard implemented: tier changes only on open_position count crossing tier boundary (~26 trades per stock vs 9,001 bug)
+- Phase 2: NIFTYBEES paper tracking live in signal_runner.py as of 2026-06-21
+- Files changed: paper_portfolio.py (ETF_TIERS, get_etf_target_tier, rebalance_etf), signal_runner.py (ETF block + report line), morning_fill_check.py (comment only)
+- 5/5 unit tests passing on local and server (paper_trading/test_etf_overlay.py)
+- Overlay tiers (D_aggressive, grid-search validated): 0 positions=100% ETF, 1-2=80% ETF, 3=50% ETF, 4=0% ETF
+- Tier grid search: 6 configs tested (A-F), D_aggressive wins Sharpe 0.280 vs A_current 0.213, all 6 pass go/no-go criteria
+- Grid search results: validation/etf_tier_grid_result.json
+- Regime filter decision: ETF runs independently of NIFTY death cross — regime filter blocks stock entries only
+- Phase 3: deploy ₹25,000 real capital after 6 months clean paper validation (target: Dec 2026)
+
+### System Audit — Jun 26 2026 (13 findings, 11 fixed)
+
+#### Fixes applied (Jun 26):
+- Finding #2 CRITICAL: get_portfolio_value() now includes ETF — position sizer was receiving ~Rs500 instead of ~Rs98,000
+- Finding #1 CRITICAL: missed STRATEGY_SIGNAL SELLs now requeued (was silently dropped after Fix 1 regression)
+- Finding #3: pending_buy positions excluded from ETF tier count; pending_rm_exit included
+- Finding #4: all reporting (daily report, weekly summary, signal_log.csv) includes ETF value
+- Finding #6: integrity validator derives valid_tiers from ETF_TIERS dynamically (not hardcoded)
+- Finding #7: weekend crash fixed — trading day guard runs before portfolio load in morning_fill_check
+- Finding #9: BUY_QUEUED signal check replaces dead BUY check — EXECUTED log line now fires
+- Finding #10: backfill mode shows correct ETF value using etf_avg_price fallback
+- Finding #5: walk_forward.py universe updated to current 5 validated stocks
+- Finding #8: correlation check passes in-memory state — same-day BUY pairs checked against each other
+- Finding #13: notes prefix matching — "CHANDELIER [REQUEUED]" correctly identified as RM exit
+
+#### Death cross deferral fix (Jun 26):
+- Problem: death cross SELL called close_position() immediately at 3:45 PM before AMO fill
+- Fix: death cross now sets pending_rm_exit=True — position stays open overnight like RM exits
+- morning_fill_check closes position at actual open fill price — P&L computed correctly
+- Note: BAJAJ-AUTO exit (Jun 25) predates this fix — its P&L was computed at close price
+- ETF rebalance no longer fires prematurely on pending death cross exits
+
+#### Remaining fixes not yet implemented:
+- Finding #11: gap-down circuit breaker — COMPLETED (Jun 26)
+  GAP_BREAKER_THRESHOLD = 3% in morning_fill_check.py
+  GAP_EXIT path: closes position at open, records in trade_log, does not requeue
+  Small gaps (<3%) still requeue as before — behavior unchanged
+  6/6 unit tests passing (paper_trading/test_gap_breaker.py)
+- Finding #12: RESOLVED (Jul 5) — correlation check now uses pre-fetched dfs from signal_runner
+  Path A (signal_runner): zero API calls — uses dfs dict already in memory at 3:45 PM
+  Path B (CLI): lazy yfinance import — token-free, works on weekends
+  Architecturally correct: same data used for signals used for correlation check
+
+#### Second System Audit — Jul 2 2026 (25 findings total)
+Fixed from second audit:
+- Audit2 Finding #1: rebalance_etf() now mirrors get_etf_target_tier() exactly
+  pending_buy excluded, pending_rm_exit included — ETF no longer sells prematurely on queued BUY
+  23/23 unit tests passing
+- Audit2 Finding #4: missed_count no longer double-counts GAP_EXIT orders
+  Summary correctly shows FILLED | MISSED | GAP_EXIT
+  9/9 unit tests passing
+- pandas FutureWarning fixed in strategies/sma_crossover.py
+  fill_value=False replaces .fillna(False) — 16 fewer warning lines per daily log
+
+#### Additional fixes applied (Jul 2-5 2026):
+- Audit2 Finding #3: RESOLVED (Jul 5)
+  Cash floor raised Rs40 → Rs1,000 (MIN_CASH_TO_ATTEMPT_BUY)
+  Combined with iterative floor in sizer + pending_buy in position count
+- Audit2 Finding #5: RESOLVED (Jul 5)
+  build_extended_universe() computes STOCKS_EXTENDED dynamically from actual bar counts
+  15 candidates checked via Kite — zero manual maintenance going forward
+- Audit2 Finding #8: RESOLVED (Jul 5)
+  Dynamic NSE holiday fetch from nseindia.com/api/holiday-master?type=trading
+  Cached in utils/nse_holiday_cache.json — auto-updates each year
+  To pre-warm 2027: python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
+- Audit2 Finding #10: RESOLVED (Jul 2)
+  time.sleep(1.1) added to screener fetch loop — 55 req/min (safe under Kite 60/min limit)
+  Skip count logged with explicit warnings if >5% tickers dropped
+- Audit2 Finding #21: RESOLVED (Jul 2)
+  Transaction costs corrected: STT 0.1% delivery (was 0.025% intraday), brokerage Rs0 delivery
+  DP charge Rs15.34 added per sell. Round-trip Rs37.66 on Rs10,000 (verified Zerodha Jun 2026)
+  Position sizer uses exact buy-side cost + iterative floor check
+  7/7 unit tests passing (utils/test_costs.py)
+- Audit2 Finding #22: RESOLVED (Jul 2)
+  NIFTY 500 fetch now has cache fallback (screener/nifty500_cache.json)
+  Email subject shows ⚠️ STALE DATA if cache was used
+  Cache pre-populated with 500 tickers
+
+Remaining from second audit (not yet fixed):
+- Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
+  Risk: full NIFTY exposure while stock entries suppressed
+- Audit2 Finding #13: sector concentration — up to 4 IT stocks simultaneously possible
+  Design decision needed before implementing
+- Audit2 Finding #14: RESOLVED (Jul 5)
+  _print_verdict() rewritten with per-stock primary gate (PER_STOCK_MIN=4/6)
+  Aggregate score shown as informational only — not used for verdict
+  Statistical limitation note added: 5 correlated stocks = ~15 independent observations
+  Dynamic 'n stocks × 6 metrics' replaces hardcoded '4 stocks × 24'
+- Audit2 Finding #23: RESOLVED (Jul 5)
+  ETF avg_price now uses VWAP: new_avg = (old_shares × old_avg + delta × price) / new_shares
+  First buy: avg = purchase price. Partial sell: avg unchanged. Full sell: resets to 0.0
+  4 new unit tests added (Tests 24-27), all passing
+- Audit2 Finding #12: RESOLVED (Jul 5) — see Finding #12 above
+
+#### Pre-trade Risk Monitor — COMPLETED (Jul 5 2026)
+New feature: utils/news_monitor.py — nightly risk check before signal run
+
+Sources (both verified working from Mumbai server):
+  - NSE surveillance: nsearchives.nseindia.com/content/equities/sec_list.csv
+    Band in ('2','5') or 'GSM' in Remarks → SURVEILLANCE flag → auto-block entry
+  - NSE board meetings: nseindia.com/api/corporate-board-meetings?index=equities&...
+    Board meeting within 5 trading days with results keywords → EARNINGS_RISK → warn only
+
+Architecture:
+  - Runs at 7 PM IST Mon-Fri (cron: 0 13 * * 1-5)
+  - Writes utils/news_flags.json atomically after each run
+  - signal_runner.py reads flags at startup before Phase 2 BUY loop
+  - SURVEILLANCE: auto-block (objective regulatory fact, no human review)
+  - EARNINGS_RISK: warning only, entry proceeds (fail-open — missed trade worse than early entry)
+  - Manual override: utils/manual_blocks.json — human-edited, time-limited
+  - All network failures fail-open — never block trading on data failure
+  - 9/9 unit tests passing (utils/test_news_monitor.py)
+
+First live detection verified:
+  - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
+  - All 8 universe stocks surveillance-clean as of Jul 5 2026
+
+Test suite (verified on server Jul 5 2026):
+- test_etf_overlay.py: 23/23 ✅
+- test_gap_breaker.py: 9/9 ✅
+- test_costs.py: 7/7 ✅
+- test_correlation_check.py: 6/6 ✅
+- Total: 49/49 tests passing (added Tests 24-27 for ETF VWAP avg_price)
+
+---
+
+## Key Implementation Notes
+
+### Hurst Exponent — CRITICAL
+- Always use compute_hurst() from screener/auto_screener.py — never reimplement
+- Input: raw closing prices (numpy array) — function handles log transformation internally
+- Do NOT pass log returns as input — compute_hurst() does np.log(ts) internally
+- Correct usage:
+    from screener.auto_screener import compute_hurst
+    h = compute_hurst(df['close'].values)  # raw close prices, not log returns
+- Wrong usage (produces nonsensical results near 0 or negative):
+    log_returns = np.diff(np.log(prices))
+    h = compute_hurst(log_returns)  # WRONG — double-differencing
+
+### Hurst Readings (2026-06-26, 337 bars, bear market regime)
+- BAJAJ-AUTO:  H=0.422 — below 0.48 threshold (bear market effect, strong WF performer)
+- HCLTECH:     H=0.549 — passes 0.48, fails 0.55
+- COLPAL:      H=0.524 — passes 0.48, fails 0.55
+- JKTYRE:      H=0.536 — passes 0.48, fails 0.55
+- BSOFT:       H=0.415 — below 0.48 threshold
+- PERSISTENT:  H=0.500 — passes 0.48, fails 0.55
+- Decision: keep HURST_THRESHOLD=0.48 — raising to 0.55 filters entire universe to zero
+- Revisit threshold after October 2026 with full bull+bear cycle data
+
+### NSE Holiday Calendar
+- Dynamic fetch from: nseindia.com/api/holiday-master?type=trading (CM segment)
+- Requires session cookie — auto_login not needed, just a plain requests.Session()
+- Cached in: utils/nse_holiday_cache.json (auto-updated on each successful fetch)
+- 2026: hardcoded verified list in market_calendar.py (NSE circular confirmed)
+- 2027+: fetched from NSE API automatically on first is_trading_day() call for that year
+- To pre-warm next year in November 2026:
+  python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
+- Never hardcode future years — let the API provide them
+
+### Transaction Costs (verified Zerodha Jun 2026, zerodha.com/charges)
+- Delivery is used for all trades (CNC orders via AMO)
+- Brokerage: Rs0 (Zerodha delivery is free)
+- STT: 0.1% on BOTH buy and sell sides (was wrongly set to 0.025% intraday rate)
+- DP charge: Rs15.34 per sell (CDSL Rs3.50 + Zerodha Rs9.50 + GST Rs2.34)
+- Stamp duty: 0.015% buy-side only
+- Total buy-side on Rs10,000: ~Rs11.91
+- Total sell-side on Rs10,000: ~Rs25.75 (includes DP charge)
+- Round-trip on Rs10,000: ~Rs37.66
+- See utils/costs.py — transaction_costs(price, shares, side, trade_type='delivery')
+
+### Kite Fetcher
+- Correct signature: get_ohlcv(ticker, start='YYYY-MM-DD', end='YYYY-MM-DD')
+- Does NOT accept 'days' parameter
+- Always use date strings, not timedelta objects directly
+
+### General Rule
+- Before reimplementing any function, check if it already exists in the codebase
+- grep -rn 'def function_name' ~/algo-trading/ --include='*.py'
+- Use the existing implementation — it is already tested and validated

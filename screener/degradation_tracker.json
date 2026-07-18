@@ -1,0 +1,73 @@
+{
+  "ANURAS.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-15"
+  },
+  "BAJAJ-AUTO.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-15"
+  },
+  "BSOFT.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-08",
+    "last_screen_date": "2026-07-15"
+  },
+  "CHOLAHLDNG.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-12",
+    "last_screen_date": "2026-07-15"
+  },
+  "COHANCE.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-12",
+    "last_screen_date": "2026-07-15"
+  },
+  "COLPAL.NS": {
+    "consecutive_flags": 1,
+    "flag_annotations": {},
+    "flag_history": [
+      "2026-07-15"
+    ],
+    "last_flagged": "2026-07-15",
+    "last_screen_date": "2026-07-15"
+  },
+  "HCLTECH.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-21",
+    "last_screen_date": "2026-07-15"
+  },
+  "MAPMYINDIA.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-07-15",
+    "last_screen_date": "2026-07-15"
+  },
+  "PERSISTENT.NS": {
+    "consecutive_flags": 0,
+    "flag_annotations": {},
+    "flag_history": [],
+    "last_flagged": "2026-06-24",
+    "last_screen_date": "2026-07-15"
+  },
+  "_meta": {
+    "created": "2026-06-21",
+    "last_screen_date": "2026-07-15",
+    "screen_count": 8,
+    "version": "2"
+  }
+}

@@ -1,0 +1,23 @@
+Morning fill check started: 2026-06-18 03:50:01
+[morning_fill_check] Paper trading mode — simulating fills from open price
+
+==============================================================
+  MORNING FILL REPORT — Thursday 18 Jun 2026
+  Fill date: 2026-06-18  |  Checking all unfilled DRY_RUN orders
+  MODE: DRY RUN — portfolio state will NOT be modified
+==============================================================
+
+  Pending unfilled orders: 1
+  [CORP_ACTION] TMPV.NS: DIVIDEND on 2026-06-19 — below threshold, no skip (DIVIDEND Rs 3.00 (0.826% of ₹363 < 1% threshold — immaterial))
+  [CORP_ACTION] TMPV.NS: clear — no material actions between 2026-06-18 and 2026-06-22
+
+[kite_fetcher] Fetching NSE instrument list from Kite...
+[kite_fetcher] Cached 9842 NSE instruments.
+  WARN: Could not fetch TMPV.NS open — Kite session expired. Run auth/kite_login.py to get a fresh token.
+  ? UNKNOWN  TMPV.NS        SELL  44 shr | limit ₹359.84 | open price unavailable
+
+  Summary: 0 FILLED | 0 MISSED
+==============================================================
+
+Morning fill check completed: 2026-06-18 03:50:04
+

@@ -1,0 +1,271 @@
+Walk-Forward Validation — generated 2026-07-12 15:28:22
+
+
+================================================================================
+  WALK-FORWARD VALIDATION
+  PARAMETERS FROZEN — no optimization performed between windows.
+  These results represent genuine out-of-sample performance.
+================================================================================
+  Stocks:      BLUEDART.NS
+  In-sample:   2018-01-01 → 2023-01-01 (excl)
+  OOS:         2023-01-01 → 2026-07-12 (excl)
+  Strategy:    SMA 20/50 crossover
+  Risk Mgmt:   Hard-20% | Chandelier ATR22×3 | Time-60bar | RoundNum
+  Cooldown:    15-bar after RM exits
+  Sizing:      Fixed-fractional 1.5% risk/trade, 20% max position
+  Capital:     ₹100,000 per window (independent runs)
+  NIFTY Filter: ACTIVE (suppress BUY when NIFTY SMA20 < SMA50)
+
+
+================================================================================
+  BLUEDART.NS
+================================================================================
+  Data:  1238 bars in-sample  |  872 bars out-of-sample
+  NOTE:  COVID crash (Feb–Apr 2020): portfolio drawdown was only -2.0%. Risk system protected capital well.
+
+  Metric                    In-Sample (2018-2022)    Out-of-Sample (2023-2026)        Result
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Total return                      +1.0%                      -1.7%                  [FAIL]
+  vs Buy & Hold             -66.5pp  (B&H +67.5%)      +35.4pp  (B&H -37.1%)          [PASS]
+  Max drawdown                      -5.2%                      -5.8%                  [PASS]
+  Payoff ratio                      2.90:1                     0.74:1                 [FAIL]
+  Expectancy/trade                  ₹+126                      ₹-191                  [FAIL]
+  Min OOS return                    +1.0%                      -1.7%                  [FAIL]
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Trades                              10                         8              
+  Win rate                          30.0%                      50.0%            
+  Ret/DD score                       0.19                      -0.29            
+
+  Score: 2/6 PASS
+
+
+================================================================================
+  OVERALL SYSTEM VERDICT
+================================================================================
+  Per-stock results (primary gate — each stock needs ≥4/6):
+    Stock 1: 2/6  ✗ WEAK
+
+  Qualified stocks: 0/1 (0%)
+
+  Aggregate score:  2/6 (33%)  [informational — not used for verdict]
+  (Max possible: 6 = 1 stocks × 6 metrics; stocks with data errors are excluded)
+
+  Verdict:     NOT VALIDATED
+  Implication: No stocks pass the per-stock minimum. Significant overfitting or regime dependence detected. Do not deploy capital.
+
+  Gates: per-stock ≥4/6 | ≥70% of stocks must qualify
+
+  NOTE: With 5 stocks and correlated NIFTY exposure, effective
+  sample size is ~15 independent observations. Statistical
+  significance is limited — live paper trading confirmation
+  (6 months, 30+ trades) is the definitive validation.
+
+================================================================================
+  DEGRADATION ANALYSIS
+  (stocks where OOS underperformed IS significantly)
+================================================================================
+
+  BLUEDART.NS:
+  → Payoff ratio collapsed: 2.90:1 → 0.74:1. Losers are now larger than winners — the trend structure of this stock has likely changed between windows.
+
+
+================================================================================
+  SHARPE RATIO SUMMARY  (Out-of-Sample, 2023–2026)
+  Risk-free rate: 6.5%  |  Annualisation: ×252 trading days
+================================================================================
+  Stock                Full-period Sharpe     In-position Sharpe  
+  ────────────────────────────────────────────────────────────────
+  BAJAJ-AUTO.NS               N/A                    N/A          
+  HCLTECH.NS                  N/A                    N/A          
+  COLPAL.NS                   N/A                    N/A          
+  BSOFT.NS                    N/A                    N/A          
+  PERSISTENT.NS               N/A                    N/A          
+  CHOLAHLDNG.NS               N/A                    N/A          
+  COHANCE.NS                  N/A                    N/A          
+  MAPMYINDIA.NS               N/A                    N/A          
+  ────────────────────────────────────────────────────────────────
+  Equal-weight                N/A                    N/A          
+
+  Full-period Sharpe penalises the strategy for cash days (earns 0%, risk-free = 6.5%).
+  In-position Sharpe strips out flat cash days — measures quality of entries/exits only.
+================================================================================
+
+================================================================================
+  COOLDOWN SENSITIVITY ANALYSIS
+  Universe: 10 stocks tested
+  Cooldown values: [10, 15, 20, 25] bars
+  Eligibility: IS + OOS bars >= 1,250 (~5 years)
+  IS window:   2018-01-01 → 2023-01-01  |  OOS: 2023-01-01 → 2026-07-12
+  NIFTY filter: ACTIVE
+================================================================================
+
+  DATA ELIGIBILITY CHECK (IS + OOS bars >= 1,250):
+
+  ✓  TMPV.NS                 IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  WHIRLPOOL.NS            IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  SIEMENS.NS              IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  BAJAJ-AUTO.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  CUMMINSIND.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  HCLTECH.NS              IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  BOSCHLTD.NS             IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  COLPAL.NS               IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+  ✓  ANURAS.NS               IS=  440  OOS= 872  total= 1312  from 2021-03-24  — INCLUDED
+  ✓  HEROMOTOCO.NS           IS= 1238  OOS= 872  total= 2110  from 2018-01-01  — INCLUDED
+
+  Qualifying: 10  |  Skipped: 0
+
+================================================================================
+  COOLDOWN COMPARISON  (10 qualifying stocks, OOS 2023–2025)
+================================================================================
+
+        Cooldown      Stocks            WF Score        OOS Trades      Avg Trade Return
+  ────────────────────────────────────────────────────────────────────────────────────────
+         10 bars          10        34/60  (57%)                39              +4.92%
+         15 bars          10        34/60  (57%)                38              +4.91%  ← baseline
+         20 bars          10        34/60  (57%)                38              +4.91%
+         25 bars          10        34/60  (57%)                38              +4.91%
+
+  ────────────────────────────────────────────────────────────────────────────────────────
+  Per-stock detail at baseline cooldown (15 bars):
+
+  Stock                      IS Return    OOS Return     Score     IS Trades      OOS Trades
+  ──────────────────────────────────────────────────────────────────────────────────────────────
+  TMPV.NS                         +6.2%          +0.5%       3/5            11               3
+  WHIRLPOOL.NS                    -0.9%          +1.1%       4/5            10               6
+  SIEMENS.NS                      -4.6%          -0.9%       1/5             9               4
+  BAJAJ-AUTO.NS                   -0.3%         +10.6%       5/5             9               5
+  CUMMINSIND.NS                   +5.4%          +3.5%       4/5             7               3
+  HCLTECH.NS                      -1.5%          +5.5%       6/5             8               5
+  BOSCHLTD.NS                     -0.2%          -1.1%       1/5             4               1
+  COLPAL.NS                       -4.0%          +1.3%       4/5            11               3
+  ANURAS.NS                       -0.7%          -1.5%       1/5             4               3
+  HEROMOTOCO.NS                   -3.3%         +13.0%       5/5             9               5
+
+================================================================================
+
+
+================================================================================
+FULL BACKTESTER OUTPUT (trade-by-trade, all 8 runs)
+================================================================================
+
+────────────────────────────────────────────────────────────
+  BLUEDART.NS  —  in_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: ACTIVE — 829/1239 bull days (67% in uptrend)
+============================================================
+  [AMO] 2018-06-27 | BUY deferred → fill at 2018-06-28 open | chan=₹3267.00
+  [SIZING] 2018-06-28 (AMO open)| entry=₹3571.78 | chan=₹3267.00 (chandelier) | dist=₹304.78 | risk=₹1500 → 4 shr [risk_budget]
+  BUY  2018-06-28 | 4 shares @ ₹3571.78 (close ₹3570.00) | cost ₹17.01 | cash left ₹85695.85
+  [AMO] 2018-08-09 | RM EXIT (CHANDELIER) deferred → fill at 2018-08-10 open
+  SELL 2018-08-10 | 4 shares @ ₹3558.22 (close ₹3560.00) | P&L ₹-84.41 (-0.38%) [CHANDELIER]
+  [REGIME] 2018-11-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2019-03-19 | BUY deferred → fill at 2019-03-20 open | chan=₹3267.00
+  [SIZING] 2019-03-20 (AMO open)| entry=₹3522.76 | chan=₹3267.00 (chandelier) | dist=₹255.76 | risk=₹1498 → 5 shr [risk_budget]
+  BUY  2019-03-20 | 5 shares @ ₹3522.76 (close ₹3521.00) | cost ₹20.97 | cash left ₹82263.80
+  [AMO] 2019-04-04 | RM EXIT (CHANDELIER) deferred → fill at 2019-04-05 open
+  SELL 2019-04-05 | 5 shares @ ₹3342.68 (close ₹3344.35) | P&L ₹-933.15 (-5.11%) [CHANDELIER]
+  [AMO] 2019-10-03 | BUY deferred → fill at 2019-10-04 open | chan=₹2178.00
+  [SIZING] 2019-10-04 (AMO open)| entry=₹2390.19 | chan=₹2178.00 (chandelier) | dist=₹212.19 | risk=₹1484 → 6 shr [risk_budget]
+  BUY  2019-10-04 | 6 shares @ ₹2390.19 (close ₹2389.00) | cost ₹17.08 | cash left ₹84586.21
+  [AMO] 2019-11-04 | RM EXIT (CHANDELIER) deferred → fill at 2019-11-05 open
+  SELL 2019-11-05 | 6 shares @ ₹2333.83 (close ₹2335.00) | P&L ₹-368.09 (-2.36%) [CHANDELIER]
+  [AMO] 2020-01-08 | BUY deferred → fill at 2020-01-09 open | chan=₹2022.47
+  [SIZING] 2020-01-09 (AMO open)| entry=₹2248.87 | chan=₹2022.47 (chandelier) | dist=₹226.40 | risk=₹1478 → 6 shr [risk_budget]
+  BUY  2020-01-09 | 6 shares @ ₹2248.87 (close ₹2247.75) | cost ₹16.07 | cash left ₹85049.98
+  [AMO] 2020-03-06 | RM EXIT (CHANDELIER) deferred → fill at 2020-03-09 open
+  SELL 2020-03-09 | 6 shares @ ₹2673.66 (close ₹2675.00) | P&L ₹+2516.70 (+18.89%) [CHANDELIER]
+  [AMO] 2020-07-24 | BUY deferred → fill at 2020-07-27 open | chan=₹2065.08
+  [SIZING] 2020-07-27 (AMO open)| entry=₹2234.12 | chan=₹2065.08 (chandelier) | dist=₹169.03 | risk=₹1516 → 8 shr [risk_budget]
+  BUY  2020-07-27 | 8 shares @ ₹2234.12 (close ₹2233.00) | cost ₹21.28 | cash left ₹83165.71
+  [AMO] 2020-08-03 | RM EXIT (CHANDELIER) deferred → fill at 2020-08-04 open
+  SELL 2020-08-04 | 8 shares @ ₹1979.01 (close ₹1980.00) | P&L ₹-2072.67 (-11.42%) [CHANDELIER]
+  [AMO] 2020-09-03 | BUY deferred → fill at 2020-09-04 open | chan=₹1980.00
+  [SIZING] 2020-09-04 (AMO open)| entry=₹2152.13 | chan=₹1980.00 (chandelier) | dist=₹172.13 | risk=₹1484 → 8 shr [risk_budget]
+  BUY  2020-09-04 | 8 shares @ ₹2152.13 (close ₹2151.05) | cost ₹20.50 | cash left ₹81728.47
+  [AMO] 2020-09-21 | RM EXIT (CHANDELIER) deferred → fill at 2020-09-22 open
+  SELL 2020-09-22 | 8 shares @ ₹2594.50 (close ₹2595.80) | P&L ₹+3502.07 (+20.56%) [CHANDELIER]
+  [AMO] 2021-07-16 | BUY deferred → fill at 2021-07-19 open | chan=₹5387.93
+  [SIZING] 2021-07-19 (AMO open)| entry=₹5820.91 | chan=₹5387.93 (chandelier) | dist=₹432.98 | risk=₹1537 → 3 shr [risk_budget]
+  BUY  2021-07-19 | 3 shares @ ₹5820.91 (close ₹5818.00) | cost ₹20.79 | cash left ₹84964.03
+  [AMO] 2021-07-19 | SELL deferred → fill at 2021-07-20 open
+  SELL 2021-07-20 | 3 shares @ ₹5825.09 (close ₹5828.00) | P&L ₹-21.00 (+0.07%)
+  [AMO] 2021-09-06 | BUY deferred → fill at 2021-09-07 open | chan=₹5882.77
+  [SIZING] 2021-09-07 (AMO open)| entry=₹6215.81 | chan=₹5882.77 (chandelier) | dist=₹333.04 | risk=₹1536 → 3 shr [position_cap]
+  BUY  2021-09-07 | 3 shares @ ₹6215.81 (close ₹6212.70) | cost ₹22.20 | cash left ₹83736.13
+  [AMO] 2021-10-25 | RM EXIT (CHANDELIER) deferred → fill at 2021-10-26 open
+  SELL 2021-10-26 | 3 shares @ ₹6150.02 (close ₹6153.10) | P&L ₹-231.89 (-1.06%) [CHANDELIER]
+  [AMO] 2022-01-18 | BUY deferred → fill at 2022-01-19 open | chan=₹6567.30
+  [SIZING] 2022-01-19 (AMO open)| entry=₹7053.52 | chan=₹6567.30 (chandelier) | dist=₹486.22 | risk=₹1532 → 2 shr [position_cap]
+  BUY  2022-01-19 | 2 shares @ ₹7053.52 (close ₹7050.00) | cost ₹16.80 | cash left ₹88027.82
+  [AMO] 2022-02-14 | RM EXIT (CHANDELIER) deferred → fill at 2022-02-15 open
+  SELL 2022-02-15 | 2 shares @ ₹6336.83 (close ₹6340.00) | P&L ₹-1461.92 (-10.16%) [CHANDELIER]
+  [AMO] 2022-04-06 | BUY deferred → fill at 2022-04-07 open | chan=₹5940.00
+  [SIZING] 2022-04-07 (AMO open)| entry=₹6577.34 | chan=₹5940.00 (chandelier) | dist=₹637.34 | risk=₹1510 → 2 shr [risk_budget]
+  BUY  2022-04-07 | 2 shares @ ₹6577.34 (close ₹6574.05) | cost ₹15.66 | cash left ₹87502.61
+  [AMO] 2022-06-13 | RM EXIT (CHANDELIER) deferred → fill at 2022-06-14 open
+  SELL 2022-06-14 | 2 shares @ ₹6801.60 (close ₹6805.00) | P&L ₹+419.02 (+3.41%) [CHANDELIER]
+  [AMO] 2022-12-29 | BUY deferred → fill at 2022-12-30 open | chan=₹7151.37
+  [SIZING] 2022-12-30 (AMO open)| entry=₹7746.87 | chan=₹7151.37 (chandelier) | dist=₹595.50 | risk=₹1516 → 2 shr [risk_budget]
+  BUY  2022-12-30 | 2 shares @ ₹7746.87 (close ₹7743.00) | cost ₹18.45 | cash left ₹85564.12
+
+────────────────────────────────────────────────────────────
+  BLUEDART.NS  —  out_of_sample
+────────────────────────────────────────────────────────────
+
+============================================================
+BACKTEST RUNNING
+Risk Mgmt : L1:HardStop(-20%) | L2:Chandelier(ATR22×3.0) | L3:Time(60bars) | L4:RoundNumOffset
+Cooldown  : 15-bar window after ['HARD_STOP', 'CHANDELIER', 'TIME_STOP']
+Sizing    : fixed_fractional | 1.5% risk/trade | 20% max position
+Fill mode : NEXT-DAY OPEN (AMO-realistic — signals defer to tomorrow's open)
+NIFTY Filter: ACTIVE — 539/872 bull days (62% in uptrend)
+============================================================
+  [AMO] 2023-06-05 | BUY deferred → fill at 2023-06-06 open | chan=₹5940.00
+  [SIZING] 2023-06-06 (AMO open)| entry=₹6280.74 | chan=₹5940.00 (chandelier) | dist=₹340.74 | risk=₹1500 → 3 shr [position_cap]
+  BUY  2023-06-06 | 3 shares @ ₹6280.74 (close ₹6277.60) | cost ₹22.44 | cash left ₹81135.35
+  [AMO] 2023-07-28 | RM EXIT (CHANDELIER) deferred → fill at 2023-07-31 open
+  SELL 2023-07-31 | 3 shares @ ₹6951.47 (close ₹6954.95) | P&L ₹+1975.16 (+10.68%) [CHANDELIER]
+  [AMO] 2023-09-29 | BUY deferred → fill at 2023-10-03 open | chan=₹6275.99
+  [SIZING] 2023-10-03 (AMO open)| entry=₹6985.44 | chan=₹6275.99 (chandelier) | dist=₹709.45 | risk=₹1529 → 2 shr [risk_budget]
+  BUY  2023-10-03 | 2 shares @ ₹6985.44 (close ₹6981.95) | cost ₹16.64 | cash left ₹87965.20
+  [AMO] 2023-10-27 | RM EXIT (CHANDELIER) deferred → fill at 2023-10-30 open
+  SELL 2023-10-30 | 2 shares @ ₹6401.80 (close ₹6405.00) | P&L ₹-1195.95 (-8.36%) [CHANDELIER]
+  [REGIME] 2023-11-28 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2024-04-22 | BUY deferred → fill at 2024-04-23 open | chan=₹5940.00
+  [SIZING] 2024-04-23 (AMO open)| entry=₹6342.17 | chan=₹5940.00 (chandelier) | dist=₹402.17 | risk=₹1511 → 3 shr [risk_budget]
+  BUY  2024-04-23 | 3 shares @ ₹6342.17 (close ₹6339.00) | cost ₹22.66 | cash left ₹81690.97
+  [AMO] 2024-06-04 | RM EXIT (CHANDELIER) deferred → fill at 2024-06-05 open
+  SELL 2024-06-05 | 3 shares @ ₹6898.85 (close ₹6902.30) | P&L ₹+1633.16 (+8.78%) [CHANDELIER]
+  [AMO] 2024-09-16 | BUY deferred → fill at 2024-09-17 open | chan=₹7581.30
+  [SIZING] 2024-09-17 (AMO open)| entry=₹8210.45 | chan=₹7581.30 (chandelier) | dist=₹629.16 | risk=₹1535 → 2 shr [risk_budget]
+  BUY  2024-09-17 | 2 shares @ ₹8210.45 (close ₹8206.35) | cost ₹19.55 | cash left ₹85910.18
+  [AMO] 2024-09-18 | RM EXIT (CHANDELIER) deferred → fill at 2024-09-19 open
+  SELL 2024-09-19 | 2 shares @ ₹8565.72 (close ₹8570.00) | P&L ₹+677.35 (+4.33%) [CHANDELIER]
+  [AMO] 2025-04-21 | BUY deferred → fill at 2025-04-22 open | chan=₹5819.42
+  [SIZING] 2025-04-22 (AMO open)| entry=₹6482.74 | chan=₹5819.42 (chandelier) | dist=₹663.32 | risk=₹1545 → 2 shr [risk_budget]
+  BUY  2025-04-22 | 2 shares @ ₹6482.74 (close ₹6479.50) | cost ₹15.44 | cash left ₹90027.52
+  [AMO] 2025-06-02 | RM EXIT (CHANDELIER) deferred → fill at 2025-06-03 open
+  SELL 2025-06-03 | 2 shares @ ₹6520.24 (close ₹6523.50) | P&L ₹+46.09 (+0.58%) [CHANDELIER]
+  [AMO] 2025-07-18 | BUY deferred → fill at 2025-07-21 open | chan=₹6415.71
+  [SIZING] 2025-07-21 (AMO open)| entry=₹6823.41 | chan=₹6415.71 (chandelier) | dist=₹407.70 | risk=₹1546 → 3 shr [risk_budget]
+  BUY  2025-07-21 | 3 shares @ ₹6823.41 (close ₹6820.00) | cost ₹24.37 | cash left ₹82544.48
+  [AMO] 2025-07-30 | RM EXIT (CHANDELIER) deferred → fill at 2025-07-31 open
+  SELL 2025-07-31 | 3 shares @ ₹6046.98 (close ₹6050.00) | P&L ₹-2363.52 (-11.38%) [CHANDELIER]
+  [AMO] 2025-11-03 | BUY deferred → fill at 2025-11-04 open | chan=₹5939.70
+  [SIZING] 2025-11-04 (AMO open)| entry=₹6373.69 | chan=₹5939.70 (chandelier) | dist=₹433.98 | risk=₹1510 → 3 shr [risk_budget]
+  BUY  2025-11-04 | 3 shares @ ₹6373.69 (close ₹6370.50) | cost ₹22.77 | cash left ₹81507.37
+  [AMO] 2025-11-19 | RM EXIT (CHANDELIER) deferred → fill at 2025-11-20 open
+  SELL 2025-11-20 | 3 shares @ ₹5934.03 (close ₹5937.00) | P&L ₹-1352.83 (-6.90%) [CHANDELIER]
+  [REGIME] 2026-02-09 | BUY suppressed — NIFTY in death cross (SMA20 < SMA50)
+  [AMO] 2026-05-06 | BUY deferred → fill at 2026-05-07 open | chan=₹5198.15
+  [SIZING] 2026-05-07 (AMO open)| entry=₹5717.86 | chan=₹5198.15 (chandelier) | dist=₹519.71 | risk=₹1489 → 2 shr [risk_budget]
+  BUY  2026-05-07 | 2 shares @ ₹5717.86 (close ₹5715.00) | cost ₹13.62 | cash left ₹87826.26
+  [AMO] 2026-05-11 | RM EXIT (CHANDELIER) deferred → fill at 2026-05-12 open
+  SELL 2026-05-12 | 2 shares @ ₹5255.87 (close ₹5258.50) | P&L ₹-950.25 (-8.08%) [CHANDELIER]

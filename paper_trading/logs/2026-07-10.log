@@ -1,0 +1,104 @@
+========================================
+Run started: 2026-07-10 10:15:01
+========================================
+[run_daily] Refreshing access token via auto_login.py
+[auto_login] Step 1: Seeding session cookies…
+[auto_login] Step 1 OK (status 405)
+[auto_login] Step 2: Submitting user ID and password…
+[auto_login] Step 2 OK — request_id: QTaLD7NlrT…
+[auto_login] Step 3: Submitting TOTP 274753  (28s remaining)…
+[auto_login] Step 4 OK — 2FA accepted, session is now authenticated
+[auto_login] Step 5: Following OAuth redirect chain…
+[auto_login]   hop 1: 302  →  https://kite.zerodha.com/connect/finish?api_key=7g9gybqj3woxntss&sess_id=D2ABp4s
+[auto_login]   hop 2: 302  →  https://127.0.0.1/?action=login&type=login&status=success&request_token=K8Wwa1xB
+[auto_login] Step 5 OK — request_token captured (32 chars)
+[auto_login] Step 6: Exchanging request_token for access_token…
+[auto_login] Step 7 OK — token saved → /home/ubuntu/algo-trading/auth/access_token.txt
+[auto_login] Login successful — Aarav Piyush Agarwal (aaravpagarwal07@gmail.com)
+[run_daily] Running signal_runner.py
+
+[paper_trading] Fetching data for 2026-07-10 …
+[kite_fetcher] BAJAJ-AUTO.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] HCLTECH.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] COLPAL.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] ANURAS.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] NEWGEN.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] BSOFT.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] PERSISTENT.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] CHOLAHLDNG.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] COHANCE.NS: 80 trading days loaded (2026-03-12 → 2026-07-10)
+[kite_fetcher] NIFTYBEES.NS: 9 trading days loaded (2026-06-30 → 2026-07-10)
+[paper_trading] Checking NIFTY 50 market regime …
+[kite_fetcher] NIFTY 50.NS: 61 trading days loaded (2026-04-13 → 2026-07-10)
+  [NIFTY] 2026-07-10 | close ₹24,211.65 | SMA20 ₹24,044.37 | SMA50 ₹23,829.75 | gap +0.90% → regime: BULL
+
+[paper_trading] Checking corporate actions …
+  [CORP_ACTION] BAJAJ-AUTO.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] HCLTECH.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] COLPAL.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] ANURAS.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] NEWGEN.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] BSOFT.NS: SKIP — DIVIDEND Rs 4.00 (1.38% of ₹290 ≥ 1% threshold) | ex-date 2026-07-10
+  [CORP_ACTION] PERSISTENT.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] CHOLAHLDNG.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+  [CORP_ACTION] COHANCE.NS: clear — no material actions between 2026-07-10 and 2026-07-14
+
+[paper_trading] Running signal pipeline for 9 stocks …
+
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 2 buy signals, 1 sell signals
+  [CORP_ACTION] BSOFT.NS SKIPPED — DIVIDEND Rs 4.00 (1.38% of ₹290 ≥ 1% threshold) | ex-date 2026-07-10
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 2 buy signals, 1 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+
+[paper_trading] Portfolio state saved.
+
+==============================================================
+  NSE PAPER TRADING SIGNAL REPORT
+  Date: Friday, 10 July 2026  |  Run: 3:45 PM IST  |  NIFTY Regime: BULL
+==============================================================
+
+  PORTFOLIO SUMMARY
+  Cash available    : ₹      243.49
+  Invested value    : ₹        0.00
+  Total value       : ₹   99,072.60
+  P&L vs start      : ₹-927.40  (-0.93%)
+  Open positions    : 0 / 9 stocks
+  NIFTYBEES ETF     : 359 units | tier 100% | value ₹98829
+  Completed trades  : 4
+
+  TODAY'S SIGNALS
+  ┌────────────────┬────────────┬─────────────┬───────────┬───────────────────────────────┐
+  │ Stock          │ Signal     │ Price       │ Shares    │ Reason                        │
+  ├────────────────┼────────────┼─────────────┼───────────┼───────────────────────────────┤
+  │ BAJAJ-AUTO.NS  │ HOLD       │ ₹10,155.00  │ —         │ No signal                     │
+  │ HCLTECH.NS     │ HOLD       │ ₹1,168.00   │ —         │ No signal                     │
+  │ COLPAL.NS      │ HOLD       │ ₹2,051.00   │ —         │ No signal                     │
+  │ ANURAS.NS      │ HOLD       │ ₹1,267.50   │ —         │ No signal                     │
+  │ NEWGEN.NS      │ HOLD       │ ₹515.50     │ —         │ No signal                     │
+  │ BSOFT.NS       │ SKIP_CA    │ ₹290.50     │ —         │ DIVIDEND Rs 4.00 (1.38% of ₹  │
+  │ PERSISTENT.NS  │ HOLD       │ ₹5,039.90   │ —         │ No signal                     │
+  │ CHOLAHLDNG.NS  │ HOLD       │ ₹1,645.00   │ —         │ No signal                     │
+  │ COHANCE.NS     │ HOLD       │ ₹452.00     │ —         │ No signal                     │
+  └────────────────┴────────────┴─────────────┴───────────┴───────────────────────────────┘
+
+  ACTIONS TAKEN: none (all HOLD)
+
+  Next run: Monday 13 Jul 3:45 PM IST
+  Log saved: paper_trading/signal_log.csv
+==============================================================
+[paper_trading] Signal log appended → paper_trading/signal_log.csv
+==============================================================
+  WEEKLY SUMMARY  (week ending 10 Jul 2026)
+==============================================================
+  Signals this week: 0 BUY, 0 SELL, 0 RISK_EXIT
+  Weekly P&L        : ₹-775  (-0.78%)
+  Running paper P&L : ₹-927  (-0.93%)  since None
+==============================================================
+
+[run_daily] Completed: 2026-07-10 10:15:33
+

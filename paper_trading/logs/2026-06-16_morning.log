@@ -1,0 +1,12 @@
+Morning fill check started: 2026-06-16 03:50:01
+
+==============================================================
+  MORNING FILL REPORT — Tuesday 16 Jun 2026
+  Fill date: 2026-06-16  |  Checking all unfilled DRY_RUN orders
+  MODE: DRY RUN — portfolio state will NOT be modified
+==============================================================
+
+  No pending DRY_RUN orders found (amo_orders.csv is empty or all filled).
+==============================================================
+Morning fill check completed: 2026-06-16 03:50:03
+

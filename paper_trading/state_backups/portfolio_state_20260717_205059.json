@@ -1,0 +1,262 @@
+{
+  "cash": 243.49113313700218,
+  "initial_capital": 100000.0,
+  "positions": {
+    "BAJAJ-AUTO.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_cost": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    },
+    "HCLTECH.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0,
+      "entry_cost": 0.0
+    },
+    "COLPAL.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0,
+      "entry_cost": 0.0
+    },
+    "ANURAS.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0,
+      "entry_cost": 0.0
+    },
+    "NEWGEN.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0,
+      "entry_cost": 0.0
+    },
+    "BSOFT.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0,
+      "entry_cost": 0.0
+    },
+    "PERSISTENT.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "entry_cost": 0.0,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    },
+    "CHOLAHLDNG.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_cost": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    },
+    "COHANCE.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_cost": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    },
+    "MAPMYINDIA.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_cost": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    },
+    "EMAMILTD.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_cost": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "pending_rm_exit": false,
+      "rm_exit_reason": null,
+      "rm_sell_requeue_count": 0
+    }
+  },
+  "cooldown_state": {
+    "BAJAJ-AUTO.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "HCLTECH.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "COLPAL.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "ANURAS.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "NEWGEN.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "BSOFT.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "PERSISTENT.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "CHOLAHLDNG.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "COHANCE.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "MAPMYINDIA.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "EMAMILTD.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    }
+  },
+  "total_trades": 4,
+  "last_run_date": "2026-07-17",
+  "inception_date": null,
+  "weekly_start_value": 99022.341133137,
+  "weekly_start_date": "2026-07-13",
+  "weekly_signals": {
+    "BUY": 0,
+    "SELL": 0,
+    "RISK_EXIT": 0
+  },
+  "trade_log": [
+    {
+      "ticker": "WHIRLPOOL.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-03",
+      "entry_price": 829.9147,
+      "exit_price": 819.59,
+      "shares": 16,
+      "gross_pnl": -165.2,
+      "net_pnl": -188.47,
+      "return_pct": -1.2441,
+      "exit_reason": "STRATEGY_SIGNAL"
+    },
+    {
+      "ticker": "TMPV.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-17",
+      "entry_price": 390.3951,
+      "exit_price": 361.4692,
+      "shares": 44,
+      "gross_pnl": -1272.74,
+      "net_pnl": -1296.72,
+      "return_pct": -7.4094,
+      "exit_reason": "CHANDELIER"
+    },
+    {
+      "ticker": "SIEMENS.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-24",
+      "entry_price": 3731.5648499999998,
+      "exit_price": 3688.0,
+      "shares": 3,
+      "gross_pnl": -130.69,
+      "net_pnl": -157.43,
+      "return_pct": -1.1646,
+      "exit_reason": "STRATEGY_SIGNAL"
+    },
+    {
+      "ticker": "BAJAJ-AUTO.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-29",
+      "entry_price": 10286.1405,
+      "exit_price": 9887.054,
+      "shares": 1,
+      "gross_pnl": -399.09,
+      "entry_cost": 25.72,
+      "net_pnl": -451.22,
+      "return_pct": -3.8798,
+      "exit_reason": "STRATEGY_SIGNAL"
+    }
+  ],
+  "last_run_time": "15:45",
+  "market_regime": "BULL",
+  "last_regime_date": "2026-07-17",
+  "etf_shares": 359,
+  "etf_avg_price": 272.44,
+  "etf_tier": 1.0
+}

@@ -1,0 +1,155 @@
+{
+  "cash": 76953.973729075,
+  "initial_capital": 100000.0,
+  "positions": {
+    "SIEMENS.NS": {
+      "shares": 3,
+      "entry_price": 3731.5648499999998,
+      "entry_date": "2026-06-02",
+      "highest_high_since_entry": 3765.0,
+      "bars_held": 11,
+      "chandelier_stop": 3366.0
+    },
+    "BAJAJ-AUTO.NS": {
+      "shares": 1,
+      "entry_price": 10286.1405,
+      "entry_date": "2026-06-02",
+      "highest_high_since_entry": 10452.0,
+      "bars_held": 11,
+      "chandelier_stop": 9743.576987577186
+    },
+    "HCLTECH.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "COLPAL.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "ANURAS.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "NEWGEN.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "JKTYRE.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "BSOFT.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null
+    },
+    "PERSISTENT.NS": {
+      "shares": 0,
+      "entry_price": 0.0,
+      "entry_date": null,
+      "highest_high_since_entry": 0.0,
+      "bars_held": 0,
+      "chandelier_stop": null,
+      "pending_buy": false,
+      "entry_cost": 0.0
+    }
+  },
+  "cooldown_state": {
+    "SIEMENS.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "BAJAJ-AUTO.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    },
+    "HCLTECH.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "COLPAL.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "ANURAS.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "NEWGEN.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "JKTYRE.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "BSOFT.NS": {
+      "remaining_bars": 0,
+      "last_trigger_reason": null
+    },
+    "PERSISTENT.NS": {
+      "remaining_bars": 0,
+      "last_exit_reason": null
+    }
+  },
+  "total_trades": 2,
+  "last_run_date": "2026-06-17",
+  "inception_date": null,
+  "weekly_start_value": 99252.60619,
+  "weekly_start_date": "2026-06-15",
+  "weekly_signals": {
+    "BUY": 0,
+    "SELL": 0,
+    "RISK_EXIT": 1
+  },
+  "trade_log": [
+    {
+      "ticker": "WHIRLPOOL.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-03",
+      "entry_price": 829.9147,
+      "exit_price": 819.59,
+      "shares": 16,
+      "gross_pnl": -165.2,
+      "net_pnl": -188.47,
+      "return_pct": -1.2441,
+      "exit_reason": "STRATEGY_SIGNAL"
+    },
+    {
+      "ticker": "TMPV.NS",
+      "entry_date": "2026-06-02",
+      "exit_date": "2026-06-17",
+      "entry_price": 390.3951,
+      "exit_price": 361.4692,
+      "shares": 44,
+      "gross_pnl": -1272.74,
+      "net_pnl": -1296.72,
+      "return_pct": -7.4094,
+      "exit_reason": "CHANDELIER"
+    }
+  ],
+  "last_run_time": "15:45"
+}

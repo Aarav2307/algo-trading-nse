@@ -1,0 +1,21 @@
+========================================
+Run started: 2026-06-26 10:15:01
+========================================
+[run_daily] Refreshing access token via auto_login.py
+[auto_login] Step 1: Seeding session cookies…
+[auto_login] Step 1 OK (status 405)
+[auto_login] Step 2: Submitting user ID and password…
+[auto_login] Step 2 OK — request_id: TY8JbX4Scp…
+[auto_login] Step 3: Submitting TOTP 326717  (29s remaining)…
+[auto_login] Step 4 OK — 2FA accepted, session is now authenticated
+[auto_login] Step 5: Following OAuth redirect chain…
+[auto_login]   hop 1: 302  →  https://kite.zerodha.com/connect/finish?api_key=7g9gybqj3woxntss&sess_id=8HY043N
+[auto_login]   hop 2: 302  →  https://127.0.0.1/?action=login&type=login&status=success&request_token=BISG3Cq1
+[auto_login] Step 5 OK — request_token captured (32 chars)
+[auto_login] Step 6: Exchanging request_token for access_token…
+[auto_login] Step 7 OK — token saved → /home/ubuntu/algo-trading/auth/access_token.txt
+[auto_login] Login successful — Aarav Piyush Agarwal (aaravpagarwal07@gmail.com)
+[run_daily] Running signal_runner.py
+Market closed today — 2026-06-26 (NSE Holiday). No signals generated.
+[run_daily] Completed: 2026-06-26 10:15:03
+

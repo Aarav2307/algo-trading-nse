@@ -1,0 +1,26 @@
+Morning fill check started: 2026-07-14 03:50:01
+[auto_login] Step 1: Seeding session cookies…
+[auto_login] Step 1 OK (status 405)
+[auto_login] Step 2: Submitting user ID and password…
+[auto_login] Step 2 OK — request_id: OuDKitYO9v…
+[auto_login] Step 3: Submitting TOTP 113526  (29s remaining)…
+[auto_login] Step 4 OK — 2FA accepted, session is now authenticated
+[auto_login] Step 5: Following OAuth redirect chain…
+[auto_login]   hop 1: 302  →  https://kite.zerodha.com/connect/finish?sess_id=XLwkDpCfXTYCM1syPFIAa0gJr1oA23DY
+[auto_login]   hop 2: 302  →  https://127.0.0.1/?type=login&status=success&request_token=xh20Gu9lFqe4ceNiQ960L
+[auto_login] Step 5 OK — request_token captured (32 chars)
+[auto_login] Step 6: Exchanging request_token for access_token…
+[auto_login] Step 7 OK — token saved → /home/ubuntu/algo-trading/auth/access_token.txt
+[auto_login] Login successful — Aarav Piyush Agarwal (aaravpagarwal07@gmail.com)
+[morning_fill_check] Paper trading mode — simulating fills from open price
+
+==============================================================
+  MORNING FILL REPORT — Tuesday 14 Jul 2026
+  Fill date: 2026-07-14  |  Checking all unfilled DRY_RUN orders
+  MODE: APPLY — portfolio state will be updated with fills
+==============================================================
+
+  No pending DRY_RUN orders found (amo_orders.csv is empty or all filled).
+==============================================================
+Morning fill check completed: 2026-07-14 03:50:03
+

@@ -1,0 +1,142 @@
+========================================
+Run started: 2026-06-17 10:15:01
+========================================
+[run_daily] Refreshing access token via auto_login.py
+[auto_login] Step 1: Seeding session cookies…
+[auto_login] Step 1 OK (status 405)
+[auto_login] Step 2: Submitting user ID and password…
+[auto_login] Step 2 OK — request_id: 9rQX6aqDS0…
+[auto_login] Step 3: Submitting TOTP 480060  (28s remaining)…
+[auto_login] Step 4 OK — 2FA accepted, session is now authenticated
+[auto_login] Step 5: Following OAuth redirect chain…
+[auto_login]   hop 1: 302  →  https://kite.zerodha.com/connect/finish?api_key=7g9gybqj3woxntss&sess_id=5NO6E99
+[auto_login]   hop 2: 302  →  https://127.0.0.1/?action=login&type=login&status=success&request_token=pY0l05k7
+[auto_login] Step 5 OK — request_token captured (32 chars)
+[auto_login] Step 6: Exchanging request_token for access_token…
+[auto_login] Step 7 OK — token saved → /home/ubuntu/algo-trading/auth/access_token.txt
+[auto_login] Login successful — Aarav Piyush Agarwal (aaravpagarwal07@gmail.com)
+[run_daily] Running signal_runner.py
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:57: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_above = fast_above & ~fast_above.shift(1).fillna(False)   # golden cross
+/home/ubuntu/algo-trading/strategies/sma_crossover.py:58: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  crossed_below = ~fast_above & fast_above.shift(1).fillna(False)   # death cross
+
+[paper_trading] Fetching data for 2026-06-17 …
+[kite_fetcher] Fetching NSE instrument list from Kite...
+[kite_fetcher] Cached 9836 NSE instruments.
+[kite_fetcher] TMPV.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] WHIRLPOOL.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] SIEMENS.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] BAJAJ-AUTO.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] CUMMINSIND.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] HCLTECH.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] BOSCHLTD.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] COLPAL.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] ANURAS.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[kite_fetcher] HEROMOTOCO.NS: 80 trading days loaded (2026-02-17 → 2026-06-17)
+[paper_trading] Checking corporate actions …
+  [CORP_ACTION] TMPV.NS: DIVIDEND on 2026-06-19 — below threshold, no skip (DIVIDEND Rs 3.00 (0.830% of ₹362 < 1% threshold — immaterial))
+  [CORP_ACTION] TMPV.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] WHIRLPOOL.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] SIEMENS.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] BAJAJ-AUTO.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] CUMMINSIND.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] HCLTECH.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] BOSCHLTD.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] COLPAL.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] ANURAS.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+  [CORP_ACTION] HEROMOTOCO.NS: clear — no material actions between 2026-06-17 and 2026-06-19
+
+[paper_trading] Running signal pipeline for 10 stocks …
+
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 1 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 0 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+
+[paper_trading] Portfolio state saved.
+
+==============================================================
+  NSE PAPER TRADING SIGNAL REPORT
+  Date: Wednesday, 17 June 2026  |  Run: 3:45 PM IST
+==============================================================
+
+  PORTFOLIO SUMMARY
+  Cash available    : ₹   76,953.97
+  Invested value    : ₹   21,190.00
+  Total value       : ₹   98,143.97
+  P&L vs start      : ₹-1,856.03  (-1.86%)
+  Open positions    : 2 / 10 stocks
+  Completed trades  : 2
+
+  TODAY'S SIGNALS
+  ┌────────────────┬────────────┬─────────────┬───────────┬───────────────────────────────┐
+  │ Stock          │ Signal     │ Price       │ Shares    │ Reason                        │
+  ├────────────────┼────────────┼─────────────┼───────────┼───────────────────────────────┤
+  │ TMPV.NS        │ RISK_EXIT  │ ₹361.65     │ 44 shr    │ RM triggered: CHANDELIER      │
+  │ WHIRLPOOL.NS   │ HOLD       │ ₹790.00     │ —         │ No signal                     │
+  │ SIEMENS.NS     │ HOLD       │ ₹3,722.00   │ —         │ In position — no exit signal  │
+  │ BAJAJ-AUTO.NS  │ HOLD       │ ₹10,024.00  │ —         │ In position — no exit signal  │
+  │ CUMMINSIND.NS  │ HOLD       │ ₹5,825.50   │ —         │ No signal                     │
+  │ HCLTECH.NS     │ HOLD       │ ₹1,165.20   │ —         │ No signal                     │
+  │ BOSCHLTD.NS    │ HOLD       │ ₹39,095.00  │ —         │ No signal                     │
+  │ COLPAL.NS      │ HOLD       │ ₹2,030.00   │ —         │ No signal                     │
+  │ ANURAS.NS      │ HOLD       │ ₹1,299.00   │ —         │ No signal                     │
+  │ HEROMOTOCO.NS  │ HOLD       │ ₹5,021.00   │ —         │ No signal                     │
+  └────────────────┴────────────┴─────────────┴───────────┴───────────────────────────────┘
+
+  OPEN POSITION RISK LEVELS
+  SIEMENS.NS     : entry ₹3,731.56 | current ₹3,722.00 | chandelier ₹3,366.00 | P&L -0.3%
+  BAJAJ-AUTO.NS  : entry ₹10,286.14 | current ₹10,024.00 | chandelier ₹9,743.58 | P&L -2.5%
+
+  ACTIONS TAKEN
+  ✓ SELL 44 shares @ ₹361.47 [CHANDELIER]  net P&L ₹-1,297
+
+  Next run: Thursday 18 Jun 3:45 PM IST
+  Log saved: paper_trading/signal_log.csv
+==============================================================
+[paper_trading] Signal log appended → paper_trading/signal_log.csv
+
+  ────────────────────────────────────────────────────────────
+  AMO ORDERS QUEUED FOR TOMORROW
+  TMPV.NS         SELL   44 shr | signal ₹361.65 | limit ₹359.84 [DRY RUN]
+  ────────────────────────────────────────────────────────────
+[run_daily] Completed: 2026-06-17 10:15:26
+

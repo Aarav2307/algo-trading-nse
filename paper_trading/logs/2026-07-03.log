@@ -1,0 +1,102 @@
+========================================
+Run started: 2026-07-03 10:15:01
+========================================
+[run_daily] Refreshing access token via auto_login.py
+[auto_login] Step 1: Seeding session cookies…
+[auto_login] Step 1 OK (status 405)
+[auto_login] Step 2: Submitting user ID and password…
+[auto_login] Step 2 OK — request_id: WMLIClvD9H…
+[auto_login] Step 3: Submitting TOTP 827774  (28s remaining)…
+[auto_login] Step 4 OK — 2FA accepted, session is now authenticated
+[auto_login] Step 5: Following OAuth redirect chain…
+[auto_login]   hop 1: 302  →  https://kite.zerodha.com/connect/finish?api_key=7g9gybqj3woxntss&sess_id=6QagYSF
+[auto_login]   hop 2: 302  →  https://127.0.0.1/?action=login&type=login&status=success&request_token=gBiK4wdD
+[auto_login] Step 5 OK — request_token captured (32 chars)
+[auto_login] Step 6: Exchanging request_token for access_token…
+[auto_login] Step 7 OK — token saved → /home/ubuntu/algo-trading/auth/access_token.txt
+[auto_login] Login successful — Aarav Piyush Agarwal (aaravpagarwal07@gmail.com)
+[run_daily] Running signal_runner.py
+
+[paper_trading] Fetching data for 2026-07-03 …
+[kite_fetcher] Fetching NSE instrument list from Kite...
+[kite_fetcher] Cached 9904 NSE instruments.
+[kite_fetcher] BAJAJ-AUTO.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] HCLTECH.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] COLPAL.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] ANURAS.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] NEWGEN.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] JKTYRE.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] BSOFT.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] PERSISTENT.NS: 80 trading days loaded (2026-03-05 → 2026-07-03)
+[kite_fetcher] NIFTYBEES.NS: 8 trading days loaded (2026-06-23 → 2026-07-03)
+[paper_trading] Checking NIFTY 50 market regime …
+[kite_fetcher] NIFTY 50.NS: 61 trading days loaded (2026-04-06 → 2026-07-03)
+  [NIFTY] 2026-07-03 | close ₹24,271.20 | SMA20 ₹23,805.53 | SMA50 ₹23,822.79 | gap -0.07% → regime: BEAR
+
+[paper_trading] Checking corporate actions …
+  [CORP_ACTION] BAJAJ-AUTO.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] HCLTECH.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] COLPAL.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] ANURAS.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] NEWGEN.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] JKTYRE.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] BSOFT.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+  [CORP_ACTION] PERSISTENT.NS: clear — no material actions between 2026-07-03 and 2026-07-07
+
+[paper_trading] Running signal pipeline for 8 stocks …
+
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+[strategy] SMA(20/50): 2 buy signals, 1 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+[strategy] SMA(20/50): 0 buy signals, 0 sell signals
+[strategy] SMA(20/50): 1 buy signals, 1 sell signals
+
+[paper_trading] Portfolio state saved.
+
+==============================================================
+  NSE PAPER TRADING SIGNAL REPORT
+  Date: Friday, 03 July 2026  |  Run: 3:45 PM IST  |  NIFTY Regime: BEAR
+==============================================================
+
+  PORTFOLIO SUMMARY
+  Cash available    : ₹      243.49
+  Invested value    : ₹        0.00
+  Total value       : ₹   99,327.49
+  P&L vs start      : ₹-672.51  (-0.67%)
+  Open positions    : 0 / 8 stocks
+  NIFTYBEES ETF     : 359 units | tier 100% | value ₹99084
+  Completed trades  : 4
+
+  TODAY'S SIGNALS
+  ┌────────────────┬────────────┬─────────────┬───────────┬───────────────────────────────┐
+  │ Stock          │ Signal     │ Price       │ Shares    │ Reason                        │
+  ├────────────────┼────────────┼─────────────┼───────────┼───────────────────────────────┤
+  │ BAJAJ-AUTO.NS  │ HOLD       │ ₹9,784.00   │ —         │ No signal                     │
+  │ HCLTECH.NS     │ HOLD       │ ₹1,140.00   │ —         │ No signal                     │
+  │ COLPAL.NS      │ HOLD       │ ₹2,042.30   │ —         │ No signal                     │
+  │ ANURAS.NS      │ HOLD       │ ₹1,263.00   │ —         │ No signal                     │
+  │ NEWGEN.NS      │ HOLD       │ ₹482.00     │ —         │ No signal                     │
+  │ JKTYRE.NS      │ HOLD       │ ₹412.00     │ —         │ No signal                     │
+  │ BSOFT.NS       │ HOLD       │ ₹282.85     │ —         │ No signal                     │
+  │ PERSISTENT.NS  │ HOLD       │ ₹4,675.10   │ —         │ No signal                     │
+  └────────────────┴────────────┴─────────────┴───────────┴───────────────────────────────┘
+
+  ACTIONS TAKEN: none (all HOLD)
+
+  Next run: Monday 06 Jul 3:45 PM IST
+  Log saved: paper_trading/signal_log.csv
+==============================================================
+[paper_trading] Signal log appended → paper_trading/signal_log.csv
+==============================================================
+  WEEKLY SUMMARY  (week ending 03 Jul 2026)
+==============================================================
+  Signals this week: 0 BUY, 0 SELL, 0 RISK_EXIT
+  Weekly P&L        : +₹1,278  (+1.30%)
+  Running paper P&L : ₹-673  (-0.67%)  since None
+==============================================================
+
+[run_daily] Completed: 2026-07-03 10:15:21
+
