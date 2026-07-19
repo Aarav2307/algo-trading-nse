@@ -176,3 +176,41 @@ def test_sufficient_data_result_unchanged():
     assert isinstance(r["score"], int), f"score should be int, got {type(r['score'])}"
     assert 0 <= r["score"] <= 6,     "score must be in [0, 6]"
     assert "error" not in r or r.get("error") is None, "error key should be absent or None"
+
+
+# =============================================================================
+# Test 5 — MAZDOCK.NS class of bug: a short-history ticker whose extended IS
+# window predates its actual listing entirely must SKIP cleanly, not crash.
+#
+# get_ohlcv() now raises ValueError (see data/test_kite_fetcher_zero_price.py)
+# when every row Kite returns for a window is a garbage zero-price placeholder
+# -- confirmed live for MAZDOCK.NS's real 2015-2019 extended IS window, which
+# entirely predates its actual ~Oct-2020 listing. This test simulates that
+# ValueError at the walk_forward.py boundary and confirms it's caught and
+# reported as insufficient data, matching COHANCE.NS/MAPMYINDIA.NS's existing
+# "extended SKIPPED" behavior -- not an unhandled crash.
+# =============================================================================
+
+def test_extended_window_short_history_ticker_skips_not_crashes():
+    """
+    A ticker whose entire extended-IS window predates its real listing date
+    (get_ohlcv raises ValueError, matching the fixed kite_fetcher.py behavior)
+    must be reported as insufficient data, not propagate an unhandled error.
+    """
+    def _raise_no_real_data(ticker, start, end):
+        raise ValueError(
+            f"No real data for '{ticker}' between {start} and {end} — "
+            "every row Kite returned was a garbage zero-price placeholder "
+            "(stock likely wasn't listed yet in this window)."
+        )
+
+    with patch("validation.walk_forward.get_ohlcv", side_effect=_raise_no_real_data), \
+         patch("validation.walk_forward._fetch_nifty", return_value=pd.DataFrame()):
+        result = run_extended_walk_forward(stocks=["MAZDOCK.NS"])
+
+    assert "MAZDOCK.NS" in result
+    r = result["MAZDOCK.NS"]
+    assert r["score"]      == "N/A"
+    assert r["oos_return"] == "N/A"
+    assert "error" in r and r["error"] is not None
+    assert "No real data" in r["error"]

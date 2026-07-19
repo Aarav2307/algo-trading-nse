@@ -264,7 +264,33 @@ def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
     df = df.set_index("date")
     df.index.name = "date"
 
+    # Kite occasionally returns garbage placeholder rows (zero OHLC, nonzero
+    # volume) for dates before a stock's actual listing/IPO -- confirmed live
+    # for MAZDOCK.NS: 7 rows scattered Jan-Jul 2018, real trading data starts
+    # 2020-10-12. A stock's price is never actually zero while trading; a
+    # zero close always means "no data," never "the market said zero." Null
+    # out the whole OHLC row so the dropna below removes it the same way it
+    # already removes a genuinely missing close -- NaN is the only correct
+    # sentinel for missing price data, precisely because it propagates and
+    # fails loud, whereas 0.0 silently participates in downstream arithmetic
+    # (e.g. becomes a benchmark entry price, divides-by-zero, or looks like
+    # a valid signal bar).
+    zero_price_mask = df["close"] <= 0
+    if zero_price_mask.any():
+        print(
+            f"[kite_fetcher] {ticker}: dropping {int(zero_price_mask.sum())} "
+            f"garbage zero-price row(s) from Kite (likely pre-listing dates)"
+        )
+        df.loc[zero_price_mask, ["open", "high", "low", "close"]] = float("nan")
+
     df = df.dropna(subset=["close"])
+
+    if df.empty:
+        raise ValueError(
+            f"No real data for '{ticker}' ({symbol}) between {start} and {end} — "
+            "every row Kite returned was a garbage zero-price placeholder "
+            "(stock likely wasn't listed yet in this window)."
+        )
 
     print(
         f"[kite_fetcher] {ticker}: {len(df)} trading days loaded "

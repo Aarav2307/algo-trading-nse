@@ -144,7 +144,18 @@ def run(
 
     # Benchmark: buy-and-hold from the first bar with a valid signal
     first_valid_idx = signals.first_valid_index()
-    bm_entry_price  = df.loc[first_valid_idx, "close"] if first_valid_idx else df["close"].iloc[0]
+    # Bug fix: `if first_valid_idx` is Python truthiness, not "is this None" —
+    # if the valid index happens to be 0 (an integer position), it's falsy in
+    # Python and this would silently take the wrong branch. Must check `is not None`.
+    bm_entry_price  = (
+        df.loc[first_valid_idx, "close"] if first_valid_idx is not None else df["close"].iloc[0]
+    )
+    if pd.isna(bm_entry_price) or bm_entry_price <= 0:
+        raise ValueError(
+            f"Invalid benchmark entry price ({bm_entry_price!r}) at index "
+            f"{first_valid_idx!r} — cannot compute benchmark shares. "
+            f"Check for a data gap or index misalignment in this window."
+        )
     bm_shares       = int(portfolio.initial_capital / bm_entry_price)
     benchmark_values = []
 
