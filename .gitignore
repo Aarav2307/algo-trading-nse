@@ -4,7 +4,12 @@ auth/access_token.txt
 auth/nse_instruments.json
 
 # Paper trading state — contains live portfolio data
-paper_trading/portfolio_state.json
+# Depth-agnostic (no directory prefix): a root-level portfolio_state.json
+# and its backups were found tracked because the old pattern
+# "paper_trading/portfolio_state.json" only matched that exact path.
+portfolio_state.json
+portfolio_state.json.backup_*
+state_backups/
 paper_trading/signal_log.csv
 paper_trading/amo_orders.csv
 paper_trading/logs/
@@ -56,3 +61,4 @@ validation/scheduled_run_status.json
 # Screener candidates file — written after each real screen run
 screener/latest_candidates.json
 screener/latest_candidates.json.tmp
+utils/alerts.log
