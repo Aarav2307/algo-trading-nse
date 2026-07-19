@@ -378,10 +378,19 @@ No manual intervention required. The token is refreshed automatically before eac
 ```bash
 git clone https://github.com/Aarav2307/algo-trading.git
 cd algo-trading
+bash scripts/install-hooks.sh   # installs the .env/venv/ commit guard — run before creating .env
 python3 -m venv venv
 source venv/bin/activate
 pip install pandas numpy kiteconnect pyotp python-dotenv requests nse
 ```
+
+> **Why hooks first, `.env` second**: `.git/hooks/` isn't version-controlled — git never
+> copies hooks into a new clone, so this is a one-time manual step every clone needs.
+> Running it before creating `.env` means even a stray `git add -A` on this machine can
+> never stage `.env` or `venv/`, regardless of whether `.gitignore` has been touched yet.
+> This is the exact sequencing gap that let a live `.env` (Zerodha password, TOTP secret,
+> API keys) get committed to this repo's history in July 2026 — see
+> [CLAUDE_CONTEXT.md](CLAUDE_CONTEXT.md) for the full incident and cleanup.
 
 ### Environment Variables
 

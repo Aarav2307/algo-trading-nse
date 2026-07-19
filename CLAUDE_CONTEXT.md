@@ -933,6 +933,114 @@ Test count: 202 passing, confirmed on both the local Mac and the server
 merge, and once more just now — all showing `202 passed`, zero failures) —
 up from 198 before this week's tz-fix test additions.
 
+Update (Jul 19-20 2026): the merge above (`d5073a3`) was later amended to
+strip the leftover sensitive/stale files it would otherwise have introduced
+(root-level portfolio_state.json + 21 backups, a stale nested
+paper_trading/CLAUDE_CONTEXT.md), then pushed — and rejected twice, first
+for a 122.9 MB venv/ binary exceeding GitHub's 100 MB limit, then for a live
+.env (Zerodha password, TOTP secret, Kite API key/secret, SendGrid key)
+GitHub's secret scanner caught in the same orphan snapshot commit
+(`c6ec08a`). Both never-should-have-been-tracked payloads were confirmed to
+have never reached the real origin/main (`git merge-base --is-ancestor`
+returned false), then stripped from all 140 commits in one
+`git filter-repo --path venv/ --path .env --invert-paths` pass against a
+fresh clone — verified zero dangling objects after `reflog expire` +
+`gc --prune=now --aggressive`, all 140 commit messages/authors/dates
+identical before/after, 202/202 tests passing. Pushed clean as `8a5301a`;
+Mac, server, and GitHub confirmed identical. See "Credential-leak
+prevention" below for what's now in place to stop this recurring.
+
+#### Credential-leak prevention — COMPLETED (Jul 20 2026)
+Root cause of the incident above: the server's git repo was born from
+`git add -A` on a working directory that predated `.gitignore` — nothing
+stopped `.env` and `venv/` from being staged in that first commit. Four
+layers added, each verified working (not just configured) before moving to
+the next:
+
+1. **File permissions**: `chmod 600 .env` on the server (`-rw-------`,
+   confirmed via `ls -l`). Was `-rw-r--r--` (world-readable) before.
+2. **Local pre-commit hook** (`.git/hooks/pre-commit`): blocks staging
+   `.env` or anything under `venv/`, at any depth, regardless of
+   `.gitignore` state. Verified live: a force-staged file under `venv/`
+   was blocked (exit 1, correct message); a normal file committed cleanly
+   (exit 0). **Limitation, not a footnote**: `.git/hooks/` is not
+   version-controlled — this protects only the machine it's installed on.
+   A fresh clone gets nothing until layer 3 runs.
+3. **`scripts/install-hooks.sh`** (checked into the repo): reinstalls the
+   same guard, plus registers git-secrets patterns if git-secrets is
+   present. Documented in README.md's Setup & Installation as the first
+   command after `git clone` — deliberately sequenced *before* creating
+   `.env`, so even a `git add -A` on a brand-new clone can't stage it.
+   Verified against a genuine fresh `git clone` (not a reused working
+   copy): hook absent before running the script, present and working
+   after. A first draft of this script had a bug — `git secrets --install
+   -f` silently overwrote the custom pre-commit hook instead of only
+   adding commit-msg — caught by testing the actual installed hook content
+   rather than trusting the script ran without error; fixed by writing the
+   commit-msg hook directly instead of delegating to `--install -f`.
+   Considered the `pre-commit` (pre-commit.com) framework first — rejected
+   because this project has never had a requirements.txt/pyproject.toml/
+   any dependency manifest in 140 commits of history; adding a Python
+   framework dependency for a 6-line bash check would be a bigger change
+   than the problem warrants.
+4. **git-secrets** (pattern-based scanning — catches a secret even in a
+   file not named `.env`): installed via `apt-get install git-secrets` on
+   the server (available in Ubuntu 22.04's default repos) and via
+   `brew install git-secrets` on the Mac. Registered AWS's built-in
+   patterns plus four project-specific ones (KITE_API_SECRET,
+   ZERODHA_PASSWORD, ZERODHA_TOTP_SECRET, SENDGRID_API_KEY). Verified live
+   on both machines: a file containing a fake credential-shaped line was
+   blocked with the exact matched line shown; every throwaway test file
+   and test commit made during verification was cleaned up afterward
+   (both Mac and server confirmed back at `8a5301a`, clean, after each
+   round). Real false positive hit immediately: committing this very
+   change was blocked because README.md's own env-var documentation
+   (`your_kite_api_secret`, etc.) matches the same KEY=VALUE patterns.
+   Fixed correctly — `git secrets --add --allowed 'your_[a-z_]+'` — rather
+   than bypassing with `--no-verify`, and added to install-hooks.sh so
+   future clones get the same exception, not just this one.
+
+**Runbook — re-initializing git on a fresh clone or new server** (the exact
+sequence that failed this time): `.gitignore` must exist and be committed
+*before* the first `git add -A`/`git add .`, and `scripts/install-hooks.sh`
+must run before `.env` is created. Correct order:
+```
+git init                          # or git clone <repo>
+# .gitignore must already be tracked from the FIRST commit if initializing fresh —
+# never run a broad `git add -A` against an untracked working directory that
+# contains .env or venv/, even "temporarily" or "just to snapshot state."
+bash scripts/install-hooks.sh      # second line of defense, before any secrets exist
+cp .env.example .env               # or otherwise create .env — only after the above
+# ... fill in .env, python3 -m venv venv, pip install ...
+```
+If a repo is ever re-initialized on a machine that already has a populated
+working directory (e.g. an existing server being brought under version
+control for the first time — exactly this incident's scenario): run
+`git status --short` and `git diff --cached` before every commit until
+`.gitignore` is confirmed correctly excluding `.env`/`venv`/state files,
+not after. Do not trust a single `git add -A` followed by inspection — the
+damage (data committed to a git object) happens at `git add`/`git commit`,
+not at push; by the time you're looking at `git status`, the object may
+already be written to `.git/objects` even if you `git reset` before
+committing further.
+
+**Residual risk — what still depends on human/AI discipline, not structural
+enforcement**: (a) the four layers above only protect *this specific repo*
+once installed — a completely different project, or this repo re-cloned
+onto a machine where `scripts/install-hooks.sh` is never run, has zero
+protection; (b) git-secrets' patterns are a fixed list — a new credential
+type (e.g. a future third-party API key) added to `.env` without a
+corresponding `git secrets --add` pattern is caught only by the path-based
+`.env`/`venv/` guard, not by pattern matching; (c) `--no-verify` bypasses
+every hook here — nothing stops a determined or rushed `git commit
+--no-verify`; (d) none of this protects against a secret pasted directly
+into a commit *message* body beyond what git-secrets' commit-msg hook
+covers with the same fixed pattern list; (e) GitHub's own push protection
+(which is what actually caught the `.env` leak this time, not any of these
+four layers, since none of them existed yet) remains the last line of
+defense for anything that slips past all of the above — worth knowing it
+exists, not worth relying on as the primary control.
+
 ---
 
 ## Key Implementation Notes
