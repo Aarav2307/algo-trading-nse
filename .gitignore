@@ -56,3 +56,4 @@ validation/scheduled_run_status.json
 # Screener candidates file — written after each real screen run
 screener/latest_candidates.json
 screener/latest_candidates.json.tmp
+utils/alerts.log
