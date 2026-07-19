@@ -17,6 +17,7 @@ sys.path.insert(0, str(_ROOT))
 import paper_trading.morning_fill_check as mfc
 from paper_trading.morning_fill_check import (
     GAP_BREAKER_THRESHOLD,
+    _check_circuit_breaker,
     _process_order,
     _update_portfolio_fill,
 )
@@ -291,7 +292,7 @@ def test_5_gap_exit_pnl_correct() -> None:
 
             # Recompute expected values using the same logic as _update_portfolio_fill
             exec_price     = apply_slippage(open_px, "sell")
-            sell_cost      = transaction_costs(exec_price, shares, "sell")["total"]
+            sell_cost      = transaction_costs(exec_price, shares, "sell", "delivery")
             proceeds       = shares * exec_price - sell_cost
             expected_cash  = initial_cash + proceeds
             expected_gross = (exec_price - entry_px) * shares
@@ -486,6 +487,78 @@ def test_9_summary_line_correct_with_mixed_orders() -> None:
 
 
 # =============================================================================
+# Tests 10-14 — _check_circuit_breaker threshold (20%, not 19%)
+# =============================================================================
+
+def test_10_circuit_breaker_19_9_not_flagged() -> None:
+    """A 19.9% move must NOT be classified as a circuit breaker (below NSE 20% band)."""
+    name = "test_10_circuit_breaker_19_9_not_flagged"
+    flagged, msg = _check_circuit_breaker("TEST", open_price=119.9, prev_close=100.0)
+    if flagged is not False:
+        _fail_test(name, f"expected flagged=False, got {flagged}")
+        return
+    if msg != "":
+        _fail_test(name, f"expected empty msg, got {msg!r}")
+        return
+    _pass_test(name)
+
+
+def test_11_circuit_breaker_20_0_upper_flagged() -> None:
+    """Exactly 20.0% upward move must be classified as upper circuit breaker."""
+    name = "test_11_circuit_breaker_20_0_upper_flagged"
+    flagged, msg = _check_circuit_breaker("TEST", open_price=120.0, prev_close=100.0)
+    if flagged is not True:
+        _fail_test(name, f"expected flagged=True, got {flagged}")
+        return
+    if "upper" not in msg:
+        _fail_test(name, f"expected 'upper' in msg, got {msg!r}")
+        return
+    if "20.0%" not in msg:
+        _fail_test(name, f"expected '20.0%' in msg, got {msg!r}")
+        return
+    _pass_test(name)
+
+
+def test_12_circuit_breaker_lower_direction() -> None:
+    """A downward 20%+ move must be classified as lower circuit, not upper."""
+    name = "test_12_circuit_breaker_lower_direction"
+    flagged, msg = _check_circuit_breaker("TEST", open_price=80.0, prev_close=100.0)
+    if flagged is not True:
+        _fail_test(name, f"expected flagged=True, got {flagged}")
+        return
+    if "lower" not in msg:
+        _fail_test(name, f"expected 'lower' in msg, got {msg!r}")
+        return
+    _pass_test(name)
+
+
+def test_13_circuit_breaker_prev_close_zero_guard() -> None:
+    """Guard against div-by-zero: prev_close <= 0 must return (False, '')."""
+    name = "test_13_circuit_breaker_prev_close_zero_guard"
+    flagged, msg = _check_circuit_breaker("TEST", open_price=100.0, prev_close=0.0)
+    if flagged is not False:
+        _fail_test(name, f"expected flagged=False on zero prev_close, got {flagged}")
+        return
+    if msg != "":
+        _fail_test(name, f"expected empty msg, got {msg!r}")
+        return
+    _pass_test(name)
+
+
+def test_14_circuit_breaker_normal_move_not_flagged() -> None:
+    """A routine 5% move must not be flagged as a circuit breaker."""
+    name = "test_14_circuit_breaker_normal_move_not_flagged"
+    flagged, msg = _check_circuit_breaker("TEST", open_price=105.0, prev_close=100.0)
+    if flagged is not False:
+        _fail_test(name, f"expected flagged=False, got {flagged}")
+        return
+    if msg != "":
+        _fail_test(name, f"expected empty msg, got {msg!r}")
+        return
+    _pass_test(name)
+
+
+# =============================================================================
 # Runner
 # =============================================================================
 
@@ -506,6 +579,11 @@ if __name__ == "__main__":
     test_7_missed_count_not_incremented_on_gap_exit()
     test_8_missed_count_increments_on_true_miss()
     test_9_summary_line_correct_with_mixed_orders()
+    test_10_circuit_breaker_19_9_not_flagged()
+    test_11_circuit_breaker_20_0_upper_flagged()
+    test_12_circuit_breaker_lower_direction()
+    test_13_circuit_breaker_prev_close_zero_guard()
+    test_14_circuit_breaker_normal_move_not_flagged()
 
     if LIVE_STATE.exists():
         mtime_after = os.path.getmtime(LIVE_STATE)

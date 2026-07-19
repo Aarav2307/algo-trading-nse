@@ -23,9 +23,16 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 echo "Morning fill check started: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
 
+# Refresh token — best-effort. Don't skip fill check if login fails: the
+# existing token may still be valid, and morning_fill_check has its own
+# TokenException guard that will fail loudly and write to alerts.log.
+if ! python auth/auto_login.py >> "$LOG_FILE" 2>&1; then
+    echo "[morning_fill_check] WARNING: auto_login.py failed — attempting fill check with existing token" >> "$LOG_FILE"
+fi
+
 # --apply flag: pass it to update portfolio state with actual fill prices.
 # Remove the flag to run in dry-run mode (report only, no state changes).
-python auth/auto_login.py >> "$LOG_FILE" 2>&1 && python paper_trading/morning_fill_check.py --apply >> "$LOG_FILE" 2>&1
+python paper_trading/morning_fill_check.py --apply >> "$LOG_FILE" 2>&1
 
 echo "Morning fill check completed: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"

@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-05
+Last updated: 2026-07-17
 
-## Current Trading Universe (7 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT.NS
+## Current Trading Universe (10 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS, EMAMILTD.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -19,6 +19,66 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   expectancy -Rs83/trade, H=0.214 mean-reverting)
   HURST_SKIP fired Jul 6 on golden cross — Hurst gate prevented bad entry
   Replace at next screener cycle with validated candidate
+- Added Jul 9 2026: CHOLAHLDNG.NS (screener ADD recommendation Jul 8 2026,
+  WF validated: original 5/6 OOS +15.4%, extended 5/6 OOS +9.1%)
+  NOTE: crossed to golden cross the SAME DAY it was added, but was deployed
+  to the server AFTER that day's 3:45 PM signal run had already executed —
+  entry was missed. See "Deployment Timing Lesson" below.
+- Added Jul 10 2026: COHANCE.NS (from Jul 8 screener WATCHLIST — already in death
+  cross at screening time, not yet crossed as of Jul 10).
+  WF validated: original 6/6 OOS +8.0% (strongest score of the week),
+  extended SKIPPED — insufficient historical data (only 20 bars in 2015-2019
+  window, needs ≥200). Deployed ~1hr before that day's signal run while still
+  in death cross — zero timing gap (contrast with CHOLAHLDNG.NS above).
+- Removed Jul 12 2026: NEWGEN.NS — 3 consecutive degradation flags (Jul 5, Jul 8,
+  Jul 12), ADX=19.1 (below 22.0 degradation threshold and 25.0 screener entry bar),
+  FALLING trend, Hurst still healthy (0.541) — an ADX/trend-strength decline, not
+  a Hurst-driven removal like JKTYRE's.
+  First two flags (Jul 5, Jul 8) coincided with NIFTY's Jul 7 regime transition and
+  were deliberately held, per the regime-transition annotation feature (commit
+  3044b88) — judged likely transition noise. Held on explicit condition that a third
+  consecutive flag after the regime stabilized would change the assessment.
+  NIFTY stable BULL for 5+ trading days by Jul 12; the Jul 12 flag carries NO
+  regime-transition annotation, confirming the system does not attribute it to
+  transition noise.
+  Clean differential: BSOFT.NS was flagged on the identical two prior dates under
+  the same regime conditions and recovered on this same Jul 12 screen ("regime
+  healthy again"). NEWGEN did not — real evidence of stock-specific decay, not a
+  shared external cause.
+  NEWGEN's SMA20/SMA50 gap faded steadily since Jul 1 (+1.01% → +0.29%),
+  consistent with this conclusion. Zero open position at removal — clean exit.
+  Screener's own Jul 12 REMOVE recommendation concurred.
+- Added Jul 12 2026: MAPMYINDIA.NS (screener ADD recommendation Jul 12, from a
+  batch that also included HAL.NS, DMART.NS, HINDUNILVR.NS, CLEAN.NS — all four
+  FAILED WF, only MAPMYINDIA passed).
+  WF validated: original 5/6 OOS +7.0%, extended SKIPPED — insufficient historical
+  data (no bars in 2015-2019 IS window, same pattern as COHANCE.NS and PAYTM.NS).
+  Confirmed still in death cross at add time (SMA20=901.72, SMA50=906.37,
+  gap -0.51%) — deployed same-day, catching the next golden cross live with zero
+  timing gap.
+- Added Jul 17 2026: EMAMILTD.NS (screener ADD recommendation Jul 15 2026,
+  same batch as ESCORTS.NS, BRITANNIA.NS, HINDUNILVR.NS, CLEAN.NS — all
+  four already-tested/FAILED from prior batches; EMAMILTD.NS was the one
+  genuinely new candidate in this batch).
+  WF validated: original 6/6 OOS +9.0%, extended 5/6 OOS +13.6%.
+  Was DEATH cross (-0.25%) at WF validation time (Jul 15); crossover
+  traced day-by-day and confirmed genuine/smooth: -2.17% (Jul 9) through
+  +0.05% GOLDEN (Jul 16-17) — a real, monotonic crossover, not a data
+  artifact. Live Hurst confirmed healthy at 0.641 (Jul 17), well clear
+  of the 0.48 gate — unlike COHANCE.NS's razor-thin Hurst miss on its
+  own crossover, this one should clear the live entry gate if the
+  crossover holds through close.
+  Deployed same-day for zero timing gap, per the lesson from
+  CHOLAHLDNG.NS's Jul 9 miss.
+
+### Deployment Timing Lesson (Jul 9-10 2026)
+CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
+that same day — the code change wasn't deployed to the server until AFTER that
+day's signal run had already executed, so the entry was missed. Lesson: when
+adding a validated stock, deploy to the server IMMEDIATELY after committing,
+not at a later point in the session. Applied successfully for COHANCE.NS on
+Jul 10 (deployed ~1hr before that day's run, while still in death cross — no
+timing gap).
 
 ## Paper Trading Status (as of 2026-07-05)
 - Started: 2026-06-02 (33 trading days as of Jul 5)
@@ -54,11 +114,18 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
   - WHIRLPOOL: FAIL — OOS +3.5% below +4% floor, payoff 1.48 — removed Jun 24
   - SIEMENS: FAIL — OOS ~0%, rolling WARNING — removed Jun 24
   - NEWGEN.NS: 4/6 original OOS +10.0%, 5/6 extended OOS +17.6%
-    WF validated Jul 7 2026 (listed Jan 2018, sufficient IS history confirmed)
+    WF validated Jul 7 2026. REMOVED Jul 12 2026 — 3 consecutive ADX flags,
+    ADX=19.1 FALLING (stock-specific decay confirmed, not regime noise).
   - ANURAS.NS: listed Mar 24 2021, only ~440 IS bars in 2018-2022 window
     Cannot validate with current IS window definition
     Re-evaluate at October 2026 quarterly review with updated IS window
-- walk_forward.py STOCKS updated Jul 7: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, NEWGEN
+  - CHOLAHLDNG.NS: 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
+    WF validated Jul 8 2026 — added to universe Jul 9 2026
+  - COHANCE.NS: 6/6 original OOS +8.0%, extended SKIPPED (insufficient data,
+    only 20 bars in 2015-2019 window) — WF validated Jul 9-10 2026, added Jul 10 2026
+  - MAPMYINDIA.NS: 5/6 original OOS +7.0%, extended SKIPPED (insufficient data,
+    no bars in 2015-2019 window) — WF validated Jul 12 2026, added Jul 12 2026
+- walk_forward.py STOCKS updated Jul 12: BAJAJ-AUTO, HCLTECH, COLPAL, BSOFT, PERSISTENT, CHOLAHLDNG, COHANCE, MAPMYINDIA
 - Run walk_forward.py quarterly — next run due October 2026
 
 ## Infrastructure
@@ -94,6 +161,79 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
 - ADD recommendations = death cross stocks closest to golden flip (system will catch entry)
 - MONITOR = already in golden cross — wait for next cycle before adding
 - Divergence detection: flags stocks where 2yr and 80d SMA windows disagree
+
+### Mandatory WF Gate Before Universe Addition
+NEVER add a stock to STOCKS in signal_runner.py without running WF validation first.
+Screener ADD recommendation = candidate for testing, NOT approval to add.
+
+Step 1 — Run single-stock validation:
+  python validation/walk_forward.py --ticker CANDIDATE.NS
+
+Step 2 — Gate criteria (both must pass):
+  - Original window: ≥4/6 metrics AND OOS return ≥+4%
+  - Extended window: ≥4/6 metrics (if sufficient history exists)
+
+Step 3 — If PASS:
+  - Add to STOCKS in paper_trading/signal_runner.py
+  - Add to STOCKS in validation/walk_forward.py
+  - Document in CLAUDE_CONTEXT Universe History with scores and date
+
+Step 4 — If FAIL:
+  - Do NOT add to universe
+  - Note reason in CLAUDE_CONTEXT
+  - Re-test after 2 screener cycles (minimum 4 weeks)
+
+Additional flags:
+  --no-extended: skip extended window (faster, use for quick checks)
+  Example: python validation/walk_forward.py --ticker HCLTECH.NS --no-extended
+
+Stocks validated Jul 6-7 2026 using this gate:
+  PERSISTENT.NS: PASS (5/6 original OOS +11.7%, 5/6 extended OOS +10.2%)
+  HCLTECH.NS:    PASS (6/6 original OOS +5.5%,  4/6 extended OOS +2.5%)
+  BSOFT.NS:      PASS (6/6 original OOS +8.5%,  5/6 extended OOS +11.4%)
+  NEWGEN.NS:     PASS (4/6 original OOS +10.0%, 5/6 extended OOS +17.6%)
+  JKTYRE.NS:     FAIL (2/6 original OOS -0.3%,  expectancy -Rs83/trade)
+                 → Removed from universe Jul 7 2026
+
+Stocks validated Jul 8 2026 using this gate:
+  CHOLAHLDNG.NS: PASS (5/6 original OOS +15.4%, 5/6 extended OOS +9.1%)
+                 → Added to universe Jul 9 2026
+  (Same 2026-07-08 screener batch — 4 other ADD candidates tested, all FAILED WF gate, not added:
+  TMPV.NS:       FAIL (3/6 original OOS +0.5%,  5/6 extended OOS +6.2%)
+  SOBHA.NS:      FAIL (3/6 original OOS +0.3%,  3/6 extended OOS +3.8%)
+  GODREJCP.NS:   FAIL (4/6 both windows, OOS +0.8%/+1.8% below +4% floor)
+  BDL.NS:        FAIL (1/6 original, 0/6 extended — clean rejection))
+
+Stocks validated Jul 9-10 2026 using this gate:
+  COHANCE.NS:    PASS (6/6 original OOS +8.0%, extended SKIPPED —
+                 insufficient data, only 20 bars in 2015-19 window)
+                 → Added to universe Jul 10 2026, still in death cross at
+                 add time — zero timing gap
+  ALKEM.NS:      PASS (4/6 original OOS +5.7%, 4/6 extended OOS +2.6%)
+                 → NOT yet added — already in golden cross (+0.39% gap) as
+                 of Jul 9; would need to wait for next cross cycle
+  GLAXO.NS:      PASS (5/6 original OOS +8.5%, 4/6 extended OOS +0.6%)
+                 → NOT yet added — already in golden cross (+1.24% gap)
+  CASTROLIND.NS: PASS (5/6 original OOS +5.3%, 5/6 extended OOS +4.5%)
+                 → NOT yet added — already in golden cross (+0.41% gap)
+  PAYTM.NS:      PASS (4/6 original OOS +8.0%, extended SKIPPED —
+                 insufficient data, IPO Nov 2021)
+                 → NOT yet added — already in golden cross (+2.60% gap)
+  (Same batch — 5 other candidates tested, all FAILED WF, not added:
+  EIHOTEL.NS, CRISIL.NS, RAMCOCEM.NS, HAL.NS, DMART.NS from Jul 8 WATCHLIST)
+
+Stocks validated Jul 12 2026 using this gate:
+  MAPMYINDIA.NS: PASS (5/6 original OOS +7.0%, extended SKIPPED —
+                 insufficient data, no bars in 2015-19 window)
+                 → Added to universe Jul 12 2026, still in death cross
+                 at add time (gap -0.51%) — zero timing gap
+  HINDUNILVR.NS: FAIL (5/6 original OOS +1.4% — below +4% floor;
+                 0/6 extended OOS -7.2% — clean rejection despite
+                 deceptively solid-looking original window)
+  CLEAN.NS:      FAIL (1/6 original OOS -3.0%; extended SKIPPED —
+                 insufficient data)
+  (HAL.NS and DMART.NS from this same batch were already tested Jul 9
+  — both FAILED, see Jul 9-10 entry above)
 
 ## Going Live Checklist (future)
 - Minimum capital: Rs50,000 recommended
@@ -215,7 +355,7 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, NEWGEN.NS, BSOFT.NS, PERSISTENT
 - Fix: added LIVE_TRADING_MODE flag (default False) to morning_fill_check.py
 - When True: queries kite.orders() for actual order status (COMPLETE/REJECTED/CANCELLED)
 - When False: existing simulation logic unchanged — no paper trading regression
-- Added _check_circuit_breaker(): flags orders where open moved >19% from prev close
+- Added _check_circuit_breaker(): flags orders where open moved >=20% from prev close
 - Added _fetch_live_order_status(): queries Zerodha API with graceful fallback to simulation
 - Added REJECTED/CANCELLED section in morning report requiring manual attention
 - order_id column added to amo_orders.csv via _ensure_csv_header() migration
@@ -419,6 +559,93 @@ Fixed from second audit:
   Email subject shows ⚠️ STALE DATA if cache was used
   Cache pre-populated with 500 tickers
 
+#### Audit1 findings resolved (Jul 7 2026):
+- Audit1 Finding #16: RESOLVED (Jul 7)
+  Circuit breaker threshold corrected: pct_move >= 19.0 → pct_move >= 20.0
+  in _check_circuit_breaker() (paper_trading/morning_fill_check.py)
+  NSE's actual upper/lower circuit band is 20%; 19% was misclassifying
+  large-but-ordinary gaps as circuit breaker events
+  5 new unit tests added (test_gap_breaker.py tests 10-14), all passing
+- Audit1 Finding #17: RESOLVED (Jul 7)
+  Kite API timeout added: KITE_REQUEST_TIMEOUT_SECONDS = 15 passed to
+  KiteConnect(api_key=..., timeout=...) constructor in _load_kite()
+  (data/kite_fetcher.py). Prevents indefinite hang if Zerodha API stalls
+  during the 3:45 PM signal run.
+  Verified end-to-end: a Kite timeout raises an exception that is NOT a
+  ConnectionError/FileNotFoundError, so it correctly falls through
+  signal_runner.py's generic except Exception handler in
+  _fetch_stock_data() (skip ticker + continue) rather than the FATAL
+  sys.exit(1) branch — no new whole-run crash risk introduced.
+  Bonus fix found during testing: _load_kite() had a pre-existing
+  IndexError bug on an empty access_token.txt file (bare .splitlines()[0]
+  raised IndexError before the intended ValueError guard could ever fire).
+  Fixed to check for empty lines first; ValueError with the original
+  helpful message now fires correctly.
+  4 new unit tests added (data/test_kite_fetcher_timeout.py), all passing
+- Audit1 Finding #19: RESOLVED (Jul 7)
+  Rate limiting added to signal_runner.py's _fetch_stock_data(): time.sleep(1.1)
+  after every Kite API call, matching screener/auto_screener.py's existing
+  pattern (~55 req/min, safe under Kite's 60 req/min cap). Previously this
+  loop had zero pacing between per-ticker fetches.
+  Adds ~7.7s to the current 7-stock universe's evening run; scales linearly
+  as the universe grows (noted in-code).
+  3 new unit tests added (paper_trading/test_signal_runner_fetch.py), all passing
+- Bonus fix (not from either audit, found during Finding #17 testing): Jul 7
+  test_gap_breaker.py's test_5_gap_exit_pnl_correct was calling
+  transaction_costs(...)["total"] — but transaction_costs() returns a bare
+  float, not a dict (transaction_cost_breakdown() is the dict-returning
+  function). This was a stale test bug, not a library regression. Fixed to
+  call transaction_costs(exec_price, shares, "sell", "delivery") directly.
+
+#### Regime-transition annotation — COMPLETED (Jul 9 2026):
+Context: 2026-07-05 and 2026-07-08 screener runs flagged NEWGEN.NS and
+  BSOFT.NS for degradation (ADX below threshold), triggering the
+  "2 consecutive screens = REMOVE recommendation" path — coinciding with the
+  2026-07-07 NIFTY BULL flip. Investigation confirmed the flags were likely
+  mechanical ADX dip from the regime transition, not structural stock decay.
+  Neither stock was removed.
+Decision: annotate flags that coincide with a recent NIFTY regime transition,
+  never suppress them. The REMOVE recommendation and consecutive_flags counter
+  fire exactly as before — a human sees the context immediately in the email
+  report and in the tracker JSON, and makes the call.
+Implementation:
+  - signal_runner.py now writes regime_transition_date to portfolio_state.json
+    ONLY when market_regime actually changes (previously last_regime_date was
+    written unconditionally on every run, making it useless as a transition marker)
+  - _days_since_regime_transition() helper in auto_screener.py reads this field;
+    returns None (fail-open) if the field is absent or the file is unreadable
+  - flag_annotations parallel field added to degradation_tracker.json entries:
+    {"2026-07-08": {"regime_transition_nearby": true, "days_since_transition": 1}}
+    Kept separate from existing flat flag_history list to avoid breaking readers
+  - Email report shows ⚠️ CAUTION row below any REMOVE-recommended stock whose
+    flags were annotated — visible, not blocking
+  - Known asymmetry (accepted): live annotation only catches post-transition flags
+    (days_since_transition ≥ 0). Pre-transition proximity requires retroactive
+    backfill, as was done manually for the Jul 5 flags on Jul 9.
+  - REGIME_TRANSITION_WINDOW = 5 calendar days (matches EARNINGS_DAYS_AHEAD precedent)
+  9 new unit tests added (screener/test_degradation_annotation.py), all passing
+  NEWGEN.NS and BSOFT.NS backfilled in degradation_tracker.json — both remain
+  in the universe, both flags preserved in tracker
+
+#### Walk-forward extended-window crash — RESOLVED (Jul 10 2026):
+run_extended_walk_forward() returned {"score": "N/A", ...} (a string, not
+  int or None) for candidates with insufficient data in the 2015-2019 extended
+  IS window (e.g. recent IPOs, or stocks with too few pre-2015 bars). The gate
+  verdict section assumed score was always int or None, so "N/A" >= METRIC_MIN
+  raised an unhandled TypeError, crashing the entire WF run for that candidate.
+  Confirmed on PAYTM.NS (IPO Nov 2021 — zero bars in 2015-2019 IS window) and
+  COHANCE.NS (only 20 bars available in Jan 2015).
+Fix: normalize "N/A" → None immediately after extracting score from the return
+  dict, before any numeric comparison. Extended window now displays as
+  "SKIPPED — insufficient historical data (N bars available, need ≥ M)" instead
+  of crashing or silently passing/failing. Gate correctly evaluates on the
+  original window alone in this case, per the existing documented rule
+  ("extended window ≥4/6 IF sufficient history exists"). Also surfaces the
+  error string in both return dicts (run_walk_forward and run_extended_walk_forward)
+  so callers receive structured diagnostics instead of losing the error detail.
+  4 new regression tests added (validation/test_walk_forward_insufficient_data.py),
+  91/91 tests passing.
+
 Remaining from second audit (not yet fixed):
 - Audit2 Finding #2/#11: ETF overlay at 100% during NIFTY BEAR — architectural decision needed
   Risk: full NIFTY exposure while stock entries suppressed
@@ -458,12 +685,108 @@ First live detection verified:
   - HCLTECH: board meeting Jul 13 2026 (Q1 results) — will flag Monday Jul 6 evening
   - All 8 universe stocks surveillance-clean as of Jul 5 2026
 
-Test suite (verified on server Jul 5 2026):
-- test_etf_overlay.py: 23/23 ✅
-- test_gap_breaker.py: 9/9 ✅
+Root-caused and fixed (Jul 17 2026): the Jul 13 "[news_monitor] No flags
+  file found" anomaly (initially documented earlier today as unresolved/
+  single-occurrence) was found to have a SECOND occurrence on Jul 8, disproving
+  the "single anomaly" conclusion. Root cause confirmed:
+    signal_runner.py's NEWS_FLAGS_FILE was defined as a RELATIVE path
+    (Path("utils/news_flags.json")), while news_monitor.py correctly used an
+    ABSOLUTE path. A relative path only resolves correctly if the process's
+    working directory happens to be the project root at check time — any
+    invocation from a different cwd causes .exists() to return False even though
+    the real file was present and correctly written the entire time. This
+    explains both incidents: news_monitor.py ran and wrote successfully both
+    nights (confirmed via its own execution logs, Jul 7 13:00 and Jul 10 13:00),
+    yet the file appeared "missing" to signal_runner.py on the following read.
+  Fixed: NEWS_FLAGS_FILE changed to _ROOT / "utils" / "news_flags.json" in
+    signal_runner.py, matching news_monitor.py's existing absolute-path pattern.
+    Regression test added (test_17 in test_news_monitor.py) that changes cwd to
+    /tmp before checking NEWS_FLAGS_FILE.exists() and asserts the result is
+    stable — this is the test that would have caught this bug originally.
+  Lesson: the initial Jul 13 investigation correctly followed the evidence
+    available at the time and correctly refused to guess at an unconfirmed cause.
+    The initial data point (single occurrence) was genuinely insufficient to find
+    this. Finding the Jul 8 second occurrence during a broader week-level log
+    review was what made the pattern, and therefore the real cause, visible.
+
+#### WF Batch Automation — COMPLETED (Jul 14-15 2026)
+Problem: testing screener ADD/WATCHLIST candidates required manually running
+  walk_forward.py --ticker X once per stock, scrolling past ~150-200 lines of
+  cooldown-sensitivity-analysis noise per run to find the verdict, then manually
+  checking crossover state for anything that passed. Pure mechanical overhead,
+  repeated 4 times this week (Jul 8, 9, 9-10, 12 batches), including wasted
+  re-testing of the same tickers (HAL.NS, DMART.NS tested twice).
+
+Built in three pieces:
+- validation/walk_forward.py --json flag: suppresses human-readable output
+  (including the cooldown-sensitivity diagnostic, which is not load-bearing for
+  the single-ticker gate verdict and makes its own live API calls), emits one
+  JSON line with the gate verdict. Added skip_diagnostics param to
+  run_walk_forward(). Human-readable path completely unchanged when --json is
+  not passed. 5 new tests (validation/test_walk_forward_json_output.py).
+- validation/post_screener_pipeline.py (new): takes --tickers from a screener
+  email, caches results in validation/wf_test_history.json (skips re-testing
+  within --retest-after-days, default 3), runs each via walk_forward.py --json
+  as a subprocess (not in-process, so --json remains the single source of truth
+  for gate logic), checks crossover state for every PASS, writes a dated markdown
+  report. Read-only w.r.t. the live system — never modifies STOCKS, never
+  commits, never deploys. Deliberately does NOT call run_screen() directly, since
+  that function writes degradation_tracker.json unconditionally and takes ~9 min
+  for a full 500-stock fetch — unsuitable for free/frequent orchestration.
+  27 tests total (validation/test_post_screener_pipeline.py), including hardening:
+  180s subprocess timeout, explicit returncode check, malformed-JSON handling,
+  persistent error logging to validation/wf_gate_errors.log.
+  Bug caught during development: three tests calling main() without --dry-run were
+  writing real report files into the actual validation/ directory (REPORT_DIR was
+  never patched to tmp_path). Fixed with patch.object; added regression test
+  proving no file ever lands in the real directory.
+- screener/auto_screener.py + validation/run_scheduled_wf_batch.py (new):
+  auto_screener.py now writes screener/latest_candidates.json atomically
+  (tmp + rename) alongside every real screen's email send. The new wrapper reads
+  that file, rejects it if missing or >1 day stale, caps processing to
+  MAX_CANDIDATES_PER_RUN=10 (hardcoded constant, NOT a CLI flag — deliberately
+  not silently bypassable), calls pipeline_main() directly, and writes
+  validation/scheduled_run_status.json with pass/fail counts.
+  4 tests (screener/test_candidates_file.py) + 7 tests
+  (validation/test_run_scheduled_wf_batch.py), including a proactive "never
+  writes to real directory" test applying the lesson from the REPORT_DIR bug.
+
+DELIBERATE DECISION — no cron trigger: considered and explicitly rejected adding
+  run_scheduled_wf_batch.py to cron for automatic triggering after the 6 PM
+  screener run. Reasoning: this system had TWO separate silent unattended-job
+  failures in the same week this automation was built — the auto_screener.py
+  NameError crash that killed the Jul 12 Sunday screener with zero output, and
+  the get_current_universe() stale-data bug that silently corrupted correlation
+  checks for an unknown period. A third unattended job before this system has a
+  track record of reliable unattended operation is not an acceptable risk-reward
+  trade. Trigger stays manual. Revisit after a longer period of demonstrated
+  reliability.
+
+Live-verified end to end (Jul 14 2026 close):
+  - COHANCE.NS: GOLDEN +0.14%, PASS — thin crossover; Hurst was 0.471 on Jul 14
+    signal run (below 0.48 threshold → HURST_SKIP). Check Hurst recovery before
+    assuming this will produce a live entry.
+  - MAPMYINDIA.NS: GOLDEN +1.96%, PASS
+
+Total new tests from this work: 5 (--json flag) + 27 (pipeline + hardening) +
+  4 (candidates file) + 7 (scheduled wrapper) = 43. Suite grew from 94 → 137.
+
+Test suite (verified locally Jul 15 2026):
+- test_etf_overlay.py: 30/30 ✅
+- test_post_screener_pipeline.py: 27/27 ✅ (new — WF batch orchestrator + hardening)
+- test_news_monitor.py: 14/14 ✅ (was 9/9 — added tests 10-14 for weekday-aware staleness check)
+- test_gap_breaker.py: 14/14 ✅ (was 9/9 — added tests 10-14 for circuit breaker threshold)
+- test_degradation_annotation.py: 9/9 ✅ (new — regime-transition annotation tests)
+- test_run_scheduled_wf_batch.py: 7/7 ✅ (new — manual WF batch wrapper)
 - test_costs.py: 7/7 ✅
 - test_correlation_check.py: 6/6 ✅
-- Total: 49/49 tests passing (added Tests 24-27 for ETF VWAP avg_price)
+- test_walk_forward_json_output.py: 5/5 ✅ (new — --json flag + skip_diagnostics)
+- test_walk_forward_insufficient_data.py: 4/4 ✅ (new — WF extended-window crash fix)
+- test_candidates_file.py: 4/4 ✅ (new — screener candidates file atomic writer)
+- test_kite_fetcher_timeout.py: 4/4 ✅ (new)
+- test_run_screen_integration.py: 3/3 ✅ (new — run_screen() NameError + get_current_universe regression)
+- test_signal_runner_fetch.py: 3/3 ✅ (new)
+- Total: 137/137 tests passing
 
 ---
 
@@ -499,6 +822,27 @@ Test suite (verified on server Jul 5 2026):
 - To pre-warm next year in November 2026:
   python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
 - Never hardcode future years — let the API provide them
+
+### Live Hurst Quality Gate (signal_runner.py)
+- compute_hurst() called at BUY entry time in _process_stock()
+- Gate fires AFTER regime filter, BEFORE BUY_CANDIDATE collection
+- If H < HURST_THRESHOLD (0.48): signal = HURST_SKIP, entry suppressed
+- Fail-open: if computation errors, entry proceeds (never block on error)
+- HURST_THRESHOLD imported from screener.auto_screener — single source of truth
+- Motivation: stocks can degrade after universe addition (BAJAJ-AUTO H=0.371,
+  JKTYRE H=0.214, BSOFT H=0.388 in current BEAR market)
+
+BEAR market Hurst suppression pattern (verified Jul 7 2026):
+  Most universe stocks show H below 0.48 in BEAR markets and recover
+  above 0.48 in BULL markets — this is normal regime behavior, not
+  structural failure. Do NOT remove stocks based on current low Hurst alone.
+  Verified pattern:
+  - BAJAJ-AUTO: H=0.374 (2022 BEAR) → H=0.571 (2024 BULL) — temporary
+  - BSOFT:      H=0.394 (2022 BEAR) → H=0.543 (2024 BULL) — temporary
+  - PERSISTENT: H=0.476 (2022 BEAR) → H=0.536 (2024 BULL) — mildest effect
+  - NEWGEN:     H=0.501 (current), strong H=0.624 seen Mar 2025 — OK
+  JKTYRE was a genuine structural failure (H=0.214, negative expectancy)
+  — different from temporary BEAR suppression.
 
 ### Transaction Costs (verified Zerodha Jun 2026, zerodha.com/charges)
 - Delivery is used for all trades (CNC orders via AMO)

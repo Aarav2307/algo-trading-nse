@@ -14,8 +14,9 @@ Requires a fresh Kite access token: run auth/kite_login.py first.
 
 import argparse
 import io
+import json
 import sys
-from contextlib import redirect_stdout
+from contextlib import nullcontext, redirect_stdout
 from datetime import date as _date, datetime
 from pathlib import Path
 
@@ -62,6 +63,7 @@ STOCKS = [
     "CHOLAHLDNG.NS",   # WF validated Jul 8 2026 — 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
     "COHANCE.NS",      # WF validated Jul 9-10 2026 — 6/6 original OOS +8.0%, extended SKIPPED (insufficient data, only 20 bars in 2015-19 window)
     "MAPMYINDIA.NS",  # WF validated Jul 12 2026 — 5/6 original OOS +7.0%, extended SKIPPED (insufficient data, no bars in 2015-19 window)
+    "EMAMILTD.NS",    # WF validated Jul 17 2026 — 6/6 original OOS +9.0%, 5/6 extended OOS +13.6%
 ]
 
 
@@ -1192,6 +1194,7 @@ def run_walk_forward(
     cooldown_bars: int | None = None,
     nifty_regime_filter: bool | None = None,
     params: dict = None,
+    skip_diagnostics: bool = False,
 ) -> dict:
     p = _merge_params(PARAMS, params) if params is not None else PARAMS
     _stocks = stocks if stocks is not None else STOCKS
@@ -1277,14 +1280,15 @@ def run_walk_forward(
         )
     emit()
 
-    # ── Sharpe ratio summary ──────────────────────────────────────────────────
-    _print_sharpe_table(all_results, lines)
+    if not skip_diagnostics:
+        # ── Sharpe ratio summary ──────────────────────────────────────────────
+        _print_sharpe_table(all_results, lines)
 
-    # ── Cooldown sensitivity analysis ─────────────────────────────────────────
-    _cooldown_sensitivity(lines)
+        # ── Cooldown sensitivity analysis ─────────────────────────────────────
+        _cooldown_sensitivity(lines)
 
-    # ── Save ──────────────────────────────────────────────────────────────────
-    _save_results(lines, all_verbose)
+        # ── Save ──────────────────────────────────────────────────────────────
+        _save_results(lines, all_verbose)
 
     # ── Build results dict for comparison ────────────────────────────────────
     METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
@@ -1940,6 +1944,12 @@ Examples:
         default=False,
         help="Skip extended walk-forward (2015-19 IS). Faster for quick checks.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit a single JSON line to stdout with the gate verdict. Suppresses human-readable output.",
+    )
     args = parser.parse_args()
 
     COOLDOWN     = 15
@@ -1951,31 +1961,38 @@ Examples:
         if not ticker.endswith(".NS"):
             ticker += ".NS"
 
-        print(f"\n{'='*70}")
-        print(f"  WALK-FORWARD GATE — Single Stock Validation")
-        print(f"  Candidate: {ticker}")
-        print(f"  Purpose:   Validate before adding to live universe")
-        print(f"{'='*70}\n")
+        if not args.json:
+            print(f"\n{'='*70}")
+            print(f"  WALK-FORWARD GATE — Single Stock Validation")
+            print(f"  Candidate: {ticker}")
+            print(f"  Purpose:   Validate before adding to live universe")
+            print(f"{'='*70}\n")
 
         # Run original window on this stock only
-        print("Running ORIGINAL walk-forward (2018-22 IS / 2023-today OOS)...")
-        single_results = run_walk_forward(
-            stocks=[ticker],
-            cooldown_bars=COOLDOWN,
-            nifty_regime_filter=NIFTY_FILTER,
-        )
-
-        # Run extended window unless --no-extended
-        if not args.no_extended:
-            print("\nRunning EXTENDED walk-forward (2015-19 IS / 2020-23 OOS)...")
-            extended_results = run_extended_walk_forward(
+        if not args.json:
+            print("Running ORIGINAL walk-forward (2018-22 IS / 2023-today OOS)...")
+        with (redirect_stdout(io.StringIO()) if args.json else nullcontext()):
+            single_results = run_walk_forward(
                 stocks=[ticker],
                 cooldown_bars=COOLDOWN,
                 nifty_regime_filter=NIFTY_FILTER,
+                skip_diagnostics=args.json,
             )
+
+        # Run extended window unless --no-extended
+        if not args.no_extended:
+            if not args.json:
+                print("\nRunning EXTENDED walk-forward (2015-19 IS / 2020-23 OOS)...")
+            with (redirect_stdout(io.StringIO()) if args.json else nullcontext()):
+                extended_results = run_extended_walk_forward(
+                    stocks=[ticker],
+                    cooldown_bars=COOLDOWN,
+                    nifty_regime_filter=NIFTY_FILTER,
+                )
         else:
             extended_results = {}
-            print("\n[--no-extended flag set — skipping extended window]")
+            if not args.json:
+                print("\n[--no-extended flag set — skipping extended window]")
 
         # ── WF Gate Verdict ─────────────────────────────────────────────
         # run_walk_forward() returns {ticker: {"score": int, "oos_return": float}}
@@ -2015,43 +2032,9 @@ Examples:
 
         gate_pass = orig_metrics_ok and orig_ret_ok and ext_metrics_ok
 
-        print(f"\n{'='*70}")
-        print(f"  WF GATE VERDICT — {ticker}")
-        print(f"{'='*70}")
-
-        if orig_score is not None:
-            orig_ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
-            print(f"  Original window:  {orig_score}/{TOTAL_METRICS} metrics "
-                  f"| OOS return {orig_ret_str}")
-        else:
-            print(f"  Original window:  INSUFFICIENT DATA (check Kite token)")
-
-        if args.no_extended:
-            print(f"  Extended window:  SKIPPED (--no-extended)")
-        elif ext_score is not None:
-            ext_ret_str = f"{ext_oos_ret:+.1f}%" if ext_oos_ret is not None else "N/A"
-            print(f"  Extended window:  {ext_score}/{TOTAL_METRICS} metrics "
-                  f"| OOS return {ext_ret_str}")
-        else:
-            # ext_score is None — insufficient historical data for the 2015-2019/2020-2023
-            # extended windows (e.g. stock listed after 2015, or too few bars in IS window).
-            # This is SKIPPED (not FAIL) — per the WF gate: "extended window ≥4/6 metrics
-            # IF sufficient history exists". Gate evaluates on original window only.
-            if ext_error:
-                print(f"  Extended window:  SKIPPED — insufficient historical data "
-                      f"({ext_error})")
-            else:
-                print(f"  Extended window:  SKIPPED — insufficient historical data "
-                      f"(stock too young for 2015-2019 IS window)")
-
-        print()
-        if gate_pass:
-            print(f"  ✅ GATE: PASS — {ticker} is validated for universe addition")
-            print(f"     Action: add to STOCKS in paper_trading/signal_runner.py")
-            print(f"             add to STOCKS in validation/walk_forward.py")
-            print(f"             document in CLAUDE_CONTEXT Universe History")
-        else:
-            reasons = []
+        # Hoist reasons so both human-readable and JSON paths share the same list
+        reasons = []
+        if not gate_pass:
             if not orig_metrics_ok:
                 score_str = str(orig_score) if orig_score is not None else "N/A"
                 reasons.append(
@@ -2065,13 +2048,79 @@ Examples:
                 reasons.append(
                     f"extended metrics {score_str}/{TOTAL_METRICS} < {METRIC_MIN} required"
                 )
-            print(f"  ❌ GATE: FAIL — {ticker} does not meet validation threshold")
-            print(f"     Reasons: {'; '.join(reasons)}")
-            print(f"     Action: do NOT add to universe")
-            print(f"             monitor screener for improvement")
-            print(f"             re-test after 1-2 screener cycles")
 
-        print(f"{'='*70}\n")
+        if not args.json:
+            print(f"\n{'='*70}")
+            print(f"  WF GATE VERDICT — {ticker}")
+            print(f"{'='*70}")
+
+            if orig_score is not None:
+                orig_ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
+                print(f"  Original window:  {orig_score}/{TOTAL_METRICS} metrics "
+                      f"| OOS return {orig_ret_str}")
+            else:
+                print(f"  Original window:  INSUFFICIENT DATA (check Kite token)")
+
+            if args.no_extended:
+                print(f"  Extended window:  SKIPPED (--no-extended)")
+            elif ext_score is not None:
+                ext_ret_str = f"{ext_oos_ret:+.1f}%" if ext_oos_ret is not None else "N/A"
+                print(f"  Extended window:  {ext_score}/{TOTAL_METRICS} metrics "
+                      f"| OOS return {ext_ret_str}")
+            else:
+                # ext_score is None — insufficient historical data for the 2015-2019/2020-2023
+                # extended windows (e.g. stock listed after 2015, or too few bars in IS window).
+                # This is SKIPPED (not FAIL) — per the WF gate: "extended window ≥4/6 metrics
+                # IF sufficient history exists". Gate evaluates on original window only.
+                if ext_error:
+                    print(f"  Extended window:  SKIPPED — insufficient historical data "
+                          f"({ext_error})")
+                else:
+                    print(f"  Extended window:  SKIPPED — insufficient historical data "
+                          f"(stock too young for 2015-2019 IS window)")
+
+            print()
+            if gate_pass:
+                print(f"  ✅ GATE: PASS — {ticker} is validated for universe addition")
+                print(f"     Action: add to STOCKS in paper_trading/signal_runner.py")
+                print(f"             add to STOCKS in validation/walk_forward.py")
+                print(f"             document in CLAUDE_CONTEXT Universe History")
+            else:
+                print(f"  ❌ GATE: FAIL — {ticker} does not meet validation threshold")
+                print(f"     Reasons: {'; '.join(reasons)}")
+                print(f"     Action: do NOT add to universe")
+                print(f"             monitor screener for improvement")
+                print(f"             re-test after 1-2 screener cycles")
+
+            print(f"{'='*70}\n")
+
+        else:
+            # JSON output mode — emit exactly one JSON line to stdout
+            if args.no_extended:
+                ext_status = "NOT_REQUESTED"
+            elif ext_score is None:
+                ext_status = "SKIPPED"
+            elif ext_score >= METRIC_MIN:
+                ext_status = "PASS"
+            else:
+                ext_status = "FAIL"
+
+            print(json.dumps({
+                "ticker": ticker,
+                "original": {
+                    "score": orig_score,
+                    "total_metrics": TOTAL_METRICS,
+                    "oos_return_pct": round(orig_oos_ret, 2) if orig_oos_ret is not None else None,
+                },
+                "extended": {
+                    "status": ext_status,
+                    "score": ext_score,
+                    "oos_return_pct": round(ext_oos_ret, 2) if ext_oos_ret is not None else None,
+                    "error": ext_error,
+                },
+                "gate_pass": gate_pass,
+                "reasons": reasons,
+            }))
 
         # Exit after single-stock validation — never fall through to full run
         sys.exit(0)

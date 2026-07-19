@@ -1,0 +1,24 @@
+{
+  "date_run": "2026-06-21",
+  "period": "2023-01-01 \u2192 2026-06-21",
+  "go_no_go": {
+    "sharpe_improvement": true,
+    "drawdown_increase": true,
+    "etf_cost": true,
+    "beats_niftybees": false
+  },
+  "all_core_pass": true,
+  "dd_criterion": "overlay_dd < niftybees_dd + 2pp",
+  "niftybees_max_dd": -15.234441894715214,
+  "dd_pass": true,
+  "benchmark_pass": false,
+  "oos_sharpe_strategy": -8.776187711622043,
+  "oos_sharpe_overlay": 0.21940583890168183,
+  "oos_dd_strategy": -0.7626745462238819,
+  "oos_dd_overlay": -14.268359322128294,
+  "oos_ret_strategy": 4.843660514880077,
+  "oos_ret_overlay": 32.201723634243116,
+  "oos_etf_cost_pct_ann": 0.09374931095319913,
+  "niftybees_oos_ret": 36.9268586334905,
+  "nifty_oos_ret": 31.958598594858056
+}

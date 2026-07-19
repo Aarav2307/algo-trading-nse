@@ -118,7 +118,7 @@ AMO_CONFIG = {
     "enabled":          True,
     "dry_run":          True,          # MUST stay True — real orders not implemented
     "limit_buffer_pct": 0.005,         # 0.5% buffer: BUY limit above signal, SELL below
-    "order_log_file":   "paper_trading/amo_orders.csv",
+    "order_log_file":   str(_ROOT / "paper_trading" / "amo_orders.csv"),
 }
 
 RM_CONFIG = {
@@ -1681,4 +1681,9 @@ Examples:
         help="Override idempotency guard and re-run even if already ran today.",
     )
     args = parser.parse_args()
-    main(backfill_date=args.backfill, force=args.force)
+    try:
+        main(backfill_date=args.backfill, force=args.force)
+    except Exception as exc:
+        from utils.alerts import send_crash_alert
+        send_crash_alert("signal_runner.py", exc)
+        raise
