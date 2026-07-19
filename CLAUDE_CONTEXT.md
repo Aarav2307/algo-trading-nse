@@ -1,5 +1,5 @@
 # Claude Context — NSE Algo Trading System
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 ## Current Trading Universe (10 stocks)
 BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS, EMAMILTD.NS
@@ -788,6 +788,151 @@ Test suite (verified locally Jul 15 2026):
 - test_signal_runner_fetch.py: 3/3 ✅ (new)
 - Total: 137/137 tests passing
 
+#### Silent-failure hardening — COMPLETED (Jul 18 2026)
+- utils/alerts.py added (send_crash_alert()) and wired into the `__main__`
+  try/except of all three unattended entry points: signal_runner.py,
+  auto_screener.py, morning_fill_check.py — a crash now writes to
+  utils/alerts.log and stderr before re-raising, instead of dying silently
+  with cron only recording a non-zero exit.
+- signal_runner.py: AMO_CONFIG["order_log_file"] changed from a relative
+  string ("paper_trading/amo_orders.csv") to an absolute path
+  (str(_ROOT / "paper_trading" / "amo_orders.csv")) — same cwd-dependency
+  bug class as the six Path() constants fixed earlier this week, but this
+  one was a dict value, not a `= Path(...)` literal, so the health check's
+  regex scan didn't catch it.
+- run_morning_check.sh: removed the `&&` between `auth/auto_login.py` and
+  `morning_fill_check.py --apply`. A login failure no longer silently skips
+  the entire fill check — it now logs a warning and still attempts the fill
+  check with the existing token.
+- morning_fill_check.py: `_update_portfolio_fill()` now runs before
+  `_update_csv_row()` in both the FILLED and GAP_EXIT paths (was reversed).
+  A crash between the two calls now leaves the CSV row as DRY_RUN
+  (reprocessable) instead of FILLED with the portfolio never updated
+  (previously irrecoverable without manual intervention).
+- Commits: 083c6b9, 3e6840c, 27eca36 (all 2026-07-18), pushed to
+  origin/main. New/updated tests: utils/test_alerts.py (2),
+  paper_trading/test_signal_runner_fetch.py (+1, AMO path
+  cwd-independence), paper_trading/test_fill_ordering.py (4, including an
+  explicit test proving the OLD ordering left an irrecoverable state).
+
+#### Kite tz-aware index bug — found live in production, fixed and deployed (Jul 19 2026)
+Root cause: data/kite_fetcher.py's tz-stripping used
+`DatetimeIndex.map(lambda dt: dt.replace(tzinfo=None))` on the index after
+set_index("date"). On the Lightsail server's pandas 2.3.3, this silently
+reconstructed the mapped result back into the original tz-aware dtype —
+each individual Timestamp.replace(tzinfo=None) call correctly returned a
+naive value, but .map() discarded that and re-attached the +05:30 offset,
+with no exception or warning. Confirmed live: fetching BAJAJ-AUTO.NS
+2023-01-01 → 2026-07-19 (877 rows) on the server showed df.index.tz still
+equal to tzoffset(None, 19800) after the old code ran — production has been
+silently returning tz-aware data. Not reproducible on pandas 3.0.3 (local
+dev), which is why this was invisible until tested directly against the
+server's actual pandas version.
+
+Fix: strip tz on the df["date"] column via .dt.tz_localize(None) before
+set_index(), not via .map() on the index — verified correct on both pandas
+2.3.3 (server) and 3.0.3 (local). Deployed directly to the server
+(commit 4dfcba8 on the server's own git history; 6ef1602 on origin/main)
+and re-verified live post-deploy: the 877-row BAJAJ-AUTO.NS case now shows
+df.index.tz is None, and test_kite_fetcher.py shows timezone-naive: True
+against the real Kite API. Added data/test_kite_fetcher_tz.py — 4 mocked
+tests, pandas-version-portable (doesn't depend on which pandas happens to
+be installed), passing on both environments.
+
+All downstream consumers (signal_runner.py, auto_screener.py,
+walk_forward.py, backtester.py) exclusively source data through this one
+get_ohlcv() function — fixed at the single ingestion point, no separate
+changes needed. Checked utils/market_calendar.py and
+utils/corporate_actions.py: both operate only on plain datetime.date from
+date.today()/date.fromisoformat(), never receive a Kite Timestamp at any
+current call site — not affected. data/fetcher.py (yfinance path) already
+used .tz_localize(None), never had this bug.
+
+#### walk_forward.py stray duplicates — actually removed (Jul 19 2026)
+A commit message on the server (1711759, "Sync production with
+origin/main...") claimed it "removes stray walk_forward.py duplicates," but
+this was false — as of this morning, `find . -name "walk_forward.py"` on
+the server still showed three tracked files (./walk_forward.py,
+./paper_trading/walk_forward.py, ./validation/walk_forward.py) with
+different sizes/dates (Jun 25, Jul 7, Jul 19). The "checkout from
+origin/main restored them" theory floated for this doesn't hold up either:
+`git log --oneline --all -- walk_forward.py paper_trading/walk_forward.py`
+on the local clone shows these two files have never existed anywhere in
+origin/main's history — they were captured only in the server's own orphan
+snapshot commit (c6ec08a) and no commit ever removed them. Whatever
+deletion was attempted, it was never actually committed against the
+server's own history.
+
+Re-verified dead before removing, fresh (not reusing the earlier check):
+no references in any *.sh file on the server (`find . -name "*.sh"` →
+5 files, none mention walk_forward), nothing in `crontab -l`, and the only
+two `from walk_forward`/`import walk_forward`-shaped grep hits
+(screener/universe_scan.py:237, validation/portfolio_backtest.py:11) are
+prose mentions in comments/docstrings, not real imports — every actual
+subprocess/path reference (post_screener_pipeline.py,
+add_validated_stock.py, test_walk_forward_json_output.py) explicitly
+targets `validation/walk_forward.py` only.
+
+Removed via `git rm` + commit (801015a) on the server. Verified after:
+`find . -name "walk_forward.py"` now shows exactly one file
+(validation/walk_forward.py); full suite re-run, 202 passed, zero
+regressions.
+
+#### Server ↔ origin/main disconnected git histories — merged (Jul 19 2026)
+Confirmed live: `git merge-base master origin/main` on the server returned
+nothing — the two histories shared zero common ancestors. Root cause:
+the server's repo was built from a fresh orphan commit (c6ec08a) populated
+by a working-tree snapshot, never a real `git merge`/`pull` from origin.
+
+Before merging, checked how different the actual content was:
+`git diff --stat master origin/main` showed 172 differing files, but 171
+of those were pure deletions of `__pycache__`/binary/state artifacts that
+existed only on the server (not real source divergence), and exactly 1 file
+had real content differences — `.gitignore`, differing by one line
+(`utils/alerts.log`, present on server only). Given how minor the actual
+divergence was, merged rather than squashing or leaving it disconnected:
+`git merge --allow-unrelated-histories --no-commit --no-ff origin/main`,
+which produced exactly one add/add conflict (.gitignore, resolved by
+keeping the union of both sides — no lines lost, no duplicates).
+
+Because there's no common ancestor, the merge treated every one of the 171
+artifact files as "added only on our side" and staged them to be kept —
+which would have silently re-tracked exactly the credential/pycache/state
+files an earlier commit (a72dbf5, "Untrack venv, __pycache__, and
+credential files retroactively") was meant to remove. Checking further
+showed that commit had only partially delivered on its own stated scope in
+the first place — venv/.env/access_token/nse_instruments were genuinely
+untracked, but `__pycache__/*.pyc` (47 files), `portfolio_state.json` and
+its ~20 backups, `degradation_tracker.json`+backup, `utils/news_flags.json`,
+`auth/login_error.png`, and `paper_trading/logs/*` were still tracked the
+whole time. Re-ran the untracking against the merged .gitignore in one
+pass: `git ls-files -ci --exclude-standard | xargs git rm --cached`,
+removing 151 tracked-but-ignored paths from the index (nothing deleted from
+disk — confirmed portfolio_state.json, degradation_tracker.json, and
+login_error.png all still present on disk after). Confirmed zero credential
+paths tracked post-merge (`git ls-files | grep -E '\.env$|access_token|
+nse_instruments|venv/'` → no matches).
+
+Merge committed as d5073a3. `git merge-base master origin/main` now
+returns 6ef1602 (a real common ancestor) instead of nothing. Full suite
+re-run post-merge: 202 passed, zero regressions. `git status` clean.
+
+Not yet pushed. Checked the push mechanics without executing: origin/main
+IS an ancestor of the server's master post-merge, so a push would be a
+valid fast-forward (git wouldn't require --force) — but the server has no
+GitHub push credentials configured at all (`git push --dry-run` fails with
+"could not read Username for 'https://github.com'": the remote is HTTPS
+with no token/credential helper set up). Separately, a fast-forward push
+would carry all 7 of the server's operational commits (the orphan
+snapshot, the sync, the untracking, the gitignore fix, the tz fix, the
+walk_forward cleanup, and this merge) into origin/main's permanent public
+history — worth a deliberate decision, not a default action.
+
+Test count: 202 passing, confirmed on both the local Mac and the server
+(re-run on each after every step today — the walk_forward.py removal, the
+merge, and once more just now — all showing `202 passed`, zero failures) —
+up from 198 before this week's tz-fix test additions.
+
 ---
 
 ## Key Implementation Notes
@@ -859,6 +1004,10 @@ BEAR market Hurst suppression pattern (verified Jul 7 2026):
 - Correct signature: get_ohlcv(ticker, start='YYYY-MM-DD', end='YYYY-MM-DD')
 - Does NOT accept 'days' parameter
 - Always use date strings, not timedelta objects directly
+- tz-stripping must use df["date"].dt.tz_localize(None) on the column before
+  set_index(), never DatetimeIndex.map(lambda dt: dt.replace(tzinfo=None))
+  on the index — the latter silently no-ops on pandas 2.3.3 (verified live
+  on the Lightsail server, Jul 19 2026), leaving the index tz-aware
 
 ### General Rule
 - Before reimplementing any function, check if it already exists in the codebase
