@@ -248,13 +248,20 @@ def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
         )
 
     df = pd.DataFrame(records)[["date", "open", "high", "low", "close", "volume"]].copy()
-    df = df.set_index("date")
 
-    # Kite returns tz-aware IST datetimes for intraday; daily bars may be naive.
-    # Normalise to tz-naive by extracting the wall-clock date (already IST).
-    if hasattr(df.index, "tz") and df.index.tz is not None:
-        df.index = df.index.map(lambda dt: dt.replace(tzinfo=None))
-    df.index = pd.DatetimeIndex(df.index)
+    # Kite returns tz-aware IST datetimes (dateutil.tzoffset, +05:30). Strip tz
+    # on the COLUMN via .dt.tz_localize(None) BEFORE set_index(), not via
+    # DatetimeIndex.map() on the index. Verified live on the Lightsail server
+    # (pandas 2.3.3): DatetimeIndex.map(lambda dt: dt.replace(tzinfo=None))
+    # silently preserves the original tz-aware dtype even though each mapped
+    # Timestamp is individually naive -- the old .map()-based strip was a
+    # silent no-op there, leaving every DataFrame this function returned in
+    # production tz-aware. pd.to_datetime() first guarantees .dt is available
+    # regardless of how pandas inferred the raw records' dtype.
+    df["date"] = pd.to_datetime(df["date"])
+    if df["date"].dt.tz is not None:
+        df["date"] = df["date"].dt.tz_localize(None)
+    df = df.set_index("date")
     df.index.name = "date"
 
     df = df.dropna(subset=["close"])
