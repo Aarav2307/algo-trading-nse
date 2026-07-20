@@ -17,7 +17,7 @@
 set -euo pipefail   # exit on error, undefined vars, pipe failures
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-PROJECT_ROOT="/Users/aaravagarwal/algo-trading"
+PROJECT_ROOT="/home/ubuntu/algo-trading"
 VENV_ACTIVATE="$PROJECT_ROOT/venv/bin/activate"
 LOG_DIR="$PROJECT_ROOT/paper_trading/logs"
 LOG_FILE="$LOG_DIR/$(date +%Y-%m-%d).log"
