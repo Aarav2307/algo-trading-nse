@@ -5,7 +5,7 @@
 #
 # CRON SETUP (add via: crontab -e)
 # ─────────────────────────────────
-#   15 10 * * 1-5 /Users/aaravagarwal/algo-trading/paper_trading/run_daily.sh
+#   15 10 * * 1-5 /home/ubuntu/algo-trading/paper_trading/run_daily.sh
 #   └── 10:15 AM UTC = 3:45 PM IST, weekdays only
 #
 # ⚠  Mac cron limitation: cron does NOT run while the laptop is asleep.

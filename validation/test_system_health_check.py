@@ -40,6 +40,11 @@ def _news_log(log_dir: Path, date_str: str, completed: bool = True) -> None:
     tail = f"News monitor completed: {date_str} 13:00:00\n" if completed else "Error!\n"
     (log_dir / f"{date_str}_news.log").write_text(f"[news_monitor] Running...\n{tail}")
 
+def _morning_log(log_dir: Path, date_str: str, completed: bool = True) -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    tail = f"Morning fill check completed: {date_str} 03:50:00\n" if completed else "Error!\n"
+    (log_dir / f"{date_str}_morning.log").write_text(f"Morning fill check started...\n{tail}")
+
 # Minimal clean tracker (no _meta key needed for tests, but include it)
 _TRACKER_CLEAN = {
     "_meta": {"last_screen_date": "2026-07-15", "screen_count": 8},
@@ -151,6 +156,27 @@ def test_run_completion_excludes_morning_logs_from_runner_check(tmp_path):
         r = shc.check_run_completion()
     assert r.status == "PASS"
     assert "0/0 clean" in r.message or "Signal-runner 0/0" in r.message
+
+
+def test_run_completion_pass_morning_check_clean(tmp_path):
+    """Morning fill check logs with a valid completion marker must count as clean."""
+    log_dir = tmp_path / "logs"
+    _morning_log(log_dir, "2026-07-15")
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert r.status == "PASS"
+    assert "Morning fill check 1/1 clean" in r.message
+
+
+def test_run_completion_fail_morning_no_marker(tmp_path):
+    """Previously untracked entirely: a morning log missing its completion marker
+    must now surface as a FAIL, the same way the other three log types already do."""
+    log_dir = tmp_path / "logs"
+    _morning_log(log_dir, "2026-07-15", completed=False)
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert r.status == "FAIL"
+    assert any("Morning fill check" in i for i in r.details["issues"])
 
 
 # ── Check 3: Universe consistency ─────────────────────────────────────────────

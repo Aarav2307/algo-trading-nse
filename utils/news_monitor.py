@@ -247,4 +247,6 @@ if __name__ == "__main__":
         print(json.dumps(result, indent=2, default=str))
     except Exception as exc:
         _log_crash(exc)
+        from utils.alerts import send_crash_alert
+        send_crash_alert("news_monitor.py", exc)
         raise

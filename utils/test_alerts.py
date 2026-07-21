@@ -28,3 +28,19 @@ def test_send_crash_alert_survives_unwritable_log():
             raise ValueError("log write will fail")
         except ValueError as exc:
             alerts.send_crash_alert("test_script.py", exc)   # must not raise
+
+
+def test_send_watchdog_alert_writes_expected_content(tmp_path):
+    """Unlike send_crash_alert, this must work with no exception in flight at all —
+    the watchdog is reporting "the job never ran," not a caught crash."""
+    log = tmp_path / "alerts.log"
+    with patch.object(alerts, "ALERT_LOG", log):
+        alerts.send_watchdog_alert("run_daily", "expected log missing for 2026-07-20")
+    content = log.read_text()
+    assert "WATCHDOG ALERT [run_daily]" in content
+    assert "expected log missing for 2026-07-20" in content
+
+
+def test_send_watchdog_alert_survives_unwritable_log():
+    with patch.object(alerts, "ALERT_LOG", Path("/nonexistent/path/alerts.log")):
+        alerts.send_watchdog_alert("run_screen", "test detail")   # must not raise

@@ -188,6 +188,19 @@ def check_run_completion() -> CheckResult:
             f"News monitor {len(news_logs) - len(news_bad)}/{len(news_logs)} clean"
         )
 
+        # Morning fill check logs — YYYY-MM-DD_morning.log
+        # Previously untracked by this check entirely.
+        morning_logs = sorted(LOGS_DIR.glob("*_morning.log"))
+        morning_bad  = []
+        for f in morning_logs:
+            if "Morning fill check completed:" not in _last_nonempty_line(f):
+                morning_bad.append(f.stem)
+        if morning_bad:
+            issues += [f"Morning fill check {d}: no completion marker" for d in morning_bad]
+        parts.append(
+            f"Morning fill check {len(morning_logs) - len(morning_bad)}/{len(morning_logs)} clean"
+        )
+
         summary = " | ".join(parts)
         if issues:
             return CheckResult(
