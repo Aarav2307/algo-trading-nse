@@ -302,6 +302,35 @@ class PaperPortfolio:
             return  # nothing to cancel
         self.state["positions"][ticker] = self._blank_position()
 
+    def queue_pending_sell(self, ticker: str, exit_reason: str) -> None:
+        """
+        Mark an open position as having a pending SELL AMO order queued —
+        either an RM exit (CHANDELIER/HARD_STOP/TIME_STOP) or a strategy
+        signal (STRATEGY_SIGNAL). Does NOT close the position or credit
+        cash; that happens when morning_fill_check confirms the fill via
+        close_position(), the actual counterpart to this method.
+
+        Args:
+            ticker:      stock ticker
+            exit_reason: e.g. "CHANDELIER", "HARD_STOP", "TIME_STOP", or
+                         "STRATEGY_SIGNAL"
+        """
+        pos = self.state["positions"][ticker]
+
+        if pos["shares"] <= 0:
+            raise ValueError(
+                f"queue_pending_sell called for {ticker} but shares={pos['shares']}. "
+                f"Cannot queue a SELL on a flat position."
+            )
+        if pos.get("pending_rm_exit", False):
+            raise ValueError(
+                f"queue_pending_sell called for {ticker} but pending_rm_exit is "
+                f"already True — a SELL is already queued for this position."
+            )
+
+        pos["pending_rm_exit"] = True
+        pos["rm_exit_reason"]  = exit_reason
+
     def requeue_rm_sell(self, ticker: str, new_limit_price: float, today_str: str) -> None:
         """
         Re-queue an RM exit SELL AMO after a previous attempt was MISSED.

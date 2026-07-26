@@ -718,17 +718,17 @@ def _process_stock(
             shares_to_sell = pos["shares"]
             exit_reason    = exit_decision["exit_reason"]
 
-            pos["pending_rm_exit"] = True
-            pos["rm_exit_reason"]  = exit_reason
+            portfolio.queue_pending_sell(ticker, exit_reason)
             portfolio.record_weekly_signal("RISK_EXIT")
 
             result.update({
-                "signal":       "RISK_EXIT",
-                "exec_price":   None,           # confirmed tomorrow at open
-                "shares":       shares_to_sell,
-                "exit_reason":  exit_reason,
-                "reason":       f"RM triggered: {exit_reason} — AMO SELL queued for tomorrow's open",
-                "net_pnl":      None,           # recorded tomorrow when fill confirms
+                "signal":          "RISK_EXIT",
+                "exec_price":      None,           # confirmed tomorrow at open
+                "shares":          shares_to_sell,
+                "exit_reason":     exit_reason,
+                "reason":          f"RM triggered: {exit_reason} — AMO SELL queued for tomorrow's open",
+                "net_pnl":         None,           # recorded tomorrow when fill confirms
+                "needs_amo_order": "SELL",
                 "action_taken": (
                     f"RM EXIT PENDING ({exit_reason}) | "
                     f"AMO SELL {shares_to_sell} shr @ close ₹{close_px:.2f} → fills tomorrow open"
@@ -758,18 +758,18 @@ def _process_stock(
     # Deferred to next morning's open via AMO — mirrors the RM exit pattern.
     # close_position() is called by morning_fill_check.py at the actual fill price.
     if today_signal == -1 and pos["shares"] > 0:
-        shares_to_sell         = pos["shares"]
-        pos["pending_rm_exit"] = True
-        pos["rm_exit_reason"]  = "STRATEGY_SIGNAL"
+        shares_to_sell = pos["shares"]
+        portfolio.queue_pending_sell(ticker, "STRATEGY_SIGNAL")
         portfolio.record_weekly_signal("SELL")
 
         result.update({
-            "signal":       "SELL",
-            "exec_price":   None,           # confirmed tomorrow at open
-            "shares":       shares_to_sell,
-            "exit_reason":  "STRATEGY_SIGNAL",
-            "reason":       "Death cross — SMA20 crossed below SMA50 — AMO SELL queued",
-            "net_pnl":      None,           # recorded tomorrow when fill confirms
+            "signal":          "SELL",
+            "exec_price":      None,           # confirmed tomorrow at open
+            "shares":          shares_to_sell,
+            "exit_reason":     "STRATEGY_SIGNAL",
+            "reason":          "Death cross — SMA20 crossed below SMA50 — AMO SELL queued",
+            "net_pnl":         None,           # recorded tomorrow when fill confirms
+            "needs_amo_order": "SELL",
             "action_taken": (
                 f"SELL PENDING (STRATEGY_SIGNAL) | "
                 f"AMO SELL {shares_to_sell} shr @ close ₹{close_px:.2f} "
@@ -887,6 +887,7 @@ def _process_stock(
             "gap_pct":         round(gap_pct, 3),
             "sizing_info":     sz,
             "cost_breakdown":  cost_bd,
+            "needs_amo_order": "BUY",
             "action_taken": (
                 f"AMO BUY queued: {shares} shr @ limit ₹{limit_px:.2f} "
                 f"[fill pending tomorrow open] | "
@@ -1596,14 +1597,19 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
     amo = AMOOrderManager(AMO_CONFIG)
     amo_orders = []
     for ticker, r in results.items():
-        sig    = r.get("signal")
-        shares = r.get("shares", 0)
-        price  = r.get("close_price", 0.0)
-        if sig == "BUY_QUEUED" and shares > 0:
+        # needs_amo_order is set by _process_stock() at the exact same point
+        # it queues the portfolio-state flag (queue_pending_buy/queue_pending_sell)
+        # -- one field, set once, rather than Step 13 re-deriving "does this
+        # need an order" from signal/shares independently and risking drift
+        # between the two conditions.
+        order_type = r.get("needs_amo_order")
+        shares     = r.get("shares", 0)
+        price      = r.get("close_price", 0.0)
+        if order_type == "BUY" and shares > 0:
             order = amo.place_buy_amo(ticker, shares, price, today,
                                       notes=f"chan={r.get('chandelier_stop','?')}")
             amo_orders.append(order)
-        elif sig in ("SELL", "RISK_EXIT") and shares > 0:
+        elif order_type == "SELL" and shares > 0:
             order = amo.place_sell_amo(ticker, shares, price, today,
                                        notes=r.get("exit_reason", "STRATEGY_SIGNAL"))
             amo_orders.append(order)
