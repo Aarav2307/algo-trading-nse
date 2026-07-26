@@ -62,6 +62,9 @@ from utils.costs import (
 )
 from utils.market_calendar import is_trading_day, next_trading_day, verify_holiday_coverage
 from screener.auto_screener import compute_hurst
+from strategy_config import (   # single source of truth — see strategy_config.py
+    RISK_MANAGEMENT, POSITION_SIZING, COOLDOWN, AMO_LIMIT_BUFFER_PCT,
+)
 
 
 # =============================================================================
@@ -87,7 +90,7 @@ STOCKS: List[str] = [
 INITIAL_CAPITAL = 100_000.0    # ₹
 SMA_FAST        = 20
 SMA_SLOW        = 50
-COOLDOWN_BARS   = 15
+COOLDOWN_BARS   = COOLDOWN["cooldown_bars"]
 LOOKBACK_CALENDAR_DAYS = 120   # ~85 trading days → enough for SMA-50 + ATR-22 + buffer
 
 # ── Capital allocation & signal ranking ───────────────────────────────────────
@@ -117,30 +120,12 @@ SIGNAL_RANK_WEIGHTS = {
 AMO_CONFIG = {
     "enabled":          True,
     "dry_run":          True,          # MUST stay True — real orders not implemented
-    "limit_buffer_pct": 0.005,         # 0.5% buffer: BUY limit above signal, SELL below
+    "limit_buffer_pct": AMO_LIMIT_BUFFER_PCT,   # BUY limit above signal, SELL below
     "order_log_file":   str(_ROOT / "paper_trading" / "amo_orders.csv"),
 }
 
-RM_CONFIG = {
-    "enabled":                True,
-    "hard_stop_pct":         -0.20,
-    "atr_period":             22,
-    "atr_multiplier":          3.0,
-    "max_bars_held":          60,
-    "round_number_offset_pct": 0.01,
-    "enable_layer_1":         True,
-    "enable_layer_2":         True,
-    "enable_layer_3":         True,
-    "enable_layer_4":         True,
-}
-
-PS_CONFIG = {
-    "enabled":            True,
-    "method":             "fixed_fractional",
-    "risk_per_trade_pct": 0.015,
-    "max_position_pct":   0.20,
-    "fallback_stop_pct":  0.20,
-}
+RM_CONFIG = RISK_MANAGEMENT
+PS_CONFIG = POSITION_SIZING
 
 # File paths (relative to project root)
 STATE_FILE         = _ROOT / "paper_trading" / "portfolio_state.json"
@@ -482,7 +467,7 @@ def _extract_rm_state(rm: RiskManager) -> Tuple[int, float, Optional[float]]:
 # Signal ranking & capital allocation gate
 # =============================================================================
 
-def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float) -> float:
+def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float, hurst: float) -> float:
     """
     Composite ranking score for a BUY signal candidate (0–100, higher = better).
 
@@ -493,6 +478,10 @@ def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float) -> float:
     Components (weights from SIGNAL_RANK_WEIGHTS):
       hurst:         R/S Hurst exponent on closing prices. H=0.50→0, H=0.70→100.
                      Measures persistence: higher = more likely to keep trending.
+                     Passed in (not recomputed) — _process_stock() already
+                     computes this once via compute_hurst() for the entry gate;
+                     recomputing here would run the same variogram twice per
+                     stock, per run, from two independently-maintained copies.
       gap_proximity: |gap_pct| scaled so 0% gap → 100, 15% gap → 0.
                      Freshest cross = smallest gap = highest score.
       volatility:    Annualised daily return vol. 20%→0, 50%→100.
@@ -501,23 +490,6 @@ def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float) -> float:
     Returns 0.0 on any calculation error (safe default — deprioritises bad data).
     """
     try:
-        import numpy as np
-
-        close = df["close"].values
-
-        # Compute Hurst on log prices (not raw prices) — removes price-level bias
-        if len(close) < 20:
-            hurst = 0.5
-        else:
-            log_prices = np.log(close)
-            lags = range(2, 20)
-            tau = [np.std(np.subtract(log_prices[lag:], log_prices[:-lag])) for lag in lags]
-            if any(t <= 0 for t in tau):
-                hurst = 0.5
-            else:
-                poly  = np.polyfit(np.log(list(lags)), np.log(tau), 1)
-                hurst = float(poly[0])
-
         hurst_score = max(0.0, min(100.0, (hurst - 0.50) / 0.20 * 100.0))
 
         # Gap proximity (gap_pct ≤ 0 for death-cross BUY candidates)
@@ -784,6 +756,11 @@ def _process_stock(
         # A stock's trending behavior can degrade after universe addition.
         # If Hurst < threshold at golden cross time, suppress entry.
         # Fail-open: if Hurst computation fails, allow entry (don't block on error).
+        # Initialized before the try so it's always defined, including via the
+        # except's fail-open path -- 0.5 matches compute_hurst()'s own
+        # documented fail-safe return, and is also passed to rank_signal()
+        # below so Hurst is computed exactly once per stock, per run.
+        live_hurst = 0.5
         try:
             live_hurst = compute_hurst(df["close"].values)
             if live_hurst < HURST_THRESHOLD:
@@ -818,7 +795,7 @@ def _process_stock(
 
         if defer_buy:
             # Phase 1: collect candidate, rank it, do NOT open position yet.
-            rank_score = rank_signal(ticker, df, gap_pct)
+            rank_score = rank_signal(ticker, df, gap_pct, live_hurst)
             result.update({
                 "signal":     "BUY_CANDIDATE",
                 "reason":     "Golden cross — pending capital allocation",
