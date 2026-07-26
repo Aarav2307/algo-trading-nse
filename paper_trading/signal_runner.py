@@ -476,16 +476,20 @@ def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float, hurst: float) -> 
     priority for capital allocation.
 
     Components (weights from SIGNAL_RANK_WEIGHTS):
-      hurst:         R/S Hurst exponent on closing prices. H=0.50→0, H=0.70→100.
-                     Measures persistence: higher = more likely to keep trending.
-                     Passed in (not recomputed) — _process_stock() already
-                     computes this once via compute_hurst() for the entry gate;
-                     recomputing here would run the same variogram twice per
-                     stock, per run, from two independently-maintained copies.
+      hurst:         R/S Hurst exponent, passed in by the caller (see below).
+                     H=0.50→0, H=0.70→100. Higher = more likely to keep trending.
       gap_proximity: |gap_pct| scaled so 0% gap → 100, 15% gap → 0.
                      Freshest cross = smallest gap = highest score.
       volatility:    Annualised daily return vol. 20%→0, 50%→100.
                      Higher vol = bigger ATR moves = more profitable for crossover.
+
+    `hurst` is a parameter, not computed here, for two reasons: the caller
+    (_process_stock's live Hurst gate) already computes it from the same df
+    moments earlier, and screener/universe_scan.py's sibling scoring function
+    (_compute_scan_score) already takes Hurst as a plain float for the same
+    reason — this matches that existing convention rather than reimplementing
+    screener.auto_screener.compute_hurst()'s variogram estimator a second time
+    (and a second time per stock, per run).
 
     Returns 0.0 on any calculation error (safe default — deprioritises bad data).
     """
@@ -546,6 +550,52 @@ def can_open_position(
         return False, f"Insufficient cash (need ₹{required_cash:,.0f}, have ₹{available:,.0f})"
 
     return True, ""
+
+
+def resolve_buy_gate(
+    cooldown_remaining: int,
+    market_regime: str,
+    hurst: Optional[float],
+) -> Tuple[bool, str, str]:
+    """
+    The three sequential gates a golden-cross signal must clear before it
+    becomes a BUY candidate: cooldown, NIFTY regime, live Hurst quality.
+    Pure function — three scalars in, one decision out. No portfolio, no df,
+    no I/O, so every branch is testable with plain numbers, not fixtures.
+
+    Order matters and mirrors _process_stock()'s original inline sequence
+    exactly: cooldown first (cheapest check), then regime, then Hurst (most
+    expensive — a variogram regression — so it only runs if the first two
+    already passed).
+
+    hurst=None means the upstream computation raised — the caller couldn't
+    get a real measurement. This must skip the Hurst check entirely rather
+    than substitute a sentinel number: HURST_THRESHOLD has been tuned as
+    high as 0.55 before (CLAUDE_CONTEXT.md), which sits above the 0.5
+    "neutral" value one might otherwise default to — a numeric sentinel
+    would silently flip fail-open into fail-closed the moment the threshold
+    crosses it. None keeps the fail-open guarantee threshold-independent.
+
+    Returns:
+        (allowed, signal, reason)
+        allowed=True  -> signal="", reason="" (caller proceeds to rank/size)
+        allowed=False -> signal is one of COOLDOWN/REGIME_SKIP/HURST_SKIP,
+                         reason is the human-readable explanation
+    """
+    if cooldown_remaining > 0:
+        return False, "COOLDOWN", f"Cooldown active — {cooldown_remaining} bars remaining"
+
+    # UNKNOWN regime (data failure) → allow entry (fail-open, not fail-closed).
+    if market_regime == "BEAR":
+        return False, "REGIME_SKIP", "Market regime filter: NIFTY in death cross — no new entries"
+
+    if hurst is not None and hurst < HURST_THRESHOLD:
+        return False, "HURST_SKIP", (
+            f"Live Hurst {hurst:.3f} < threshold {HURST_THRESHOLD:.2f} "
+            f"— stock not trending sufficiently for SMA crossover entry"
+        )
+
+    return True, "", ""
 
 
 # =============================================================================
@@ -732,57 +782,35 @@ def _process_stock(
     if today_signal == 1 and pos["shares"] == 0:
         cd_remaining = portfolio.state["cooldown_state"][ticker]["remaining_bars"]
 
-        if portfolio.is_in_cooldown(ticker):
-            # Buy signal exists but cooldown is active — suppress
-            result.update({
-                "signal":           "COOLDOWN",
-                "reason":           f"Cooldown active — {cd_remaining} bars remaining",
-                "bars_in_cooldown": cd_remaining,
-            })
-            return result
-
-        # ── NIFTY regime filter ─────────────────────────────────────────────
-        # Suppress new entries when the broad market is in a death cross.
-        # UNKNOWN regime (data failure) → allow entry (fail-open, not fail-closed).
-        if market_regime == "BEAR":
-            result.update({
-                "signal": "REGIME_SKIP",
-                "reason": "Market regime filter: NIFTY in death cross — no new entries",
-            })
-            return result
-
-        # ── Live Hurst quality gate ─────────────────────────────────────────
-        # Check current Hurst at entry time — not just at screener time.
-        # A stock's trending behavior can degrade after universe addition.
-        # If Hurst < threshold at golden cross time, suppress entry.
-        # Fail-open: if Hurst computation fails, allow entry (don't block on error).
-        # Initialized before the try so it's always defined, including via the
-        # except's fail-open path -- 0.5 matches compute_hurst()'s own
-        # documented fail-safe return, and is also passed to rank_signal()
-        # below so Hurst is computed exactly once per stock, per run.
-        live_hurst = 0.5
+        # live_hurst is computed here (not inside resolve_buy_gate) because it
+        # needs df and can fail -- resolve_buy_gate is a pure decision function,
+        # it doesn't do I/O or computation that can raise. None means "no real
+        # measurement" -- resolve_buy_gate() treats that as skip-the-check
+        # (fail-open), not as a 0.5 sentinel, so the fail-open guarantee holds
+        # no matter where HURST_THRESHOLD is tuned to (see resolve_buy_gate's
+        # docstring).
+        live_hurst: Optional[float] = None
         try:
             live_hurst = compute_hurst(df["close"].values)
-            if live_hurst < HURST_THRESHOLD:
-                result.update({
-                    "signal": "HURST_SKIP",
-                    "reason": (
-                        f"Live Hurst {live_hurst:.3f} < threshold {HURST_THRESHOLD:.2f} "
-                        f"— stock not trending sufficiently for SMA crossover entry"
-                    ),
-                    "hurst": round(live_hurst, 3),
-                })
-                print(
-                    f"  HURST_SKIP | {ticker} | H={live_hurst:.3f} < {HURST_THRESHOLD:.2f} "
-                    f"| golden cross suppressed — stock in mean-reversion regime"
-                )
-                return result
         except Exception as _hurst_exc:
             # Fail-open: Hurst computation error must never block a valid entry
             print(
                 f"  HURST_GATE | {ticker} | WARNING: Hurst computation failed "
                 f"({_hurst_exc}) — allowing entry"
             )
+
+        allowed, gate_signal, gate_reason = resolve_buy_gate(cd_remaining, market_regime, live_hurst)
+        if not allowed:
+            result.update({"signal": gate_signal, "reason": gate_reason})
+            if gate_signal == "COOLDOWN":
+                result["bars_in_cooldown"] = cd_remaining
+            elif gate_signal == "HURST_SKIP":
+                result["hurst"] = round(live_hurst, 3)
+                print(
+                    f"  HURST_SKIP | {ticker} | H={live_hurst:.3f} < {HURST_THRESHOLD:.2f} "
+                    f"| golden cross suppressed — stock in mean-reversion regime"
+                )
+            return result
 
         # ── BUY candidate: defer or execute ─────────────────────────────────
         # When defer_buy=True (Phase 1 of the two-phase allocation), return a
@@ -795,7 +823,12 @@ def _process_stock(
 
         if defer_buy:
             # Phase 1: collect candidate, rank it, do NOT open position yet.
-            rank_score = rank_signal(ticker, df, gap_pct, live_hurst)
+            # rank_signal() needs a real float (it scores where hurst sits in
+            # a 0.50-0.70 band); 0.5 is the neutral midpoint of that band, so
+            # a failed measurement scores as "no evidence either way" rather
+            # than being dropped from ranking entirely.
+            hurst_for_rank = live_hurst if live_hurst is not None else 0.5
+            rank_score = rank_signal(ticker, df, gap_pct, hurst_for_rank)
             result.update({
                 "signal":     "BUY_CANDIDATE",
                 "reason":     "Golden cross — pending capital allocation",
