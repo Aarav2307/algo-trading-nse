@@ -42,6 +42,9 @@ from engine.portfolio import Portfolio
 from engine.position_sizer import PositionSizer
 from engine.risk_manager import RiskManager
 from strategies.sma_crossover import generate_signals
+from strategy_config import (   # single source of truth — see strategy_config.py
+    RISK_MANAGEMENT, POSITION_SIZING, COOLDOWN,
+)
 
 
 # =============================================================================
@@ -62,31 +65,9 @@ PARAMS = {
     "sma_fast": 20,
     "sma_slow": 50,
     "initial_capital": 100_000,
-    "risk_management": {
-        "enabled":                True,
-        "hard_stop_pct":         -0.20,
-        "atr_period":             22,
-        "atr_multiplier":          3.0,
-        "max_bars_held":          60,
-        "round_number_offset_pct": 0.01,
-        "enable_layer_1":         True,
-        "enable_layer_2":         True,
-        "enable_layer_3":         True,
-        "enable_layer_4":         True,
-    },
-    "cooldown": {
-        "enabled":                True,
-        "cooldown_bars":          15,
-        "cooldown_after_reasons": ["HARD_STOP", "CHANDELIER", "TIME_STOP"],
-        "reset_on_strategy_exit": True,
-    },
-    "position_sizing": {
-        "enabled":            True,
-        "method":             "fixed_fractional",
-        "risk_per_trade_pct": 0.015,
-        "max_position_pct":   0.20,
-        "fallback_stop_pct":  0.20,
-    },
+    "risk_management":  RISK_MANAGEMENT,
+    "cooldown":         COOLDOWN,
+    "position_sizing":  POSITION_SIZING,
     "nifty_regime_filter": True,
 }
 
