@@ -514,14 +514,6 @@ def rank_signal(ticker: str, df: pd.DataFrame, gap_pct: float, hurst: float) -> 
         return 0.0
 
 
-def count_open_positions(portfolio: "PaperPortfolio") -> int:
-    """Count stocks currently holding shares > 0."""
-    return sum(
-        1 for pos in portfolio.state["positions"].values()
-        if pos.get("shares", 0) > 0
-    )
-
-
 def can_open_position(
     portfolio: "PaperPortfolio",
     proposed_shares: int,
@@ -540,7 +532,7 @@ def can_open_position(
     # CRITICAL: RM exits always execute. Only BUY entries are gated by capital allocation.
     # Never apply can_open_position() to exit decisions.
 
-    open_count = count_open_positions(portfolio)
+    open_count = len(portfolio.get_open_positions())
     if open_count >= MAX_CONCURRENT_POSITIONS:
         return False, f"Position limit reached ({open_count}/{MAX_CONCURRENT_POSITIONS} open)"
 
@@ -1210,8 +1202,8 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
     # ── Step 3a: Load pre-trade risk flags (news_monitor output) ─────────────
     news_flags = load_news_flags()
     # Alert if any OPEN position is now on surveillance list
-    for _ticker, _pos in portfolio.state["positions"].items():
-        if _pos.get("shares", 0) > 0 and _ticker in news_flags:
+    for _ticker in portfolio.get_open_positions():
+        if _ticker in news_flags:
             _flag = news_flags[_ticker]
             if _flag.get("auto_block", False):
                 print(
@@ -1400,7 +1392,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
             # Gate check BEFORE execution.
             # Position count is exact; cash uses a floor heuristic (actual size
             # is determined inside the sizer; the gate only catches hard blocks).
-            open_count = count_open_positions(portfolio)
+            open_count = len(portfolio.get_open_positions())
             if open_count >= MAX_CONCURRENT_POSITIONS:
                 reason = (
                     f"Position limit reached ({open_count}/{MAX_CONCURRENT_POSITIONS} open)"
@@ -1477,8 +1469,7 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 corr_state = {
                     "positions": {
                         t: {**pos, "pending_buy": False}
-                        for t, pos in portfolio.state["positions"].items()
-                        if pos.get("shares", 0) > 0
+                        for t, pos in portfolio.get_open_positions().items()
                     }
                 }
                 corr_result = check_entry_correlation(

@@ -138,6 +138,12 @@ class _FakePortfolio:
     def __init__(self, cash: float, positions: dict):
         self.state = {"cash": cash, "positions": positions}
 
+    def get_open_positions(self) -> dict:
+        """Mirrors PaperPortfolio.get_open_positions()'s exact filter --
+        can_open_position() now calls the real method name on its portfolio
+        argument, so the stub must expose it too."""
+        return {t: pos for t, pos in self.state["positions"].items() if pos["shares"] > 0}
+
 
 def test_can_open_position_blocks_at_position_limit(monkeypatch):
     monkeypatch.setattr(sr, "MAX_CONCURRENT_POSITIONS", 2)
