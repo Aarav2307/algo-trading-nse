@@ -36,6 +36,11 @@ sys.path.insert(0, str(_ROOT))
 
 from data.kite_fetcher import get_ohlcv
 from utils.market_calendar import is_trading_day
+from engine.fill_resolution import (   # single source of truth — see engine/fill_resolution.py
+    check_circuit_breaker as _check_circuit_breaker,
+    is_fill_hit,
+    classify_missed_sell,
+)
 
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -252,35 +257,6 @@ def _fetch_live_order_status(order_id: str, kite) -> dict:
                 "reject_reason": str(e), "raw": {}}
 
 
-def _check_circuit_breaker(ticker: str, open_price: float, prev_close: float) -> tuple[bool, str]:
-    """
-    Check if a stock has hit a circuit breaker at open.
-    NSE circuit limits: 2%, 5%, 10%, 20% depending on stock category.
-
-    A circuit breaker is suspected if open price moved >= 20% from prev close
-    (lower circuit = stock can't be sold, upper circuit = can't be bought).
-    20% is NSE's standard upper/lower circuit band for individual stocks,
-    distinguishing a genuine circuit event from an ordinary large overnight gap.
-
-    Returns:
-        (True, reason) if circuit breaker suspected
-        (False, "") if normal
-    """
-    if prev_close <= 0:
-        return False, ""
-
-    pct_move = abs(open_price - prev_close) / prev_close * 100
-
-    if pct_move >= 20.0:
-        direction = "upper" if open_price > prev_close else "lower"
-        return True, (
-            f"Possible {direction} circuit breaker: open moved {pct_move:.1f}% "
-            f"from prev close ₹{prev_close:.2f}"
-        )
-
-    return False, ""
-
-
 def _process_order(order: dict, today_open: float, prev_close: float, kite=None) -> dict:
     """
     Process a single AMO order and determine fill status.
@@ -340,10 +316,7 @@ def _process_order(order: dict, today_open: float, prev_close: float, kite=None)
             print(f"  WARN [{ticker}]: {live_status['reject_reason']}")
 
     # ── PAPER MODE (or live fallback): simulate fill from open price ──────────
-    if order_type == "BUY":
-        filled = today_open <= limit_price
-    else:  # SELL
-        filled = today_open >= limit_price
+    filled = is_fill_hit(order_type, limit_price, today_open)
 
     if filled:
         return {
@@ -726,9 +699,13 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                 # Gap-down circuit breaker: if open is too far below limit, exit
                 # immediately instead of requeuing. gap_pct (already computed above)
                 # is negative for a SELL miss; compute positive magnitude for comparison.
-                gap_magnitude = (limit_px - open_px) / limit_px
+                _is_managed_exit = is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES
+                _miss_class = classify_missed_sell(
+                    limit_px, open_px, GAP_BREAKER_THRESHOLD, _is_managed_exit
+                )
+                gap_magnitude = (limit_px - open_px) / limit_px   # for the log lines below only
 
-                if gap_magnitude > GAP_BREAKER_THRESHOLD:
+                if _miss_class == "GAP_EXIT":
                     # Large gap-down — exit immediately via circuit breaker.
                     # Counted as GAP_EXIT, NOT as a missed order — do not increment missed_count.
                     gap_exit_count += 1
@@ -747,7 +724,7 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
                     _update_csv_row(order_date, ticker, order_type,
                                     "GAP_EXIT", str(round(open_px, 4)), today.isoformat())
 
-                elif is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES:
+                elif _miss_class == "REQUEUE":
                     # Small gap — true miss, requeue for tomorrow's open at an updated limit.
                     # Without a requeue, signal_runner sees pending_rm_exit=True forever and
                     # never runs the RM — the position becomes orphaned with no active stop.

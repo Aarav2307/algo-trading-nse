@@ -21,6 +21,7 @@ from paper_trading.morning_fill_check import (
     _process_order,
     _update_portfolio_fill,
 )
+from engine.fill_resolution import classify_missed_sell
 from utils.costs import apply_slippage, transaction_costs
 
 _PASS = 0
@@ -382,27 +383,18 @@ def test_6_gap_exit_no_double_exit() -> None:
 def test_7_missed_count_not_incremented_on_gap_exit() -> None:
     name = "Test 7 — missed_count not incremented on GAP_EXIT"
 
-    # Simulate the MISSED block counter logic from Fix 2.
-    # A 7.6% gap triggers GAP_EXIT → gap_exit_count only, missed_count stays 0.
-    limit_px      = 3680.0
-    open_px       = 3400.0   # 7.6% gap
-    gap_magnitude = (limit_px - open_px) / limit_px
-    apply_fills   = True
-    order_type    = "SELL"
-    is_rm_exit    = True
+    # Calls the real classify_missed_sell() (not a reimplementation) so this
+    # test actually exercises production code, not a hand-copied stand-in.
+    # A 7.6% gap must classify as GAP_EXIT → gap_exit_count only, missed_count stays 0.
+    limit_px = 3680.0
+    open_px  = 3400.0   # 7.6% gap
 
     missed_count   = 0
     gap_exit_count = 0
 
-    if apply_fills and order_type == "BUY":
-        missed_count += 1
-    elif apply_fills and order_type == "SELL":
-        if gap_magnitude > GAP_BREAKER_THRESHOLD:
-            gap_exit_count += 1       # GAP_EXIT — NOT a miss
-        elif is_rm_exit:
-            missed_count += 1
-        else:
-            missed_count += 1
+    miss_class = classify_missed_sell(limit_px, open_px, GAP_BREAKER_THRESHOLD, is_managed_exit=True)
+    if miss_class == "GAP_EXIT":
+        gap_exit_count += 1       # GAP_EXIT — NOT a miss
     else:
         missed_count += 1
 
@@ -423,34 +415,28 @@ def test_7_missed_count_not_incremented_on_gap_exit() -> None:
 def test_8_missed_count_increments_on_true_miss() -> None:
     name = "Test 8 — missed_count increments on true miss (requeued)"
 
-    # A 1.63% gap → small miss → requeue path → missed_count += 1, gap_exit_count == 0.
-    limit_px      = 3680.0
-    open_px       = 3620.0   # 1.63% gap
-    gap_magnitude = (limit_px - open_px) / limit_px
-    apply_fills   = True
-    order_type    = "SELL"
-    is_rm_exit    = True     # RM exit → would be requeued
+    # Calls the real classify_missed_sell() (not a reimplementation).
+    # A 1.63% gap on a managed (RM) exit → REQUEUE → missed_count += 1, gap_exit_count == 0.
+    limit_px = 3680.0
+    open_px  = 3620.0   # 1.63% gap
 
     missed_count   = 0
     gap_exit_count = 0
 
-    if apply_fills and order_type == "BUY":
-        missed_count += 1
-    elif apply_fills and order_type == "SELL":
-        if gap_magnitude > GAP_BREAKER_THRESHOLD:
-            gap_exit_count += 1
-        elif is_rm_exit:
-            missed_count += 1   # true miss — small gap, requeue path
-        else:
-            missed_count += 1
+    miss_class = classify_missed_sell(limit_px, open_px, GAP_BREAKER_THRESHOLD, is_managed_exit=True)
+    if miss_class == "GAP_EXIT":
+        gap_exit_count += 1
     else:
-        missed_count += 1
+        missed_count += 1   # REQUEUE or UNMANAGED_MISS — both count as a true miss
 
     if missed_count != 1:
         _fail_test(name, f"Expected missed_count=1 for small-gap SELL miss, got {missed_count}")
         return
     if gap_exit_count != 0:
         _fail_test(name, f"Expected gap_exit_count=0 for small-gap miss, got {gap_exit_count}")
+        return
+    if miss_class != "REQUEUE":
+        _fail_test(name, f"Expected classification REQUEUE for a managed exit, got {miss_class}")
         return
 
     _pass_test(name)
