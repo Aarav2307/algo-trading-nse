@@ -36,6 +36,7 @@ sys.path.insert(0, str(_ROOT))
 
 from data.kite_fetcher import get_ohlcv
 from utils.market_calendar import is_trading_day
+from strategy_config import COOLDOWN, AMO_LIMIT_BUFFER_PCT   # single source of truth — see strategy_config.py
 from engine.fill_resolution import (   # single source of truth — see engine/fill_resolution.py
     check_circuit_breaker as _check_circuit_breaker,
     is_fill_hit,
@@ -54,8 +55,7 @@ TOKEN_FILE      = _ROOT / "auth" / "access_token.txt"
 _RM_EXIT_NOTES       = frozenset({"HARD_STOP", "CHANDELIER", "TIME_STOP"})
 _STRATEGY_EXIT_NOTES = frozenset({"STRATEGY_SIGNAL"})
 
-# AMO limit buffer — must match signal_runner.py AMO_CONFIG["limit_buffer_pct"]
-_AMO_LIMIT_BUFFER = 0.005   # 0.5% buffer below close for SELL AMO requeue
+_AMO_LIMIT_BUFFER = AMO_LIMIT_BUFFER_PCT   # 0.5% buffer below close for SELL AMO requeue
 _AMO_ORDER_LOG    = _ROOT / "paper_trading" / "amo_orders.csv"
 
 # Gap-down circuit breaker threshold for SELL AMOs.
@@ -67,11 +67,9 @@ _AMO_ORDER_LOG    = _ROOT / "paper_trading" / "amo_orders.csv"
 # The 0.5% AMO buffer is already in the limit price, so the effective
 # gap from yesterday's close that triggers this is ~3.5%.
 GAP_BREAKER_THRESHOLD = 0.03   # 3% gap triggers immediate exit at open
-# Cooldown bars must match signal_runner.py COOLDOWN_BARS.
-# +1 offset: advance_cooldown() in the same evening's signal_runner absorbs one bar,
-# leaving exactly COOLDOWN_BARS days of suppression starting the next trading day.
-_COOLDOWN_BARS  = 15
-_COOLDOWN_BARS_WITH_OFFSET = _COOLDOWN_BARS + 1
+# The +1 offset (absorbed by the same evening's signal_runner.advance_cooldown())
+# is applied inside PaperPortfolio.trigger_cooldown() itself, not here.
+_COOLDOWN_BARS  = COOLDOWN["cooldown_bars"]
 
 # ETF overlay (NIFTYBEES) is managed by signal_runner.py — no AMO orders
 
@@ -385,18 +383,19 @@ def _update_portfolio_fill(
     """
     Update portfolio_state.json to reflect the actual next-day fill price.
 
+    Both BUY and SELL fills go through PaperPortfolio's own seam
+    (confirm_buy_fill() / close_position()) — this function never touches
+    self.state directly. Both methods save atomically on success.
+
     For a BUY: calls portfolio_obj.confirm_buy_fill() which deducts cash exactly
                once at the actual open fill price (fixing the double-deduction bug
                where signal_runner previously deducted at close and here at open).
-    For a SELL: update cash, clear position, record trade with the correct
-                exit_reason. If is_rm_exit=True, also trigger cooldown and
-                clear the pending_rm_exit flag (set by yesterday's signal_runner).
-
-    Uses atomic write to prevent state corruption on crash.
+    For a SELL: calls portfolio_obj.close_position(), which credits cash, records
+                the trade with the correct exit_reason, and — when is_rm_exit=True —
+                triggers cooldown, clearing the pending_rm_exit flag set by
+                yesterday's signal_runner.
     """
-    import json
-    import math
-    from utils.costs import apply_slippage, transaction_costs
+    from utils.costs import apply_slippage
 
     if order_type == "BUY":
         if portfolio_obj is None:
@@ -433,83 +432,42 @@ def _update_portfolio_fill(
             print(f"  ERROR [{ticker}]: confirm_buy_fill failed: {e}")
             return
 
-        # confirm_buy_fill() already saved state atomically — nothing more to do.
         print(f"  [portfolio] {STATE_FILE} updated (BUY fill confirmed for {ticker}).")
         return
 
-    # ── SELL path: direct raw-state update ──────────────────────────────────
-    if not STATE_FILE.exists():
-        print(f"  WARN: {STATE_FILE} not found — cannot update portfolio state.")
+    # ── SELL path: go through PaperPortfolio's own seam ──────────────────────
+    if portfolio_obj is None:
+        print(f"  ERROR [{ticker}]: SELL fill requires portfolio_obj — cannot process.")
         return
 
-    with open(STATE_FILE) as fh:
-        state = json.load(fh)
+    # Reload fresh state from JSON before modifying (other fills earlier in this
+    # same run may have already saved through this same portfolio_obj).
+    portfolio_obj.load()
 
-    pos = state["positions"].get(ticker)
-    if pos is None:
+    pos_check = portfolio_obj.state["positions"].get(ticker)
+    if pos_check is None:
         print(f"  WARN: {ticker} not in portfolio state — skipping update.")
         return
 
-    if order_type == "SELL":
-        # Idempotency guard: verify position is still open before processing SELL fill
-        if pos.get("shares", 0) <= 0:
-            print(
-                f"  WARN [{ticker}]: SELL fill received but shares={pos.get('shares', 0)} "
-                f"— position already closed. Skipping duplicate fill."
-            )
-            return
+    exec_price = apply_slippage(fill_price, "sell")
 
-        exec_price = apply_slippage(fill_price, "sell")
-        cost       = transaction_costs(exec_price, shares, "sell", "delivery")
-        proceeds   = shares * exec_price - cost
+    try:
+        portfolio_obj.close_position(
+            ticker=ticker,
+            exec_price=exec_price,
+            date_str=fill_date.isoformat(),
+            reason=exit_reason,
+            is_rm_exit=is_rm_exit,
+            cooldown_bars=_COOLDOWN_BARS,
+        )
+    except ValueError as e:
+        # Idempotency guard inside close_position() — position already closed.
+        print(f"  WARN [{ticker}]: {e}")
+        return
 
-        state["cash"] += proceeds
-
-        # Record in trade log with the actual exit reason
-        entry_px   = pos["entry_price"]
-        entry_cost = pos.get("entry_cost", 0.0)   # buy-side costs stored at confirm_buy_fill()
-        gross_pnl  = (exec_price - entry_px) * shares
-        net_pnl    = gross_pnl - cost - entry_cost  # true round-trip P&L
-        state["trade_log"].append({
-            "ticker":      ticker,
-            "entry_date":  pos["entry_date"],
-            "exit_date":   fill_date.isoformat(),
-            "entry_price": round(entry_px, 4),
-            "exit_price":  round(exec_price, 4),
-            "shares":      shares,
-            "gross_pnl":   round(gross_pnl, 2),
-            "entry_cost":  round(entry_cost, 2),
-            "net_pnl":     round(net_pnl, 2),
-            "return_pct":  round((exec_price / entry_px - 1) * 100, 4),
-            "exit_reason": exit_reason,
-        })
-        state["total_trades"] += 1
-
-        # Reset position — clears pending_rm_exit and pending_buy flags if set
-        state["positions"][ticker] = {
-            "shares": 0, "entry_price": 0.0, "entry_cost": 0.0,
-            "entry_date": None, "highest_high_since_entry": 0.0,
-            "bars_held": 0, "chandelier_stop": None,
-            "pending_buy": False, "pending_rm_exit": False,
-            "rm_exit_reason": None, "rm_sell_requeue_count": 0,
-        }
-
-        # Deferred RM exits: trigger cooldown now that the fill is confirmed.
-        # +1 offset: the evening signal_runner's advance_cooldown() absorbs one bar,
-        # leaving exactly _COOLDOWN_BARS days of buy suppression from tomorrow.
-        if is_rm_exit and "cooldown_state" in state and ticker in state["cooldown_state"]:
-            state["cooldown_state"][ticker] = {
-                "remaining_bars":   _COOLDOWN_BARS_WITH_OFFSET,
-                "last_exit_reason": exit_reason,
-            }
-            print(f"  [cooldown] {ticker} — {_COOLDOWN_BARS}-bar cooldown triggered ({exit_reason})")
-
-    # Atomic write
-    tmp = str(STATE_FILE) + ".tmp"
-    with open(tmp, "w") as fh:
-        json.dump(state, fh, indent=2, default=str)
-    os.replace(tmp, str(STATE_FILE))
-    print(f"  [portfolio] {STATE_FILE} updated.")
+    if is_rm_exit:
+        print(f"  [cooldown] {ticker} — {_COOLDOWN_BARS}-bar cooldown triggered ({exit_reason})")
+    print(f"  [portfolio] {STATE_FILE} updated (SELL fill confirmed for {ticker}).")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

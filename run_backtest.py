@@ -9,10 +9,6 @@ Tweak the CONFIG block below to change ticker, strategy, date range, or capital.
 Supported strategies (CONFIG["strategy"]):
     "sma_crossover"   — uses sma_fast / sma_slow from CONFIG
     "mean_reversion"  — uses PARAMS from strategies/mean_reversion.py (no extra CONFIG keys)
-
-Phase 2 migration path:
-    Replace `from data.fetcher import get_ohlcv` with your Kite fetcher.
-    Everything below that line stays the same.
 """
 
 import importlib

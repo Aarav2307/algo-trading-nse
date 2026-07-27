@@ -229,7 +229,7 @@ def next_trading_day(d: date) -> date:
     """
     Return the next NSE trading day strictly after d.
 
-    Example: next_trading_day(date(2026, 1, 23)) → date(2026, 1, 26)
+    Example: next_trading_day(date(2026, 1, 23)) → date(2026, 1, 27)
     (Jan 24 Saturday, Jan 25 Sunday, Jan 26 Republic Day → Jan 27 is first open day)
 
     Args:

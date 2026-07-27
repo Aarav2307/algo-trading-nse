@@ -16,6 +16,7 @@ import argparse
 import io
 import json
 import sys
+import time
 from contextlib import nullcontext, redirect_stdout
 from datetime import date as _date, datetime
 from pathlib import Path
@@ -34,37 +35,31 @@ from engine.portfolio import Portfolio
 from engine.position_sizer import PositionSizer
 from engine.risk_manager import RiskManager
 from strategies.sma_crossover import generate_signals
+from universe import STOCKS as _LIVE_STOCKS   # single source of truth — see universe.py
+from strategy_config import (   # single source of truth — see strategy_config.py
+    RISK_MANAGEMENT, POSITION_SIZING, COOLDOWN,
+)
 
 
 # =============================================================================
 # UNIVERSE — current validated trading universe
 # =============================================================================
-# Current validated universe as of 2026-06-26.
-# Excluded from WF (insufficient history):
-#   ANURAS.NS    — only ~440 IS bars (listed post-2019)
-#   NEWGEN.NS    — WF validated Jul 7 2026 (4/6 original OOS +10.0%, 5/6 extended OOS +17.6%)
-#   PERSISTENT.NS — just added to live system, no WF history yet
-# Removed from live system (not in WF):
-#   TMPV, WHIRLPOOL, SIEMENS, HEROMOTOCO, BOSCHLTD, CUMMINSIND, RPOWER
+# STOCKS is the live universe (universe.py) minus a small, explicit set of
+# tickers that don't yet have enough history for WF validation. This is a
+# deliberate, documented exception — not something universe.py should encode,
+# since a stock can trade live before it has 3+ years of WF-eligible history.
 #
 # Minimum bar requirements per window:
 #   IS  window: ≥744 bars (~3 years at 248 trading days/yr)
 #   OOS window: ≥252 bars (~1 year)
 #   _run_one() enforces MIN_BARS=200 per window and skips automatically.
 #
-# UPDATE THIS LIST whenever the live universe changes.
 # Re-run walk_forward.py quarterly, or after any universe addition/removal.
-STOCKS = [
-    "BAJAJ-AUTO.NS",   # OOS +13.5%, strong across both WF windows
-    "HCLTECH.NS",      # 6/6 original OOS +5.5%, 4/6 extended — WF validated Jul 6 2026
-    "COLPAL.NS",       # WF validated 10/12
-    "BSOFT.NS",        # 6/6 original OOS +8.5%, 5/6 extended — WF validated Jul 6 2026
-    "PERSISTENT.NS",   # 5/6 original OOS +11.7%, 5/6 extended — WF validated Jul 6 2026
-    "CHOLAHLDNG.NS",   # WF validated Jul 8 2026 — 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
-    "COHANCE.NS",      # WF validated Jul 9-10 2026 — 6/6 original OOS +8.0%, extended SKIPPED (insufficient data, only 20 bars in 2015-19 window)
-    "MAPMYINDIA.NS",  # WF validated Jul 12 2026 — 5/6 original OOS +7.0%, extended SKIPPED (insufficient data, no bars in 2015-19 window)
-    "EMAMILTD.NS",    # WF validated Jul 17 2026 — 6/6 original OOS +9.0%, 5/6 extended OOS +13.6%
-]
+WF_EXCLUDED = {
+    "ANURAS.NS",   # only ~440 IS bars (listed post-2019) — live since before WF gating existed
+}
+
+STOCKS = [t for t in _LIVE_STOCKS if t not in WF_EXCLUDED]
 
 
 # =============================================================================
@@ -94,31 +89,9 @@ PARAMS = {
     "sma_fast": 20,
     "sma_slow": 50,
     "initial_capital": 100_000,
-    "risk_management": {
-        "enabled":                True,
-        "hard_stop_pct":         -0.20,
-        "atr_period":             22,
-        "atr_multiplier":          3.0,
-        "max_bars_held":          60,
-        "round_number_offset_pct": 0.01,
-        "enable_layer_1":         True,
-        "enable_layer_2":         True,
-        "enable_layer_3":         True,
-        "enable_layer_4":         True,
-    },
-    "cooldown": {
-        "enabled":                True,
-        "cooldown_bars":          15,
-        "cooldown_after_reasons": ["HARD_STOP", "CHANDELIER", "TIME_STOP"],
-        "reset_on_strategy_exit": True,
-    },
-    "position_sizing": {
-        "enabled":            True,
-        "method":             "fixed_fractional",
-        "risk_per_trade_pct": 0.015,
-        "max_position_pct":   0.20,
-        "fallback_stop_pct":  0.20,
-    },
+    "risk_management":  RISK_MANAGEMENT,
+    "cooldown":         COOLDOWN,
+    "position_sizing":  POSITION_SIZING,
     # Portfolio-level regime filter: suppress BUY when NIFTY SMA20 < SMA50.
     # Toggle to False to reproduce the original 15/20 baseline without filtering.
     "nifty_regime_filter": True,
@@ -139,6 +112,11 @@ def _fetch_nifty(start: str, end: str) -> pd.DataFrame:
     """
     try:
         df = get_ohlcv(NIFTY_TICKER, start, end)
+        # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+        # 60 req/min cap), mirroring signal_runner.py's/auto_screener.py's
+        # identical pattern. Applied regardless of downstream guards below,
+        # since the API call itself already consumed quota against the limit.
+        time.sleep(1.1)
         if df is not None and len(df) >= 50:
             print(f"[walk_forward] NIFTY 50: {len(df)} bars loaded for regime filter")
             return df
@@ -218,6 +196,12 @@ def _run_one(ticker: str, start: str, end: str, nifty_df: pd.DataFrame = None, p
         return {"error": f"No data returned — {exc}"}
     except Exception as exc:
         return {"error": f"Unexpected fetch error — {exc}"}
+    finally:
+        # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+        # 60 req/min cap), mirroring signal_runner.py's/auto_screener.py's
+        # identical pattern. In a `finally` so it applies whether the fetch
+        # succeeded or raised — the API call itself already consumed quota.
+        time.sleep(1.1)
 
     n_bars = len(df)
     if n_bars < MIN_BARS:
@@ -372,6 +356,13 @@ def _covid_note(equity_curve: pd.DataFrame) -> str:
 # PASS / FAIL rules (user-specified thresholds)
 # =============================================================================
 
+# The six metrics scored for a stock to pass a WF window. Previously
+# redeclared as a local METRICS_KEYS list in both _degradation_analysis()
+# and run_walk_forward() — one constant now, so adding/removing a scored
+# metric can't drift between the two.
+METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
+
+
 def _pass(name: str, is_m: dict, oos_m: dict) -> bool:
     if name == "total_ret":
         is_r  = is_m["total_ret"]
@@ -415,12 +406,26 @@ def _print_stock(
     is_r: dict,
     oos_r: dict,
     lines: list,
+    is_label: str = "In-Sample (2018-2022)",
+    oos_label: str = None,
 ) -> list[bool]:
     """
     Print per-stock walk-forward table.
     Appends all output to `lines` for file saving.
     Returns list of bool scores (one per metric). Empty list if data error.
+
+    Shared by run_walk_forward() (original window, default labels) and
+    run_extended_walk_forward() (2015-2019/2020-2023, passes its own labels) —
+    the table format, scored metrics, and supplementary rows must stay in
+    exactly one place so the two reports can never drift apart.
+
+    Args:
+        is_label:  header label for the in-sample column
+        oos_label: header label for the out-of-sample column; defaults to
+                   "Out-of-Sample (2023-<current year>)" for the original window
     """
+    if oos_label is None:
+        oos_label = "Out-of-Sample (2023-" + _TODAY[:4] + ")"
 
     def emit(text: str = ""):
         print(text)
@@ -459,8 +464,8 @@ def _print_stock(
 
     emit(
         f"  {'Metric':<{C1}}"
-        f"{'In-Sample (2018-2022)':^{C2}}"
-        f"{'Out-of-Sample (2023-'+_TODAY[:4]+')':^{C3}}"
+        f"{is_label:^{C2}}"
+        f"{oos_label:^{C3}}"
         f"{'Result':>{C4}}"
     )
     emit("  " + "─" * (C1 + C2 + C3 + C4))
@@ -970,8 +975,14 @@ def _cooldown_sensitivity(lines: list) -> None:
 
     for ticker in SENSITIVITY_UNIVERSE:
         try:
-            df_is  = get_ohlcv(ticker, is_start, is_end)
-            df_oos = get_ohlcv(ticker, oos_start, oos_end)
+            try:
+                df_is = get_ohlcv(ticker, is_start, is_end)
+            finally:
+                time.sleep(1.1)   # rate limit — see _fetch_nifty()'s comment for rationale
+            try:
+                df_oos = get_ohlcv(ticker, oos_start, oos_end)
+            finally:
+                time.sleep(1.1)
             n_is   = len(df_is)  if df_is  is not None else 0
             n_oos  = len(df_oos) if df_oos is not None else 0
             total  = n_is + n_oos
@@ -1021,7 +1032,6 @@ def _cooldown_sensitivity(lines: list) -> None:
     # ── Step 3: Run all backtests ─────────────────────────────────────────────
     # Structure: cd_results[cooldown] = {n_pass, n_total, n_stocks,
     #                                    total_trades, avg_return, per_stock}
-    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
     cd_results: dict[int, dict] = {}
 
     for cd in SENSITIVITY_COOLDOWNS:
@@ -1291,7 +1301,6 @@ def run_walk_forward(
         _save_results(lines, all_verbose)
 
     # ── Build results dict for comparison ────────────────────────────────────
-    METRICS_KEYS = ["total_ret", "vs_bnh", "max_dd", "payoff", "expectancy", "min_abs_oos_ret"]
     results: dict = {}
     for ticker in _stocks:
         is_r  = all_results[ticker]["is"]
@@ -1375,8 +1384,8 @@ def run_extended_walk_forward(
 
         all_results[ticker] = {"is": is_r, "oos": oos_r}
 
-    # ── Per-stock scoring — same 6 metrics, same PASS/FAIL thresholds as run_walk_forward ──
-    C1, C2, C3, C4 = 24, 26, 28, 12
+    # ── Per-stock scoring — same 6 metrics, same PASS/FAIL thresholds, and the
+    # same table format as run_walk_forward(), via the shared _print_stock() ──
     all_scores: list[list[bool]] = []
     results: dict = {}
 
@@ -1384,15 +1393,13 @@ def run_extended_walk_forward(
         is_r  = all_results[ticker]["is"]
         oos_r = all_results[ticker]["oos"]
 
-        emit()
-        emit("=" * 80)
-        emit(f"  {ticker}")
-        emit("=" * 80)
+        scores = _print_stock(
+            ticker, is_r, oos_r, lines,
+            is_label="In-Sample (2015-2019)",
+            oos_label="Out-of-Sample (2020-2023)",
+        )
 
-        if is_r.get("error") or oos_r.get("error"):
-            emit(f"  In-sample:     {is_r.get('error', 'OK')}")
-            emit(f"  Out-of-sample: {oos_r.get('error', 'OK')}")
-            emit()
+        if not scores:
             results[ticker] = {
                 "score":      "N/A",
                 "oos_return": "N/A",
@@ -1400,75 +1407,10 @@ def run_extended_walk_forward(
             }
             continue
 
-        is_m  = is_r["metrics"]
-        oos_m = oos_r["metrics"]
-
-        emit(
-            f"  Data:  {is_r['n_bars']} bars in-sample  "
-            f"|  {oos_r['n_bars']} bars out-of-sample"
-        )
-        if is_r.get("covid_note"):
-            emit(f"  NOTE:  {is_r['covid_note']}")
-        emit()
-
-        emit(
-            f"  {'Metric':<{C1}}"
-            f"{'In-Sample (2015-2019)':^{C2}}"
-            f"{'Out-of-Sample (2020-2023)':^{C3}}"
-            f"{'Result':>{C4}}"
-        )
-        emit("  " + "─" * (C1 + C2 + C3 + C4))
-
-        scores: list[bool] = []
-
-        def row(label: str, metric: str, fmt):
-            v_is  = fmt(is_m)
-            v_oos = fmt(oos_m)
-            ok    = _pass(metric, is_m, oos_m)
-            scores.append(ok)
-            emit(
-                f"  {label:<{C1}}"
-                f"{v_is:^{C2}}"
-                f"{v_oos:^{C3}}"
-                f"{'[' + _verdict(ok) + ']':>{C4}}"
-            )
-
-        row("Total return", "total_ret",
-            lambda m: f"{m['total_ret']:>+.1f}%")
-        row("vs Buy & Hold", "vs_bnh",
-            lambda m: f"{m['vs_bnh']:>+.1f}pp  (B&H {m['bm_ret']:>+.1f}%)")
-        row("Max drawdown", "max_dd",
-            lambda m: f"{m['max_dd']:.1f}%")
-        row("Payoff ratio", "payoff",
-            lambda m: "∞:1" if m["payoff"] == float("inf") else f"{m['payoff']:.2f}:1")
-        row("Expectancy/trade", "expectancy",
-            lambda m: f"₹{m['expectancy']:>+,.0f}")
-
-        row("Min OOS return", "min_abs_oos_ret",
-            lambda m: f"{m['total_ret']:>+.1f}%")
-
-        emit("  " + "─" * (C1 + C2 + C3 + C4))
-
-        is_wr  = f"{is_m['win_rate']:.1f}%"
-        oos_wr = f"{oos_m['win_rate']:.1f}%"
-        emit(
-            f"  {'Trades':<{C1}}"
-            f"{str(is_m['n_trades']):^{C2}}"
-            f"{str(oos_m['n_trades']):^{C3}}"
-        )
-        emit(
-            f"  {'Win rate':<{C1}}"
-            f"{is_wr:^{C2}}"
-            f"{oos_wr:^{C3}}"
-        )
-
-        n_pass = sum(scores)
-        emit(f"\n  Score: {n_pass}/{len(scores)} PASS")
-        emit()
-
         all_scores.append(scores)
+        oos_m = oos_r["metrics"]
         results[ticker] = {
-            "score":      int(n_pass),
+            "score":      int(sum(scores)),
             "oos_return": float(oos_m["total_ret"]),
             "oos_trades": int(oos_m["n_trades"]),
         }
@@ -1477,6 +1419,110 @@ def run_extended_walk_forward(
     _print_verdict(all_scores, lines)
 
     return results
+
+
+def evaluate_wf_gate(
+    orig_data: dict,
+    ext_data: dict,
+    *,
+    no_extended: bool = False,
+    metric_min: int = 4,
+    oos_ret_min: float = 4.0,
+    total_metrics: int = 6,
+) -> dict:
+    """
+    Evaluate the WF gate pass/fail decision for a single ticker from
+    run_walk_forward()/run_extended_walk_forward() result dicts.
+
+    This is the one place the gate thresholds, N/A-normalization, and
+    orig+extended combination logic live — both the --json and human-readable
+    branches of __main__ (and any future in-process caller) share this exact
+    function instead of re-deriving the decision.
+
+    Args:
+        orig_data:   single_results.get(ticker, {}) from run_walk_forward()
+                     — {"score": int|"N/A", "oos_return": float|"N/A", ...}
+        ext_data:    extended_results.get(ticker, {}) from
+                     run_extended_walk_forward(), or {} when no_extended
+        no_extended: True when the extended window was deliberately skipped
+                     (--no-extended) — the gate then evaluates on the
+                     original window only, never penalising the skip.
+
+    Returns:
+        {
+            "gate_pass":     bool,
+            "reasons":       list[str],   # empty when gate_pass is True
+            "orig_score":    int | None,
+            "orig_oos_ret":  float | None,
+            "ext_score":     int | None,
+            "ext_oos_ret":   float | None,
+            "ext_error":     str | None,
+            "ext_status":    "PASS" | "FAIL" | "SKIPPED" | "NOT_REQUESTED",
+            "total_metrics": int,
+            "metric_min":    int,
+            "oos_ret_min":   float,
+        }
+    """
+    # run_walk_forward()/run_extended_walk_forward() use the string "N/A" (not
+    # None) as their insufficient-data sentinel. None is the canonical sentinel
+    # every downstream guard here expects — "N/A" >= metric_min raises TypeError.
+    def _denan(v):
+        return None if v == "N/A" else v
+
+    orig_score   = _denan(orig_data.get("score"))
+    orig_oos_ret = _denan(orig_data.get("oos_return"))
+    ext_score    = _denan(ext_data.get("score"))
+    ext_oos_ret  = _denan(ext_data.get("oos_return"))
+    ext_error    = ext_data.get("error")
+
+    orig_metrics_ok = orig_score is not None and orig_score >= metric_min
+    orig_ret_ok     = orig_oos_ret is not None and orig_oos_ret >= oos_ret_min
+    ext_metrics_ok  = (
+        True if no_extended             # skipped — don't penalise
+        else ext_score is None          # insufficient data — don't penalise
+        or ext_score >= metric_min
+    )
+
+    gate_pass = orig_metrics_ok and orig_ret_ok and ext_metrics_ok
+
+    reasons = []
+    if not gate_pass:
+        if not orig_metrics_ok:
+            score_str = str(orig_score) if orig_score is not None else "N/A"
+            reasons.append(
+                f"original metrics {score_str}/{total_metrics} < {metric_min} required"
+            )
+        if not orig_ret_ok:
+            ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
+            reasons.append(f"OOS return {ret_str} < +{oos_ret_min:.0f}% required")
+        if not ext_metrics_ok:
+            score_str = str(ext_score) if ext_score is not None else "N/A"
+            reasons.append(
+                f"extended metrics {score_str}/{total_metrics} < {metric_min} required"
+            )
+
+    if no_extended:
+        ext_status = "NOT_REQUESTED"
+    elif ext_score is None:
+        ext_status = "SKIPPED"
+    elif ext_score >= metric_min:
+        ext_status = "PASS"
+    else:
+        ext_status = "FAIL"
+
+    return {
+        "gate_pass":     gate_pass,
+        "reasons":       reasons,
+        "orig_score":    orig_score,
+        "orig_oos_ret":  orig_oos_ret,
+        "ext_score":     ext_score,
+        "ext_oos_ret":   ext_oos_ret,
+        "ext_error":     ext_error,
+        "ext_status":    ext_status,
+        "total_metrics": total_metrics,
+        "metric_min":    metric_min,
+        "oos_ret_min":   oos_ret_min,
+    }
 
 
 def print_comparison_report(
@@ -1894,7 +1940,10 @@ def build_extended_universe(
 
     for ticker in candidate_tickers:
         try:
-            df = get_ohlcv(ticker, is_start, is_end)
+            try:
+                df = get_ohlcv(ticker, is_start, is_end)
+            finally:
+                time.sleep(1.1)   # rate limit — see _fetch_nifty()'s comment for rationale
             if df is None or len(df) < min_bars:
                 n = len(df) if df is not None else 0
                 reason = f"{n} bars < {min_bars} required"
@@ -1995,59 +2044,24 @@ Examples:
                 print("\n[--no-extended flag set — skipping extended window]")
 
         # ── WF Gate Verdict ─────────────────────────────────────────────
-        # run_walk_forward() returns {ticker: {"score": int, "oos_return": float}}
-        # run_extended_walk_forward() returns the same format
-        TOTAL_METRICS = 6
-        METRIC_MIN    = 4      # each stock must pass ≥4/6 independently
-        OOS_RET_MIN   = 4.0    # OOS total return must be ≥+4%
+        # All gate logic (thresholds, N/A-normalization, orig+extended
+        # combination) lives in evaluate_wf_gate() — shared by this human-
+        # readable branch and the --json branch below, and directly
+        # unit-testable without going through __main__.
+        orig_data = single_results.get(ticker, {})
+        ext_data  = extended_results.get(ticker, {}) if extended_results else {}
 
-        orig_data    = single_results.get(ticker, {})
-        orig_score   = orig_data.get("score")       # int, or "N/A" if orig window had no data
-        orig_oos_ret = orig_data.get("oos_return")  # float, or "N/A" if orig window had no data
+        gate = evaluate_wf_gate(orig_data, ext_data, no_extended=args.no_extended)
 
-        ext_data    = extended_results.get(ticker, {}) if extended_results else {}
-        ext_score   = ext_data.get("score")         # int, or "N/A" if ext window had no data
-        ext_oos_ret = ext_data.get("oos_return")    # float, or "N/A" if ext window had no data
-        ext_error   = ext_data.get("error")         # error message when ext data insufficient
-
-        # Normalize "N/A" strings → None. Both run_walk_forward() and
-        # run_extended_walk_forward() return "N/A" strings (not None) when a window
-        # has insufficient data (e.g. stock IPO'd after 2015 → zero bars in the
-        # 2015-2019 extended IS window). None is the canonical insufficient-data
-        # sentinel used by all downstream guards; without this, "N/A" >= METRIC_MIN
-        # raises TypeError. Applies defensively to orig_ too for stocks with
-        # truly zero original-window data.
-        if orig_score   == "N/A": orig_score   = None
-        if orig_oos_ret == "N/A": orig_oos_ret = None
-        if ext_score    == "N/A": ext_score    = None
-        if ext_oos_ret  == "N/A": ext_oos_ret  = None
-
-        orig_metrics_ok = orig_score is not None and orig_score >= METRIC_MIN
-        orig_ret_ok     = orig_oos_ret is not None and orig_oos_ret >= OOS_RET_MIN
-        ext_metrics_ok  = (
-            True if args.no_extended          # skipped — don't penalise
-            else ext_score is None            # insufficient data — don't penalise (per gate docs)
-            or ext_score >= METRIC_MIN
-        )
-
-        gate_pass = orig_metrics_ok and orig_ret_ok and ext_metrics_ok
-
-        # Hoist reasons so both human-readable and JSON paths share the same list
-        reasons = []
-        if not gate_pass:
-            if not orig_metrics_ok:
-                score_str = str(orig_score) if orig_score is not None else "N/A"
-                reasons.append(
-                    f"original metrics {score_str}/{TOTAL_METRICS} < {METRIC_MIN} required"
-                )
-            if not orig_ret_ok:
-                ret_str = f"{orig_oos_ret:+.1f}%" if orig_oos_ret is not None else "N/A"
-                reasons.append(f"OOS return {ret_str} < +{OOS_RET_MIN:.0f}% required")
-            if not ext_metrics_ok:
-                score_str = str(ext_score) if ext_score is not None else "N/A"
-                reasons.append(
-                    f"extended metrics {score_str}/{TOTAL_METRICS} < {METRIC_MIN} required"
-                )
+        orig_score    = gate["orig_score"]
+        orig_oos_ret  = gate["orig_oos_ret"]
+        ext_score     = gate["ext_score"]
+        ext_oos_ret   = gate["ext_oos_ret"]
+        ext_error     = gate["ext_error"]
+        ext_status    = gate["ext_status"]
+        gate_pass     = gate["gate_pass"]
+        reasons       = gate["reasons"]
+        TOTAL_METRICS = gate["total_metrics"]
 
         if not args.json:
             print(f"\n{'='*70}")
@@ -2082,9 +2096,7 @@ Examples:
             print()
             if gate_pass:
                 print(f"  ✅ GATE: PASS — {ticker} is validated for universe addition")
-                print(f"     Action: add to STOCKS in paper_trading/signal_runner.py")
-                print(f"             add to STOCKS in validation/walk_forward.py")
-                print(f"             document in CLAUDE_CONTEXT Universe History")
+                print(f"     Action: python3 validation/add_validated_stock.py {ticker}")
             else:
                 print(f"  ❌ GATE: FAIL — {ticker} does not meet validation threshold")
                 print(f"     Reasons: {'; '.join(reasons)}")
@@ -2096,15 +2108,6 @@ Examples:
 
         else:
             # JSON output mode — emit exactly one JSON line to stdout
-            if args.no_extended:
-                ext_status = "NOT_REQUESTED"
-            elif ext_score is None:
-                ext_status = "SKIPPED"
-            elif ext_score >= METRIC_MIN:
-                ext_status = "PASS"
-            else:
-                ext_status = "FAIL"
-
             print(json.dumps({
                 "ticker": ticker,
                 "original": {

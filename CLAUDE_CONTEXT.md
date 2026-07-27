@@ -149,9 +149,11 @@ timing gap).
 - correlation_check.py is a full module — checks candidate against live open positions
   CLI: python paper_trading/correlation_check.py TICKER.NS
   In signal_runner: uses in-memory state (not file) — catches same-day BUY pairs correctly
-- repair_portfolio_state.py — one-time emergency repair script, keep for future use
-  Located at: paper_trading/repair_portfolio_state.py
-  BAJAJ-AUTO filled cleanly Jun 29 — script was not needed
+- repair_portfolio_state.py — removed Jul 21 (architecture review): it was a
+  one-time BAJAJ-AUTO repair script that never ran (fill was clean) and didn't
+  touch positions/trade_log directly, so it wasn't part of the fill-confirmation
+  seam. If a similar manual correction is ever needed again, write a fresh
+  one-off script rather than reviving this one.
 - universe_expansion.py does not exist on server
 - bars_held=0 mid-day is normal — updates at 3:45 PM signal run
 - morning_fill_check.py and corporate_actions.py are fully dynamic
@@ -163,8 +165,12 @@ timing gap).
 - Divergence detection: flags stocks where 2yr and 80d SMA windows disagree
 
 ### Mandatory WF Gate Before Universe Addition
-NEVER add a stock to STOCKS in signal_runner.py without running WF validation first.
+NEVER add a stock to universe.py without running WF validation first.
 Screener ADD recommendation = candidate for testing, NOT approval to add.
+
+STOCKS now lives in one place: universe.py (root). Both signal_runner.py and
+walk_forward.py import it from there — walk_forward.py filters out a small,
+explicit WF_EXCLUDED set (tickers with insufficient WF history) before use.
 
 Step 1 — Run single-stock validation:
   python validation/walk_forward.py --ticker CANDIDATE.NS
@@ -174,8 +180,8 @@ Step 2 — Gate criteria (both must pass):
   - Extended window: ≥4/6 metrics (if sufficient history exists)
 
 Step 3 — If PASS:
-  - Add to STOCKS in paper_trading/signal_runner.py
-  - Add to STOCKS in validation/walk_forward.py
+  - Run: python3 validation/add_validated_stock.py CANDIDATE.NS
+    (adds to universe.py, drafts the Universe History entry, runs the test suite)
   - Document in CLAUDE_CONTEXT Universe History with scores and date
 
 Step 4 — If FAIL:
@@ -1040,6 +1046,45 @@ covers with the same fixed pattern list; (e) GitHub's own push protection
 four layers, since none of them existed yet) remains the last line of
 defense for anything that slips past all of the above — worth knowing it
 exists, not worth relying on as the primary control.
+
+---
+
+#### confirm_buy_fill() never persisted state — BUY fills silently lost — FIXED (Jul 27 2026)
+Root cause: `PaperPortfolio.confirm_buy_fill()` (paper_trading/paper_portfolio.py)
+mutated `self.state` in memory — deducting cash, clearing `pending_buy`, setting the
+real entry price — but never called `self.save()`. A confirmed BUY fill existed only
+for the lifetime of that one `morning_fill_check.py` process. The moment the process
+exited, the fill was gone: the next state load showed `pending_buy` still True and
+cash still undeducted, with nothing on disk indicating a fill had ever been confirmed.
+
+Confirmed historical instance: BAJAJ-AUTO.NS was bought June 3 2026 (exec price
+₹10,286.14, per paper_trading/signal_log.csv's BUY row for that date). The other three
+same-day BUYs (WHIRLPOOL.NS, TMPV.NS, SIEMENS.NS) persisted correctly and have since
+closed. Per the reported server state, BAJAJ-AUTO.NS's fill did not persist: no cash
+was deducted for it, the position was never recorded as open, and — because it was
+never recorded — no risk management (chandelier stop, hard stop, time stop) was ever
+applied to it, and it will never produce a trade_log entry. True historical paper P&L
+may differ from what portfolio_state.json and signal_log.csv show as a result. This
+gap is not reconstructable from existing records; no attempt has been made to guess
+what the position "would have" done, and none should be.
+
+Note for anyone reading this from the local dev checkout: as of this writing, the
+local portfolio_state.json (last synced ~Jun 24 2026, an older schema without
+pending_buy/entry_cost fields) still shows BAJAJ-AUTO.NS as an open position with the
+correct entry price — apparently contradicting the above. This is a stale, disconnected
+snapshot, not evidence against the incident. Per this file's own rule ("the server
+version is always the source of truth"), the live server's actual state is
+authoritative, not this local artifact — this note exists so the discrepancy isn't
+mistaken for a correction later.
+
+Fix: `confirm_buy_fill()` now calls `self.save()` before returning.
+`close_position()` (the SELL-side counterpart) had the same class of exposure from a
+different angle — `morning_fill_check.py` used to bypass `PaperPortfolio` entirely for
+SELL fills (raw JSON read/mutate/write) instead of calling it. Now routed through
+`close_position()`, which also self-saves and carries its own idempotency guard
+(raises if called on an already-flat position, so a duplicate fill confirmation can't
+double-close). Regression test:
+`paper_trading/test_fill_ordering.py::test_buy_fill_persists_to_disk`.
 
 ---
 

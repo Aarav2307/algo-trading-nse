@@ -23,6 +23,7 @@ from paper_trading.morning_fill_check import (
     _update_csv_row,
     _update_portfolio_fill,
 )
+from paper_trading.paper_portfolio import PaperPortfolio
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -110,6 +111,12 @@ def _read_shares(state_path: Path) -> int:
         return json.load(fh)["positions"][_TICKER]["shares"]
 
 
+def _make_portfolio(state_path: Path) -> PaperPortfolio:
+    """PaperPortfolio pointed at a tmp state file — this is now the seam SELL
+    fills go through, so tests must pass a real instance, not portfolio_obj=None."""
+    return PaperPortfolio([_TICKER], str(state_path), 100_000.0)
+
+
 # ---------------------------------------------------------------------------
 # Test (a): Crash after portfolio update, before CSV write
 #           → CSV stays DRY_RUN (re-processable)
@@ -139,7 +146,7 @@ def test_crash_after_portfolio_csv_stays_dry_run():
             _update_portfolio_fill(
                 _TICKER, "SELL", _SHARES, _OPEN_PX, _FILL_DATE,
                 exit_reason="CHANDELIER", is_rm_exit=True,
-                portfolio_obj=None,
+                portfolio_obj=_make_portfolio(Path(state_tmp.name)),
             )
         finally:
             mfc.STATE_FILE = orig_state
@@ -187,7 +194,7 @@ def test_idempotency_guard_prevents_double_apply(capsys):
             _update_portfolio_fill(
                 _TICKER, "SELL", _SHARES, _OPEN_PX, _FILL_DATE,
                 exit_reason="CHANDELIER", is_rm_exit=True,
-                portfolio_obj=None,
+                portfolio_obj=_make_portfolio(Path(state_tmp.name)),
             )
         finally:
             mfc.STATE_FILE = orig_state
@@ -250,7 +257,7 @@ def test_crash_before_portfolio_both_consistent():
             _update_portfolio_fill(
                 _TICKER, "SELL", _SHARES, _OPEN_PX, _FILL_DATE,
                 exit_reason="CHANDELIER", is_rm_exit=True,
-                portfolio_obj=None,
+                portfolio_obj=_make_portfolio(Path(state_tmp.name)),
             )
             _update_csv_row(
                 _ORDER_DATE, _TICKER, "SELL",
@@ -327,3 +334,91 @@ def test_old_order_crash_leaves_irrecoverable_state():
     finally:
         os.unlink(state_tmp.name)
         os.unlink(csv_tmp.name)
+
+
+# ---------------------------------------------------------------------------
+# Test (e): BUY fill must persist to disk — regression test for the bug where
+#           confirm_buy_fill() mutated portfolio_obj.state in memory but no
+#           caller ever called .save(), so a confirmed BUY was silently lost
+#           the moment the (per-day, per-process) morning_fill_check run exited.
+# ---------------------------------------------------------------------------
+
+_BUY_TICKER   = "TESTBUY.NS"
+_BUY_SHARES   = 5
+_BUY_OPEN_PX  = 500.0   # <= limit → FILLED
+
+
+def _make_pending_buy_state() -> dict:
+    """Minimal portfolio_state.json with one pending BUY AMO queued."""
+    return {
+        "cash":             50_000.0,
+        "initial_capital":  100_000.0,
+        "etf_shares":       0,
+        "etf_avg_price":    0.0,
+        "etf_tier":         0,
+        "positions": {
+            _BUY_TICKER: {
+                "shares":                    _BUY_SHARES,   # intended shares (provisional)
+                "entry_price":               505.0,          # provisional close price
+                "entry_cost":                0.0,
+                "entry_date":                "2026-06-25",
+                "highest_high_since_entry":  0.0,
+                "bars_held":                 0,
+                "chandelier_stop":           None,
+                "pending_buy":               True,
+                "pending_rm_exit":           False,
+                "rm_exit_reason":            None,
+                "rm_sell_requeue_count":     0,
+            }
+        },
+        "cooldown_state": {
+            _BUY_TICKER: {"remaining_bars": 0, "last_exit_reason": None}
+        },
+        "total_trades":     0,
+        "last_run_date":    "2026-06-25",
+        "inception_date":   "2026-06-02",
+        "weekly_start_value":  99_000.0,
+        "weekly_start_date":   "2026-06-23",
+        "weekly_signals":   {"BUY": 0, "SELL": 0, "RISK_EXIT": 0},
+        "trade_log":        [],
+    }
+
+
+def test_buy_fill_persists_to_disk():
+    """
+    A confirmed BUY fill must be readable back from the state file on disk —
+    not just present on the in-memory portfolio_obj that processed it.
+    """
+    state_tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    state_tmp.close()
+
+    try:
+        json.dump(_make_pending_buy_state(), open(state_tmp.name, "w"), indent=2)
+        cash_before = json.load(open(state_tmp.name))["cash"]
+
+        orig_state = mfc.STATE_FILE
+        mfc.STATE_FILE = Path(state_tmp.name)
+        try:
+            _update_portfolio_fill(
+                _BUY_TICKER, "BUY", _BUY_SHARES, _BUY_OPEN_PX, _FILL_DATE,
+                portfolio_obj=PaperPortfolio([_BUY_TICKER], str(state_tmp.name), 100_000.0),
+            )
+        finally:
+            mfc.STATE_FILE = orig_state
+
+        # Read back from disk with a completely fresh load — this is the
+        # assertion the old code would have failed: pending_buy would still
+        # read True and cash would be unchanged, because nothing ever saved.
+        on_disk = json.load(open(state_tmp.name))
+        pos = on_disk["positions"][_BUY_TICKER]
+
+        assert pos["pending_buy"] is False, (
+            "BUY fill must be persisted: pending_buy should be False on disk, "
+            "not just in the in-memory portfolio_obj."
+        )
+        assert on_disk["cash"] < cash_before, (
+            "BUY fill must deduct cash on disk, not just in memory."
+        )
+
+    finally:
+        os.unlink(state_tmp.name)

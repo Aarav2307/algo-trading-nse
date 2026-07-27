@@ -425,6 +425,7 @@ class PaperPortfolio:
         pos["highest_high_since_entry"] = 0.0  # seeded on first check_exit call
         pos["bars_held"]                = 0
         pos["chandelier_stop"]          = None
+        self.save()
 
     def close_position(
         self,
@@ -432,20 +433,39 @@ class PaperPortfolio:
         exec_price: float,   # slippage-adjusted sell execution price
         date_str: str,
         reason: str,
+        is_rm_exit: bool = False,
+        cooldown_bars: int = 15,
     ) -> float:
         """
         Close an open position, credit proceeds to cash, record trade.
+        This is the one seam that confirms a SELL fill — callers must not
+        reimplement trade-log/cash bookkeeping directly against self.state.
 
         Args:
-            exec_price: slippage-adjusted fill price
-            date_str:   ISO date string
-            reason:     exit reason ("STRATEGY_SIGNAL" | "HARD_STOP" | "CHANDELIER" | "TIME_STOP")
+            exec_price:    slippage-adjusted fill price
+            date_str:      ISO date string
+            reason:        exit reason ("STRATEGY_SIGNAL" | "HARD_STOP" | "CHANDELIER" | "TIME_STOP" | "GAP_EXIT")
+            is_rm_exit:    True if this exit came from a risk-manager stop (not a plain
+                           strategy signal) — triggers the post-exit cooldown window.
+            cooldown_bars: bars to suppress re-entry when is_rm_exit=True (default 15,
+                           matches signal_runner.COOLDOWN_BARS).
 
         Returns:
             net_pnl — profit or loss net of sell-side costs (₹, signed).
             Note: entry cost was already deducted at open_position() time.
+
+        Raises:
+            ValueError if the position is already flat (shares <= 0) — idempotency
+            guard so a duplicate fill confirmation can't double-close a position.
         """
         pos        = self.state["positions"][ticker]
+
+        if pos["shares"] <= 0:
+            raise ValueError(
+                f"close_position called for {ticker} but shares={pos['shares']} "
+                f"— position already closed. Possible duplicate fill."
+            )
+
         shares     = pos["shares"]
         entry_px   = pos["entry_price"]
 
@@ -475,6 +495,11 @@ class PaperPortfolio:
 
         # Reset position to blank
         self.state["positions"][ticker] = self._blank_position()
+
+        if is_rm_exit:
+            self.trigger_cooldown(ticker, reason, bars=cooldown_bars)
+
+        self.save()
         return net_pnl
 
     def update_rm_state(
@@ -492,9 +517,9 @@ class PaperPortfolio:
         so we must save those back to keep state consistent across days.
 
         Args:
-            bars_held:       rm._bars_since_entry after check_exit()
-            highest_high:    rm._highest_high_since_entry after check_exit()
-            chandelier_stop: rm._chandelier_stop after check_exit()
+            bars_held:       RiskManager.to_state()["bars_since_entry"]
+            highest_high:    RiskManager.to_state()["highest_high_since_entry"]
+            chandelier_stop: RiskManager.to_state()["chandelier_stop"]
                              None if still at -inf (insufficient ATR history)
         """
         pos = self.state["positions"][ticker]

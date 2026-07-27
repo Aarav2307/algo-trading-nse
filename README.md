@@ -284,7 +284,6 @@ algo-trading/
 │   ├── morning_fill_check.py   # 9:20 AM fill check with gap-down circuit breaker
 │   ├── paper_portfolio.py      # JSON-persisted portfolio state, ETF overlay, integrity validator
 │   ├── correlation_check.py    # Entry-time correlation check vs open positions
-│   ├── repair_portfolio_state.py # Emergency state repair script
 │   ├── portfolio_state.json    # Live portfolio state (positions, cash, ETF, cooldowns)
 │   ├── signal_log.csv          # Append-only daily signal history
 │   ├── amo_orders.csv          # AMO order log with fill tracking
@@ -316,6 +315,7 @@ algo-trading/
 │   └── crash_scenario_sim.py        # COVID 2020 stress test for ETF overlay
 │
 ├── run_backtest.py             # Backtesting entry point with CONFIG
+├── universe.py                 # Single source of truth for the live STOCKS list
 └── test_corporate_actions.py   # Corporate actions utility test suite
 ```
 
@@ -333,6 +333,11 @@ python validation/walk_forward.py --ticker CANDIDATE.NS
 Gate criteria: ≥4/6 metrics AND OOS return ≥+4% in original window.
 Screener ADD recommendation = candidate for testing, not approval.
 Use `--no-extended` to skip the extended window for a faster check.
+
+If it passes, `python3 validation/add_validated_stock.py CANDIDATE.NS` adds it
+to `universe.py` (the single source of truth both `signal_runner.py` and
+`walk_forward.py` import), drafts the Universe History entry, and runs the
+full test suite as a final hard gate.
 
 ### Cron Schedule (server time = UTC)
 

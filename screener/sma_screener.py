@@ -47,7 +47,7 @@ import yfinance as yf
 
 # Allow running from the screener/ subdirectory OR the project root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.fetcher import get_ohlcv
+from data.fetcher import get_ohlcv, flatten_yf_columns
 
 
 # ── Stock universe ─────────────────────────────────────────────────────────────
@@ -315,8 +315,7 @@ def _fetch_benchmark(ticker: str, start: str, end: str) -> Optional[pd.DataFrame
                                   progress=False, auto_adjust=True)
         if raw.empty:
             return None
-        if isinstance(raw.columns, pd.MultiIndex):
-            raw.columns = raw.columns.get_level_values(0)
+        raw = flatten_yf_columns(raw)
         out = raw[["Close"]].rename(columns={"Close": "close"}).copy()
         out.index = pd.DatetimeIndex(out.index).tz_localize(None)
         out.index.name = "date"

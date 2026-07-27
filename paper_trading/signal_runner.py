@@ -62,6 +62,7 @@ from utils.costs import (
 )
 from utils.market_calendar import is_trading_day, next_trading_day, verify_holiday_coverage
 from screener.auto_screener import compute_hurst
+from universe import STOCKS   # single source of truth — see universe.py
 from strategy_config import (   # single source of truth — see strategy_config.py
     RISK_MANAGEMENT, POSITION_SIZING, COOLDOWN, AMO_LIMIT_BUFFER_PCT,
 )
@@ -73,19 +74,6 @@ from strategy_config import (   # single source of truth — see strategy_config
 # =============================================================================
 
 NIFTY_TICKER = "NIFTY 50.NS"   # Kite instrument token 256265; strips to "NIFTY 50" internally
-
-STOCKS: List[str] = [
-    "BAJAJ-AUTO.NS",
-    "HCLTECH.NS",
-    "COLPAL.NS",
-    "ANURAS.NS",
-    "BSOFT.NS",
-    "PERSISTENT.NS",
-    "CHOLAHLDNG.NS",   # WF validated Jul 8 2026 — 5/6 original OOS +15.4%, 5/6 extended OOS +9.1%
-    "COHANCE.NS",      # WF validated Jul 9-10 2026 — 6/6 original OOS +8.0%, extended SKIPPED (insufficient data, only 20 bars in 2015-19 window)
-    "MAPMYINDIA.NS",  # WF validated Jul 12 2026 — 5/6 original OOS +7.0%, extended SKIPPED (insufficient data, no bars in 2015-19 window)
-    "EMAMILTD.NS",    # WF validated Jul 17 2026 — 6/6 original OOS +9.0%, 5/6 extended OOS +13.6%
-]
 
 INITIAL_CAPITAL = 100_000.0    # ₹
 SMA_FAST        = 20
@@ -378,8 +366,8 @@ def _fetch_stock_data(today: date) -> Dict[str, pd.DataFrame]:
             # pattern (see that file's fetch loop). Applied regardless of downstream
             # data-quality guards below, since the API call itself already consumed
             # quota against the rate limit.
-            # NB: adds ~1.1s × len(STOCKS) to each run (10 stocks ≈ 11.0s today;
-            # scales linearly as the universe grows).
+            # NB: adds ~1.1s × len(STOCKS) to each run — scales linearly as the
+            # universe grows (see universe.py).
             time.sleep(1.1)
 
             # Guard: need at least SMA_SLOW bars to generate signals
@@ -418,48 +406,39 @@ def _fetch_stock_data(today: date) -> Dict[str, pd.DataFrame]:
 
 def _restore_rm(pos_state: dict) -> RiskManager:
     """
-    Reconstruct a RiskManager mid-trade from persisted portfolio state.
+    Reconstruct a RiskManager mid-trade from persisted portfolio state,
+    continuing from where check_exit() left off on the previous trading day.
 
-    The RiskManager tracks 5 internal values. We seed them directly
-    from the portfolio JSON so check_exit() continues from where it
-    left off on the previous trading day.
-
-    Why direct attribute access to private vars: we cannot call
-    on_position_open() here because that would reset bars_held to 0.
-    No engine files are modified — this is the only access point.
-
-    The RM's check_exit() will:
-      - increment _bars_since_entry by 1 (one more bar has passed)
-      - update _highest_high_since_entry with today's high
-      - recompute and ratchet up _chandelier_stop
-    All three updated values are read back via _save_rm_state().
+    Delegates to RiskManager.resume_from_state() — no private-attribute
+    access from outside the class. Field-name translation lives here
+    (portfolio JSON says "bars_held"; RiskManager's own vocabulary is
+    "bars_since_entry") so RiskManager stays decoupled from this module's
+    persistence schema.
     """
-    rm = RiskManager(RM_CONFIG)
-    rm._entry_price              = float(pos_state["entry_price"])
-    rm._entry_date               = pos_state["entry_date"]      # string; RM stores but doesn't calc with it
-    rm._bars_since_entry         = int(pos_state["bars_held"])  # check_exit increments this to bars_held+1
-    rm._highest_high_since_entry = float(pos_state["highest_high_since_entry"])
-
-    # chandelier_stop: JSON null == not yet computed == -inf in RiskManager
-    stored = pos_state.get("chandelier_stop")
-    rm._chandelier_stop = -math.inf if stored is None else float(stored)
-
-    return rm
+    return RiskManager.resume_from_state(
+        RM_CONFIG,
+        entry_price=float(pos_state["entry_price"]),
+        entry_date=pos_state["entry_date"],
+        bars_since_entry=int(pos_state["bars_held"]),
+        highest_high_since_entry=float(pos_state["highest_high_since_entry"]),
+        chandelier_stop=pos_state.get("chandelier_stop"),
+    )
 
 
 def _extract_rm_state(rm: RiskManager) -> Tuple[int, float, Optional[float]]:
     """
-    Read the three values that change after every check_exit() call.
+    Read the three values that change after every check_exit() call, via
+    RiskManager's own to_state() — no private-attribute access.
 
     Returns:
         (bars_held, highest_high, chandelier_stop)
         chandelier_stop is None when still at -inf (ATR warm-up not complete).
     """
-    chan = rm._chandelier_stop
+    state = rm.to_state()
     return (
-        rm._bars_since_entry,
-        rm._highest_high_since_entry,
-        None if math.isinf(chan) else float(chan),
+        state["bars_since_entry"],
+        state["highest_high_since_entry"],
+        state["chandelier_stop"],
     )
 
 

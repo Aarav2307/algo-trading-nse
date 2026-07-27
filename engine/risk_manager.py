@@ -32,6 +32,8 @@ API (designed for future Phase 2 live-trading integration):
     check_exit(current_bar, ohlcv_history)                   → dict
     on_position_close()                                      → None
     get_current_stop_levels()                                → dict
+    to_state() / resume_from_state()                         → resume mid-trade
+                                                                 across a process restart
 """
 
 import math
@@ -117,6 +119,65 @@ class RiskManager:
         self._bars_since_entry         = 0
         self._highest_high_since_entry = None
         self._chandelier_stop          = -math.inf
+
+    # ── Resume across a process restart ───────────────────────────────────────
+    # A live paper-trading run is a fresh process each day — on_position_open()
+    # can't be used to resume a position because it resets bars_since_entry to 0.
+    # This pair lets a caller persist and restore the exact mid-trade state
+    # instead of reaching into private attributes.
+
+    @classmethod
+    def resume_from_state(
+        cls,
+        config: dict,
+        entry_price: float,
+        entry_date,
+        bars_since_entry: int,
+        highest_high_since_entry: float,
+        chandelier_stop: Optional[float],
+    ) -> "RiskManager":
+        """
+        Reconstruct a RiskManager mid-trade from previously persisted state,
+        continuing from exactly where check_exit() left off. Pair with
+        to_state() to round-trip across a process restart.
+
+        Args:
+            chandelier_stop: None means "not yet computed" (ATR warm-up) —
+                              mirrors the -inf sentinel used internally.
+        """
+        rm = cls(config)
+        rm._entry_price              = float(entry_price)
+        rm._entry_date               = entry_date
+        rm._bars_since_entry         = int(bars_since_entry)
+        rm._highest_high_since_entry = float(highest_high_since_entry)
+        rm._chandelier_stop          = (
+            -math.inf if chandelier_stop is None else float(chandelier_stop)
+        )
+        return rm
+
+    def to_state(self) -> dict:
+        """
+        Serialize the state check_exit() mutates every bar, for persisting
+        across a process restart. Pair with resume_from_state().
+
+        Returns:
+            {
+                "entry_price":              float,
+                "entry_date":               same type passed to on_position_open(),
+                "bars_since_entry":         int,
+                "highest_high_since_entry": float,
+                "chandelier_stop":          float | None,  # None = ATR warm-up
+            }
+        """
+        return {
+            "entry_price":              self._entry_price,
+            "entry_date":                self._entry_date,
+            "bars_since_entry":          self._bars_since_entry,
+            "highest_high_since_entry":  self._highest_high_since_entry,
+            "chandelier_stop": (
+                None if math.isinf(self._chandelier_stop) else self._chandelier_stop
+            ),
+        }
 
     # ── Per-bar exit check ────────────────────────────────────────────────────
 
@@ -285,7 +346,7 @@ class RiskManager:
             "bars_held":                self._bars_since_entry,
             "highest_high_since_entry": self._highest_high_since_entry,
             "layer_1_hard_stop":        round(hard_stop_abs, 2),
-            "layer_2_chandelier":       round(chandelier, 2) if chandelier else None,
+            "layer_2_chandelier":       round(chandelier, 2) if chandelier is not None else None,
             "layer_3_time_stop_at_bar": time_stop_bar,
         }
 

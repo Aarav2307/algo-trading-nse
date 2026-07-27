@@ -1,10 +1,12 @@
 """
-Data fetcher — Phase 1: yfinance (historical data).
+Data fetcher — yfinance-backed OHLCV source.
 
-The single public function `get_ohlcv()` is the only data interface
-the rest of the system depends on. To switch to Kite Connect in Phase 2:
-  1. Create data/kite_fetcher.py with the same `get_ohlcv()` signature.
-  2. Change the import in run_backtest.py. Strategy and engine code stays untouched.
+get_ohlcv() shares its signature and DataFrame contract with
+data/kite_fetcher.get_ohlcv() by design, but the two are NOT
+interchangeable via a config flag — each caller picks one deliberately:
+  - data.kite_fetcher: live/recent NSE data (paper trading, screening, WF gate)
+  - data.fetcher (this module): pre-2023 history Kite can't serve, and
+    yfinance-only CLI paths that must work without a Kite login
 
 Returned DataFrame columns (all lowercase):
     open, high, low, close, volume
@@ -13,6 +15,19 @@ Index: DatetimeIndex (timezone-naive, IST dates)
 
 import yfinance as yf
 import pandas as pd
+
+
+def flatten_yf_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    yfinance returns MultiIndex columns when downloading a single ticker
+    with auto_adjust=True on newer versions — flatten them down to plain
+    field names ("Open", "Close", ...). No-op if columns are already flat.
+    Shared by every single-ticker yf.download() call site in the repo so
+    this quirk is handled in exactly one place.
+    """
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    return df
 
 
 def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
@@ -36,11 +51,7 @@ def get_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
             "Check the ticker symbol (NSE stocks end in .NS) and date range."
         )
 
-    # yfinance returns MultiIndex columns when downloading a single ticker
-    # with auto_adjust=True on newer versions — flatten them.
-    if isinstance(raw.columns, pd.MultiIndex):
-        raw.columns = raw.columns.get_level_values(0)
-
+    raw = flatten_yf_columns(raw)
     df = raw[["Open", "High", "Low", "Close", "Volume"]].copy()
     df.columns = ["open", "high", "low", "close", "volume"]
 

@@ -1,7 +1,7 @@
 """
 validation/add_validated_stock.py — Atomic single-command stock addition to the live universe.
 
-Runs the WF gate live (no cache), adds the ticker to both STOCKS files if it
+Runs the WF gate live (no cache), adds the ticker to universe.py if it
 passes, auto-drafts the CLAUDE_CONTEXT.md Universe History entry, then runs
 the full test suite as a final hard gate. Reverts all edits on test failure.
 
@@ -23,16 +23,15 @@ sys.path.insert(0, str(_ROOT))
 
 from validation.post_screener_pipeline import run_wf_gate
 
-SIGNAL_RUNNER_FILE = _ROOT / "paper_trading" / "signal_runner.py"
-WALK_FORWARD_FILE  = _ROOT / "validation"    / "walk_forward.py"
+UNIVERSE_FILE      = _ROOT / "universe.py"
 PENDING_ENTRY_DIR  = _ROOT / "validation"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_current_stocks() -> list:
-    """Return the live STOCKS list from signal_runner.py via direct import."""
-    from paper_trading.signal_runner import STOCKS
+    """Return the live STOCKS list from universe.py via direct import."""
+    from universe import STOCKS
     return list(STOCKS)
 
 
@@ -65,11 +64,7 @@ def _build_comment(gate_data: dict, date_str: str) -> str:
 
 
 def _insert_into_stocks(file_path: Path, ticker: str, comment: str) -> None:
-    """Insert ticker + comment before the closing ] of the STOCKS list in file_path.
-
-    Called twice with identical ticker+comment (once per file) so both edits
-    are structurally guaranteed identical.
-    """
+    """Insert ticker + comment before the closing ] of the STOCKS list in file_path."""
     text = file_path.read_text()
     m = re.search(r'(STOCKS(?::\s*List\[str\])?\s*=\s*\[.*?)(\n\])', text, re.DOTALL)
     if not m:
@@ -79,20 +74,6 @@ def _insert_into_stocks(file_path: Path, ticker: str, comment: str) -> None:
     padding      = " " * max(2, 18 - len(ticker_field))
     new_line     = f"    {ticker_field}{padding}# {comment}"
     new_text     = text[: m.start(2)] + f"\n{new_line}" + text[m.start(2):]
-    file_path.write_text(new_text)
-
-
-def _update_rate_limit_comment(file_path: Path, new_count: int) -> None:
-    """Recompute and replace the 'N stocks ≈ N.Ns' rate-limit comment in signal_runner.py."""
-    text     = file_path.read_text()
-    new_time = round(new_count * 1.1, 1)
-    new_text = re.sub(
-        r'\d+ stocks ≈ \d+\.\d+s',
-        f'{new_count} stocks ≈ {new_time:.1f}s',
-        text,
-    )
-    if new_text == text:
-        raise RuntimeError(f"Rate-limit comment pattern not found in {file_path.name}")
     file_path.write_text(new_text)
 
 
@@ -130,7 +111,7 @@ def _write_draft_context_entry(ticker: str, gate_data: dict, date_str: str) -> P
         f" (TODO: screener context — batch date, other candidates tested)\n"
         f"  WF validated: {orig_line}, {ext_line}\n"
         f"  TODO: note current crossover state (SMA20=X, SMA50=Y, gap Z%) at add time.\n"
-        f"  TODO: deployment note — run backup_state.sh, scp signal_runner.py to server.\n"
+        f"  TODO: deployment note — run backup_state.sh, scp universe.py to server.\n"
     )
 
     ticker_short = ticker.replace(".NS", "")
@@ -191,19 +172,15 @@ def main() -> int:
 
     current_count = len(current_stocks)
 
-    # ── Step 4: Build and apply file edits ───────────────────────────────────
-    comment   = _build_comment(gate_data, today_str)
-    sr_backup = SIGNAL_RUNNER_FILE.read_text()
-    wf_backup = WALK_FORWARD_FILE.read_text()
+    # ── Step 4: Build and apply file edit ────────────────────────────────────
+    comment      = _build_comment(gate_data, today_str)
+    universe_backup = UNIVERSE_FILE.read_text()
 
     try:
-        _insert_into_stocks(SIGNAL_RUNNER_FILE, ticker, comment)
-        _update_rate_limit_comment(SIGNAL_RUNNER_FILE, current_count + 1)
-        _insert_into_stocks(WALK_FORWARD_FILE, ticker, comment)
+        _insert_into_stocks(UNIVERSE_FILE, ticker, comment)
     except Exception as e:
         print(f"ERROR during file edit: {e}", file=sys.stderr)
-        SIGNAL_RUNNER_FILE.write_text(sr_backup)
-        WALK_FORWARD_FILE.write_text(wf_backup)
+        UNIVERSE_FILE.write_text(universe_backup)
         return 1
 
     # ── Step 5: Draft CLAUDE_CONTEXT entry ───────────────────────────────────
@@ -221,11 +198,10 @@ def main() -> int:
 
     if test_result.returncode != 0:
         print(
-            f"\nERROR: Test suite failed after adding {ticker}. Reverting all file edits.",
+            f"\nERROR: Test suite failed after adding {ticker}. Reverting file edit.",
             file=sys.stderr,
         )
-        SIGNAL_RUNNER_FILE.write_text(sr_backup)
-        WALK_FORWARD_FILE.write_text(wf_backup)
+        UNIVERSE_FILE.write_text(universe_backup)
         draft_path.unlink(missing_ok=True)
         return 1
 
@@ -241,20 +217,19 @@ WF gate result (fresh run, no cache):
   original : {orig['score']}/{total} OOS {orig['oos_return_pct']:+.1f}%
   extended : {ext_detail}
 
-Files updated (identical ticker+comment in both):
-  ✓ paper_trading/signal_runner.py  ({current_count} → {current_count + 1} stocks, rate-limit comment updated)
-  ✓ validation/walk_forward.py      (ticker+comment added)
+File updated:
+  ✓ universe.py  ({current_count} → {current_count + 1} stocks)
 
 Draft CLAUDE_CONTEXT.md entry written to:
   {draft_path}
   Review and manually insert into the Universe History section of CLAUDE_CONTEXT.md.
 
 NEXT MANUAL STEPS:
-  1. git diff paper_trading/signal_runner.py validation/walk_forward.py
+  1. git diff universe.py
   2. Review and insert {draft_path.name} into CLAUDE_CONTEXT.md Universe History
-  3. git add paper_trading/signal_runner.py validation/walk_forward.py CLAUDE_CONTEXT.md
+  3. git add universe.py CLAUDE_CONTEXT.md
   4. git commit
-  5. Server deploy: run backup_state.sh first, then scp paper_trading/signal_runner.py to server
+  5. Server deploy: run backup_state.sh first, then scp universe.py to server
   6. git push
 """)
     return 0

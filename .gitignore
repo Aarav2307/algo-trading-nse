@@ -63,3 +63,14 @@ screener/latest_candidates.json
 screener/latest_candidates.json.tmp
 utils/alerts.log
 utils/watchdog.log
+
+# Claude Code's own tooling — not project source
+.agents/
+.claude/
+data/skills/
+skills-lock.json
+
+# Stale duplicate of the root CLAUDE_CONTEXT.md — previously identified and
+# deliberately left untracked on the server; resurfaces occasionally as an
+# untracked local file. The root CLAUDE_CONTEXT.md is the only copy that matters.
+paper_trading/CLAUDE_CONTEXT.md

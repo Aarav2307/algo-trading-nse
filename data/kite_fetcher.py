@@ -1,9 +1,11 @@
 """
-Data fetcher — Phase 2: Zerodha Kite Connect (live NSE data).
+Data fetcher — Zerodha Kite Connect (live NSE data).
 
-Drop-in replacement for data/fetcher.py — identical function signature and
-DataFrame output format. To switch data sources, change one import line in
-run_backtest.py (see Task 4 note at bottom).
+get_ohlcv() shares its signature and DataFrame contract with data/fetcher.py
+by design, but the two are NOT interchangeable via a config flag — this
+module is for live/recent NSE data (paper trading, screening, WF gate).
+data/fetcher.py (yfinance) is used instead where Kite can't serve the data
+(pre-2023 history) or a Kite login isn't available (some CLI paths).
 
 Requires:
     auth/access_token.txt  — auto-written by auth/kite_login.py after login
