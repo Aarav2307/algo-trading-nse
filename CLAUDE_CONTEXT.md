@@ -70,6 +70,13 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   crossover holds through close.
   Deployed same-day for zero timing gap, per the lesson from
   CHOLAHLDNG.NS's Jul 9 miss.
+- Added Jul 27 2026: ENGINERSIN.NS
+  Screener flagged Jul 26 2026 (Sunday batch: FINCABLES.NS,
+  CUMMINSIND.NS, MAZDOCK.NS, IDEA.NS, ENGINERSIN.NS — only
+  ENGINERSIN.NS passed WF gate).
+  WF validated: original 5/6 OOS +11.5%, extended 5/6 OOS +10.5%.
+  Crossover at add time: SMA20=234.01, SMA50=236.96, gap -1.24%
+  (DEATH) — approaching golden, not yet crossed.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
