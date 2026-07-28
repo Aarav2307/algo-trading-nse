@@ -354,11 +354,22 @@ def test_8_integrity_validator_passes_on_valid_state() -> None:
 # Test 9 — Fix 3: pending_buy positions excluded from tier count
 # =============================================================================
 
-def test_9_tier_excludes_pending_buy() -> None:
-    name = "Test 9 — Fix 3: pending_buy excluded from tier count"
+def test_9_tier_counts_pending_buy_as_committed() -> None:
+    name = "Test 9 — pending_buy counts as committed for ETF tier (reversal)"
 
-    # 2 positions with pending_buy=True: shares set, cash NOT deducted yet.
-    # get_etf_target_tier must treat these as 0 real positions → tier = ETF_TIERS[0] = 1.0
+    # REVERSAL of the original Finding #1/#3 behavior (which excluded pending_buy
+    # from the tier count). That exclusion was correct when BUYs were funded from
+    # pre-existing free cash: selling ETF on a merely-queued BUY served no purpose
+    # and risked churn on a missed fill. It became the SOURCE of the ETF
+    # capital-funding leak once BUYs are funded by a proactive ETF unwind — a
+    # committed BUY must shrink the ETF to reserve its cash, or the end-of-day
+    # rebalance re-absorbs the freed cash and re-freezes the deadlock.
+    # pending_buy now counts as committed for ETF tier purposes, while remaining
+    # EXCLUDED from cash deduction and from get_portfolio_value()'s stock-value
+    # sum (both unchanged).
+    #
+    # 2 positions with pending_buy=True (shares set, cash NOT deducted): now
+    # counted as 2 committed positions → tier = ETF_TIERS[2] = 0.8.
     portfolio = _make_portfolio(open_positions=0, cash=100_000.0)
     tickers = list(portfolio.state["positions"].keys())
 
@@ -367,9 +378,9 @@ def test_9_tier_excludes_pending_buy() -> None:
         portfolio.state["positions"][t]["pending_buy"] = True
 
     tier     = portfolio.get_etf_target_tier()
-    expected = ETF_TIERS[0]   # 0 real positions → 1.0
+    expected = ETF_TIERS[2]   # 2 committed positions (incl pending_buy) → 0.8
     if tier != expected:
-        _fail(name, f"Expected {expected} (0 real positions), got {tier}")
+        _fail(name, f"Expected {expected} (2 committed incl pending_buy), got {tier}")
         return
     _pass(name)
 
@@ -702,15 +713,20 @@ def test_21_double_requeue_notes_parsed_correctly() -> None:
 # Test 22 — rebalance_etf() excludes pending_buy from tier (Finding #1)
 # =============================================================================
 
-def test_22_rebalance_etf_excludes_pending_buy() -> None:
-    name = "Test 22 — rebalance_etf() excludes pending_buy from tier"
+def test_22_rebalance_etf_counts_pending_buy_as_committed() -> None:
+    name = "Test 22 — rebalance_etf() counts pending_buy as committed (reversal)"
 
-    # Start with 200 ETF units at tier 1.0 (100% ETF, 0 confirmed positions, 0 cash)
+    # REVERSAL companion to Test 9 (see that test for the full reasoning). The
+    # end-of-day rebalance path must now count a pending_buy as a committed
+    # position so it does NOT re-absorb the cash the proactive unwind freed for
+    # that queued BUY. A pending_buy sitting at tier 1.0 (as if the unwind hadn't
+    # happened) must rebalance DOWN to the tier its committed slot implies (0.8),
+    # selling ETF — the exact behavior the fix depends on.
     portfolio = _make_portfolio(
         open_positions=0, cash=0.0,
         etf_shares=200, etf_avg_price=250.0, etf_tier=1.0,
     )
-    portfolio.state["cash"] = 5_000.0   # give some cash so rebalance CAN act if it wants to
+    portfolio.state["cash"] = 5_000.0   # some cash present; the move here is a SELL regardless
     tickers = list(portfolio.state["positions"].keys())
 
     # Queue a BUY (pending_buy=True, shares set, cash NOT deducted)
@@ -719,17 +735,15 @@ def test_22_rebalance_etf_excludes_pending_buy() -> None:
 
     initial_etf_shares = portfolio.state["etf_shares"]   # 200
 
-    # With the FIX: open_positions=0 (pending_buy excluded) → new_tier=ETF_TIERS[0]=1.0
-    #              1.0 == old_tier → NO CHANGE, no ETF sell
-    # With OLD code: open_positions=1 (pending_buy counted) → new_tier=ETF_TIERS[1]=0.8
-    #               0.8 != 1.0 → premature ETF sell
+    # committed_open_count()=1 (pending_buy counted) → new_tier=ETF_TIERS[1]=0.8
+    # 0.8 != old_tier 1.0 → ETF sells down to the committed tier.
     portfolio.rebalance_etf(250.0)
 
-    if portfolio.state["etf_tier"] != ETF_TIERS[0]:
-        _fail(name, f"Expected tier {ETF_TIERS[0]} (no confirmed positions), got {portfolio.state['etf_tier']}")
+    if portfolio.state["etf_tier"] != ETF_TIERS[1]:
+        _fail(name, f"Expected tier {ETF_TIERS[1]} (1 committed incl pending_buy), got {portfolio.state['etf_tier']}")
         return
-    if portfolio.state["etf_shares"] < initial_etf_shares:
-        _fail(name, f"Premature ETF sell: {initial_etf_shares} → {portfolio.state['etf_shares']} shares")
+    if portfolio.state["etf_shares"] >= initial_etf_shares:
+        _fail(name, f"Expected ETF sell for committed pending_buy: {initial_etf_shares} → {portfolio.state['etf_shares']} shares")
         return
 
     _pass(name)
@@ -742,12 +756,16 @@ def test_22_rebalance_etf_excludes_pending_buy() -> None:
 def test_23_rebalance_etf_and_tier_always_agree() -> None:
     name = "Test 23 — rebalance_etf() and get_etf_target_tier() always agree"
 
+    # REVERSAL (see Test 9): pending_buy now counts as a committed position, so
+    # the two pending_buy rows below expect the committed tier, not ETF_TIERS[0].
+    # (ETF_TIERS[1] == ETF_TIERS[2] == 0.8, so the "1 confirmed + 1 pending"
+    # row's asserted value is 0.8 for committed-count 2.)
     cases = [
         # (label,                             n_confirmed, pending_buy_idx, pending_rm_exit, expected_tier_key)
         ("0 confirmed, 0 pending",            0,           None,            False,           0),
         ("1 confirmed, 0 pending",            1,           None,            False,           1),
-        ("0 confirmed, 1 pending_buy",        0,           0,               False,           0),
-        ("1 confirmed, 1 pending_buy",        1,           1,               False,           1),
+        ("0 confirmed, 1 pending_buy",        0,           0,               False,           1),  # pending_buy committed
+        ("1 confirmed, 1 pending_buy",        1,           1,               False,           2),  # 2 committed
         ("1 confirmed, pending_rm_exit=True", 1,           None,            True,            1),
     ]
 
@@ -1045,7 +1063,7 @@ if __name__ == "__main__":
     test_6_death_cross_defers_like_rm_exit()
     test_7_integrity_validator_catches_stale_state()
     test_8_integrity_validator_passes_on_valid_state()
-    test_9_tier_excludes_pending_buy()
+    test_9_tier_counts_pending_buy_as_committed()
     test_10_tier_includes_pending_rm_exit()
     test_11_portfolio_value_includes_etf()
     test_12_validate_accepts_etf_tiers_values()
@@ -1058,7 +1076,7 @@ if __name__ == "__main__":
     test_19_correlation_check_excludes_pending_buy_from_dict()
     test_20_notes_prefix_matching_handles_requeued()
     test_21_double_requeue_notes_parsed_correctly()
-    test_22_rebalance_etf_excludes_pending_buy()
+    test_22_rebalance_etf_counts_pending_buy_as_committed()
     test_23_rebalance_etf_and_tier_always_agree()
     test_24_vwap_first_buy()
     test_25_vwap_second_buy_different_price()

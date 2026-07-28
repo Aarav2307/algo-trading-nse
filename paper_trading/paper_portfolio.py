@@ -660,51 +660,67 @@ class PaperPortfolio:
 
     # ── ETF overlay (NIFTYBEES paper tracking) ────────────────────────────────
 
-    def get_etf_target_tier(self) -> float:
-        """Return target ETF allocation fraction based on open stock positions."""
-        open_positions = sum(
-            1 for pos in self.state["positions"].values()
-            if pos.get("shares", 0) > 0 and not pos.get("pending_buy", False)
-        )
-        return ETF_TIERS[min(open_positions, 4)]
-
-    def rebalance_etf(self, niftybees_price: float, current_prices: dict = None, log_fn=None) -> None:
+    def committed_open_count(self) -> int:
         """
-        Paper-rebalance the NIFTYBEES ETF position to match the target tier.
-        Called by signal_runner after all stock signals are processed.
-        No-ops if the tier is unchanged. Cash-guards buys against available cash.
+        Count stock positions that commit capital to a slot, for ETF-tier
+        purposes: real open positions, pending_buy (AMO queued — capital is
+        committed to this entry, funded by the proactive ETF unwind), and
+        pending_rm_exit still holding shares.
 
-        Args:
-            niftybees_price:  today's NIFTYBEES close price
-            current_prices:   {ticker: today's close price} for open stock positions.
-                              Falls back to entry_price if a ticker is missing or
-                              current_prices is None — ensures backward compatibility.
-            log_fn:           optional callable for logging the rebalance action
+        pending_buy is COUNTED here (reversing the earlier Finding #1/#3
+        exclusion). That exclusion was correct when BUYs were funded from
+        pre-existing free cash — selling ETF on a merely-queued BUY served no
+        purpose and risked churn on a missed fill. Once BUYs are funded by a
+        proactive ETF unwind, a committed BUY MUST shrink the ETF to reserve
+        its cash; leaving pending_buy uncounted here is exactly what let the
+        end-of-day rebalance re-absorb the freed cash and re-freeze the
+        deadlock. pending_buy remains EXCLUDED from cash deduction and from
+        get_portfolio_value()'s stock-value sum (both unchanged).
         """
-        # Mirror get_etf_target_tier() exactly so the two functions can never disagree.
-        # pending_buy=True positions: shares are set but cash not yet deducted → exclude.
-        # pending_rm_exit=True with shares>0: position still open, sell pending → include.
-        open_positions = 0
+        count = 0
         for pos in self.state["positions"].values():
-            shares      = pos.get("shares", 0)
-            pending_buy  = pos.get("pending_buy", False)
-            pending_sell = pos.get("pending_rm_exit", False)
+            if pos.get("shares", 0) > 0:
+                count += 1                                   # real, pending_buy, or pending_rm_exit-held
+            elif pos.get("pending_rm_exit", False):
+                count += 1                                   # sell pending but shares already 0 (edge)
+        return count
 
-            if shares > 0 and not pending_buy:
-                open_positions += 1
-            elif pending_sell and shares == 0:
-                open_positions += 1
+    def get_etf_target_tier(self) -> float:
+        """Return target ETF allocation fraction based on committed stock positions."""
+        return ETF_TIERS[min(self.committed_open_count(), 4)]
 
-        open_positions = min(open_positions, 4)
-        new_tier = ETF_TIERS[open_positions]
-        old_tier = self.state["etf_tier"]
+    def _etf_rebalance_delta_shares(
+        self, open_positions: int, niftybees_price: float, current_prices: dict = None
+    ) -> tuple:
+        """
+        Pure computation (reads state, never mutates): the (new_tier,
+        delta_shares) needed to move the ETF to the tier implied by
+        `open_positions`. delta_shares > 0 = buy ETF, < 0 = sell ETF.
 
-        if new_tier == old_tier:
-            return
+        Two deliberate differences from the pre-fix inline logic, both approved:
+          • stock_value EXCLUDES pending_buy positions — their cash has not left
+            the cash pool yet, so counting their provisional share value would
+            double-count. This aligns rebalance_etf's value base with
+            get_portfolio_value(), which already excludes pending_buy for the
+            same reason.
+          • delta_shares uses round(), not int(). int() truncates toward zero,
+            stranding up to one ETF share's worth of cash on every rebalance —
+            the source of the ₹243 residual frozen since Jun 25. Rounding
+            targets the tier accurately; any sub-one-share remainder is well
+            inside the position sizer's cash-cap tolerance.
+
+        This is the single source of the delta math — both the real unwind
+        (rebalance_etf) and the cash-gate estimate (projected_tier_unwind_cash)
+        call it, so the check and the action can never disagree.
+        """
+        tier = ETF_TIERS[min(open_positions, 4)]
+
+        if niftybees_price <= 0:
+            return tier, 0
 
         stock_value = 0.0
         for ticker, pos in self.state["positions"].items():
-            if pos.get("shares", 0) > 0:
+            if pos.get("shares", 0) > 0 and not pos.get("pending_buy", False):
                 if current_prices and ticker in current_prices:
                     price = current_prices[ticker]
                 else:
@@ -714,11 +730,73 @@ class PaperPortfolio:
         total_portfolio_value = (
             self.state["cash"] + stock_value + self.state["etf_shares"] * niftybees_price
         )
-
-        target_etf_value  = total_portfolio_value * new_tier
+        target_etf_value  = total_portfolio_value * tier
         current_etf_value = self.state["etf_shares"] * niftybees_price
-        delta_value       = target_etf_value - current_etf_value
-        delta_shares      = int(delta_value / niftybees_price)
+        delta_shares      = round((target_etf_value - current_etf_value) / niftybees_price)
+        return tier, int(delta_shares)
+
+    def projected_tier_unwind_cash(
+        self, additional_positions: int, niftybees_price: float, current_prices: dict = None
+    ) -> float:
+        """
+        Cash (≥ 0) that unwinding the ETF to the tier implied by
+        (committed positions + additional_positions) would free. Non-mutating —
+        used by Phase 2's cash gate to decide whether an under-cashed candidate
+        is fundable by an ETF unwind. Only a net SELL (tier stepping down) frees
+        cash; returns 0.0 if the projected tier would need to BUY ETF or hold.
+        The sell is capped at ETF shares actually held, so the estimate matches
+        what rebalance_etf() would really free.
+        """
+        projected = self.committed_open_count() + additional_positions
+        _tier, delta_shares = self._etf_rebalance_delta_shares(
+            projected, niftybees_price, current_prices
+        )
+        if delta_shares >= 0:
+            return 0.0
+        sell_shares = min(abs(delta_shares), self.state["etf_shares"])
+        return sell_shares * niftybees_price
+
+    def rebalance_etf(
+        self,
+        niftybees_price: float,
+        current_prices: dict = None,
+        log_fn=None,
+        projected_open_positions: int = None,
+    ) -> None:
+        """
+        Paper-rebalance the NIFTYBEES ETF position to match the target tier.
+        No-ops if the tier is unchanged. Cash-guards buys against available cash.
+
+        Called two ways:
+          • End-of-day (projected_open_positions=None): tier from the actual
+            committed position count (committed_open_count()).
+          • Proactive unwind during Phase 2 (projected_open_positions set): tier
+            as if that many positions were committed, so the ETF shrinks to fund
+            a BUY about to be queued — restoring the same-day rebalancing the
+            validated backtest (etf_overlay_backtest.py) assumes.
+
+        Args:
+            niftybees_price:  today's NIFTYBEES close price
+            current_prices:   {ticker: today's close price} for open stock positions.
+                              Falls back to entry_price if a ticker is missing or
+                              current_prices is None — ensures backward compatibility.
+            log_fn:           optional callable for logging the rebalance action
+            projected_open_positions: override the committed count (proactive unwind)
+        """
+        open_positions = (
+            projected_open_positions
+            if projected_open_positions is not None
+            else self.committed_open_count()
+        )
+        new_tier, delta_shares = self._etf_rebalance_delta_shares(
+            open_positions, niftybees_price, current_prices
+        )
+        old_tier = self.state["etf_tier"]
+
+        # Only rebalance on a tier CHANGE — never on intra-tier drift. Mirrors
+        # the validated backtest, which transacts only when the tier steps.
+        if new_tier == old_tier:
+            return
 
         if delta_shares == 0:
             self.state["etf_tier"] = new_tier

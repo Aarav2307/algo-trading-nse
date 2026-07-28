@@ -1391,8 +1391,18 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                 print(f"→ SKIPPED   {reason}")
                 continue
 
-            # Cash floor: below ₹1,000 the sizer will return 0 shares for any stock
-            if portfolio.state["cash"] < MIN_CASH_TO_ATTEMPT_BUY:
+            # Cash floor gate. A flat / under-cashed portfolio can still be
+            # fundable by unwinding the ETF to the tier this candidate's entry
+            # implies (restoring the same-day rebalancing the validated backtest
+            # assumes). Estimate the cash that unwind would free via the SAME
+            # plan the real unwind uses below, so the check and the action can
+            # never disagree. Skipped in backfill (no ETF mutation in dry runs).
+            etf_unwind_credit = 0.0
+            if not is_backfill and niftybees_price_for_report > 0:
+                etf_unwind_credit = portfolio.projected_tier_unwind_cash(
+                    1, niftybees_price_for_report, current_prices
+                )
+            if portfolio.state["cash"] + etf_unwind_credit < MIN_CASH_TO_ATTEMPT_BUY:
                 reason = (
                     f"Insufficient cash ₹{portfolio.state['cash']:,.0f} "
                     f"(minimum ₹{MIN_CASH_TO_ATTEMPT_BUY:,.0f} required)"
@@ -1481,7 +1491,26 @@ def main(backfill_date: Optional[str] = None, force: bool = False) -> None:
                     f"proceeding with BUY (fail open)"
                 )
 
-            # Gate passed — execute with current (post-prior-execution) portfolio state.
+            # ── Same-day ETF unwind to fund this entry ────────────────────────
+            # Shrink the ETF to the tier this (about-to-be-committed) position
+            # implies BEFORE sizing/execution, freeing the cash the entry needs.
+            # Placed AFTER the news + correlation gates so a blocked candidate
+            # never churns the ETF. Restores the same-day rebalancing the
+            # validated backtest (etf_overlay_backtest.py) already assumes.
+            # Multi-candidate stepping is automatic: a 2nd candidate projects
+            # committed_open_count()+1 = the next tier, which for tiers 1→2 is
+            # unchanged (80%→80%) and frees nothing — it's funded only from
+            # residual cash, exactly matching the backtest's n_active step.
+            # Skipped in backfill (no ETF mutation / no save in dry runs).
+            if not is_backfill and niftybees_price_for_report > 0:
+                portfolio.rebalance_etf(
+                    niftybees_price_for_report,
+                    current_prices=current_prices,
+                    log_fn=print,
+                    projected_open_positions=portfolio.committed_open_count() + 1,
+                )
+
+            # Gate passed — execute with current (post-unwind) portfolio state.
             executed = _process_stock(
                 ticker, df, portfolio, current_prices, market_regime,
                 defer_buy=False,

@@ -1095,6 +1095,127 @@ double-close). Regression test:
 
 ---
 
+#### ETF overlay capital-funding deadlock — confirmed frozen 33 days live — FIXED (Jul 27 2026)
+Root cause: `rebalance_etf()` ran AFTER Phase 2's cash gate ([signal_runner.py](paper_trading/signal_runner.py)),
+using the position count as of *yesterday*. A stock BUY could only be funded from
+whatever cash already existed; the ETF only shrank in response to a position that
+had *already* opened. Once the portfolio went fully flat (0 positions, 100% ETF
+tier), there was no path back: opening the next position required cash, cash
+required the ETF to shrink, and the ETF only shrank once a position was already
+open. A structural deadlock, not a timing lag — it does not self-resolve.
+
+Confirmed live via the server's actual daily logs (not inferred from snapshots):
+**frozen continuously from Jun 25 2026 through Jul 27 2026 — 33 unbroken calendar
+days** at 100% ETF tier / 0 open positions / ~₹243 cash. In that entire window
+exactly one stock signal fired at all: COLPAL.NS, Jul 27, correctly ranked and
+gated, skipped only for "Insufficient cash ₹243 (minimum ₹1,000 required)." This
+is one confirmed real incident, not a month of missed trades — it's a month of a
+live structural deadlock that happened to only be tested once. Whether that one
+skip would have been profitable is unknown and, per this file's own standard, not
+guessed at here.
+
+This diverges from the actually-validated backtest
+(`validation/etf_overlay_backtest.py`'s `_simulate_stock_scenario()`), which steps
+the ETF tier to `ETF_TIERS[n_active]` the same day a position becomes active —
+same-day rebalancing was already the approved, validated design; the live
+implementation just never matched it.
+
+**Fix — restore same-day rebalancing, not new behavior:**
+`paper_trading/signal_runner.py`'s Phase 2 loop, for each ranked candidate that
+has already cleared position-limit/news/correlation gates: compute what the ETF
+tier would be if this candidate's position becomes committed
+(`committed_open_count() + 1`), and if that shrinks the tier, unwind the ETF to
+it via `rebalance_etf(..., projected_open_positions=...)` *before* sizing/
+execution — funding the entry from the ETF the same day, exactly as the
+validated backtest models. The cash-floor check now credits this projected
+unwind (`projected_tier_unwind_cash()`) before deciding to skip. Multi-candidate
+runs step naturally: a 2nd candidate in the same run projects
+`committed_open_count()+1` off an *already-incremented* count, so if the tier at
+that count is unchanged (`ETF_TIERS[1] == ETF_TIERS[2] == 0.8`) it frees nothing
+further — funded only from residual cash, matching the backtest's per-day
+`n_active` accumulation exactly. No new conviction/rank threshold was invented,
+per explicit instruction.
+
+**Required reversal of a prior audited decision (Finding #1/#3, Jun 21):**
+that fix excluded `pending_buy` positions from the ETF tier count, reasoning
+that a merely-queued BUY shouldn't shrink the ETF since it wasn't yet funded
+from it. That reasoning was correct *at the time* — BUYs were funded from
+pre-existing free cash, so selling ETF for a queued-but-unfunded BUY served no
+purpose and risked churn on a missed fill. It became the exact mechanism that
+silently undid the naive version of this fix: with `pending_buy` excluded, the
+same end-of-day `rebalance_etf()` call that already runs after Phase 2 would see
+0 committed positions (the queued BUY not yet counted), snap the tier back to
+100%, and rebuy the ETF with the cash the proactive unwind had just freed —
+reinstating the deadlock within the same run. `pending_buy` now counts as
+committed for ETF tier purposes only. It remains excluded from cash deduction
+(unchanged — the double-deduction fix above) and from `rebalance_etf()`'s
+portfolio-value sum (now aligned with `get_portfolio_value()`, which already
+excluded it for the identical double-counting reason — a consistency fix, not
+new invention). Tests 9, 22, and 23 in `test_etf_overlay.py` encoded the old
+exclusion directly and were rewritten in place with the reasoning above stated
+in each; no other existing test changed.
+
+**Missed-fill self-heal:** if tomorrow's AMO gaps beyond the limit buffer,
+`cancel_pending_buy()` resets the position to flat (untouched cash, since
+`pending_buy` was never deducted). The next cycle's end-of-day `rebalance_etf()`
+then sees 0 committed positions again and rebuys the ETF on its own — no new
+code path was needed for this; it was already correct once the tier-change
+detection sees reality accurately.
+
+**Truncation bug (separate, smaller fix, same file):** `delta_shares =
+int(delta_value / niftybees_price)` truncated toward zero on every rebalance.
+Changed to `round()`. This improves tier-targeting accuracy on the sell-side
+unwinds this fix introduces — it does **not** eliminate the ~₹243 residual.
+At the 100% tier, the last sub-share of cash cannot be invested regardless of
+rounding vs. truncation (can't buy a fractional ETF share, can't exceed cash);
+the residual was always a harmless, un-investable remainder, never the cause of
+the deadlock. The deadlock was rebalance *timing*, addressed above.
+
+**Also found and corrected, not part of the live deadlock:**
+`validation/etf_overlay_backtest.py` hardcodes tier schedule `{1: 0.6, 2: 0.6,
+3: 0.3}` (`A_current`) as its default. The grid search that actually validated
+this overlay (`validation/etf_tier_grid_result.json`, Jun 21) tested six
+schedules and selected **D_aggressive** (`{1: 0.8, 2: 0.8, 3: 0.5}`, best
+Sharpe 0.280) — which is what's live in `paper_portfolio.py`. So there was no
+live-vs-validated *tier value* divergence, only a stale default in a standalone
+harness that isn't wired into anything live. Flagged for a separate cleanup;
+not touched as part of this fix.
+
+**Cost accounting (real numbers, not abstract percentages)** — using COLPAL.NS's
+actual Jul 27 price (₹2,135.20) and the frozen portfolio's actual composition
+(₹243.49 cash + 405 NIFTYBEES @ ₹243 ≈ ₹98,658 total):
+- Unwinding 100%→80% frees ~₹19,440 (80 NIFTYBEES shares), funding a 9-share
+  COLPAL.NS position (~₹19,217) — this fix would have unwound the ETF and
+  funded that trade had it existed today.
+- AMO fill-delay exposure gap (the ETF sells today, the stock buy fills
+  tomorrow's open — a gap the same-day-everything backtest doesn't model): the
+  ~₹19,440 slice sits out of the market for ~1 trading day. Expected cost ≈ ₹0
+  (a single day's expected return is ~0), with a typical ±₹136 one-day swing at
+  NIFTYBEES' ~0.7% daily volatility. Small and bounded, not free.
+- Missed-fill round-trip cost, using the real constants in
+  `etf_overlay_backtest.py` (`ETF_SELL_COST_PCT=0.0003`, `ETF_BUY_COST_PCT=
+  0.0001`): sell + rebuy on ~₹19,440 ≈ ₹7.78 (0.008% of portfolio value). Note:
+  the live paper overlay does not currently model any ETF transaction cost
+  (`rebalance_etf()` moves cash at exactly `shares × price`) — ₹7.78 is what
+  this would cost with real Zerodha charges applied, not what the paper system
+  currently records. Pre-existing gap, unrelated to this fix.
+- This fix captures signals the system is designed to act on. It does not
+  guarantee any of them profit — COLPAL.NS's outcome is unknown and it's fine
+  that it's unknown; sizing the deadlock's cost was never about second-guessing
+  that specific trade.
+
+Regression tests: `paper_trading/test_etf_unwind_funding.py` (7 new tests: 0→1
+cash-and-tier accuracy, the exact confirmed-live deadlock scenario, missed-fill
+self-heal, multi-candidate stepping, rounding-shortfall bound, and validated-tier
++ same-day-stepping parity against the grid-search artifact).
+
+**Not done as part of this fix, by explicit instruction:** `portfolio_state.json`
+was not modified to correct the currently-frozen ₹243 state. If the fix is
+correct, the next qualifying signal resolves it naturally — no manual state
+edit was made or is believed necessary.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL
