@@ -86,6 +86,19 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   WF validated: original 5/6 OOS +21.9%, extended 5/6 OOS +19.5%.
   Crossover at add time: DEATH (-1.66%) — approaching golden,
   not yet crossed.
+- Added Jul 30 2026: SUZLON.NS
+  Tested from a compiled list of unique tickers across the last 3
+  screener watchlists (Jul 22, 26, 29 — not a single day's batch).
+  Most had already been tested and failed as ADD candidates on
+  other dates; SUZLON.NS was the one new pass. Proactive test, not
+  a screener ADD recommendation.
+  WF validated: original 5/6 OOS +13.0%, extended 5/6 OOS +30.1%
+  (strongest extended return seen in any batch to date).
+  Crossover at add time: DEATH (-3.25%) — gap widening, not
+  narrowing (price fell ~10.7% over the two sessions before add:
+  Jul 27 ₹53.15 → Jul 29 ₹47.45). No signal of an imminent flip;
+  added on WF strength alone, per the same-treatment rule for any
+  gate-passing candidate regardless of proximity to crossover.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
