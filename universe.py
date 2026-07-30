@@ -31,4 +31,5 @@ STOCKS: List[str] = [
     "MAPMYINDIA.NS",  # WF validated Jul 12 2026 — 5/6 original OOS +7.0%, extended SKIPPED (insufficient data, no bars in 2015-19 window)
     "EMAMILTD.NS",    # WF validated Jul 17 2026 — 6/6 original OOS +9.0%, 5/6 extended OOS +13.6%
     "ENGINERSIN.NS",  # WF validated Jul 27 2026 — 5/6 original OOS +11.5%, 5/6 extended OOS +10.5%
+    "NAVA.NS",        # WF validated Jul 30 2026 — 5/6 original OOS +21.9%, 5/6 extended OOS +19.5%
 ]

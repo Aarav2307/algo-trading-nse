@@ -77,6 +77,15 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   WF validated: original 5/6 OOS +11.5%, extended 5/6 OOS +10.5%.
   Crossover at add time: SMA20=234.01, SMA50=236.96, gap -1.24%
   (DEATH) — approaching golden, not yet crossed.
+- Added Jul 30 2026: NAVA.NS
+  Screener flagged Jul 29 2026 (Wednesday batch, ADD list:
+  LTM.NS, MGL.NS, CUMMINSIND.NS, NATCOPHARM.NS, TCS.NS — all
+  failed WF gate). NAVA.NS was on the WATCHLIST that day, not
+  the ADD list — tested proactively, not a screener ADD
+  recommendation.
+  WF validated: original 5/6 OOS +21.9%, extended 5/6 OOS +19.5%.
+  Crossover at add time: DEATH (-1.66%) — approaching golden,
+  not yet crossed.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
