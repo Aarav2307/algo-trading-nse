@@ -1078,7 +1078,43 @@ exists, not worth relying on as the primary control.
 
 ---
 
-#### confirm_buy_fill() never persisted state — BUY fills silently lost — FIXED (Jul 27 2026)
+#### confirm_buy_fill() never persisted state — CORRECTED (Aug 4 2026): the cited historical incident was false
+**Correction, Aug 4 2026:** The BAJAJ-AUTO.NS incident described below was
+verified false via a direct, explicit SSH pull of the live server's
+portfolio_state.json (not a local checkout): trade_log contains a complete,
+internally consistent BAJAJ-AUTO.NS entry (bought Rs10,286.14 Jun 2, sold
+Rs9,887.05 Jun 29, exit_reason STRATEGY_SIGNAL), matching amo_orders.csv's
+SELL fill for the same date, with the current position correctly flat
+(shares=0, no pending flags). The trade was never lost. total_trades=4
+matches trade_log's length exactly.
+
+The original finding below was built on incorrect data -- most likely a
+local Mac file mistaken for the server's actual state, the same class of
+SSH-session mixup caught and corrected multiple other times this session.
+The note in the original entry telling readers a local file showing this
+trade as healthy was "stale" and "not evidence against the incident" was
+itself backwards: that data was closer to correct than what the original
+investigation actually used.
+
+What remains valid: the underlying code change --
+confirm_buy_fill() now calling self.save() before returning, and
+close_position() being routed through PaperPortfolio instead of a raw
+JSON bypass -- is kept. An in-memory mutation that isn't persisted is a
+real bug class worth guarding against on its own merits, independent of
+whether this specific historical trade ever actually hit it. The
+regression test (test_buy_fill_persists_to_disk) is also kept as a test
+of that general pattern.
+
+What does NOT hold: every claim in the "Confirmed historical instance"
+paragraph below about BAJAJ-AUTO.NS specifically. No paper P&L is actually
+missing. Left the original text below, uncorrected in place, rather than
+deleting it, so the full record (including how the error happened) stays
+visible -- per this file's own practice for prior reversals (see the
+pending_buy Finding #1/#3 correction below).
+
+---
+
+#### [RETRACTED CLAIM] confirm_buy_fill() never persisted state — BUY fills silently lost — originally marked FIXED (Jul 27 2026), incident retracted (Aug 4 2026)
 Root cause: `PaperPortfolio.confirm_buy_fill()` (paper_trading/paper_portfolio.py)
 mutated `self.state` in memory — deducting cash, clearing `pending_buy`, setting the
 real entry price — but never called `self.save()`. A confirmed BUY fill existed only
