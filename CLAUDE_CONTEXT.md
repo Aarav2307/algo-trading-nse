@@ -1153,6 +1153,38 @@ double-close). Regression test:
 
 ---
 
+#### First 4 trades (WHIRLPOOL/TMPV/SIEMENS/BAJAJ-AUTO, Jun 2026) — VERIFIED GENUINE, not seeded (Aug 4 2026)
+The system's first 4 trades — WHIRLPOOL.NS, TMPV.NS, SIEMENS.NS, BAJAJ-AUTO.NS,
+all entered Jun 2-3 2026 — don't match today's fill logic: `entry_price` is exactly
+`close × 1.0005` (e.g. SIEMENS: `3729.70 × 1.0005 = 3731.5648...`), not
+`morning_fill_check.py`'s current next-day-open fill. Investigated and confirmed
+**genuine same-day-close fills from the system's original code, not seeded/demo
+data.** If this discrepancy resurfaces, it does not need re-investigating.
+
+Two fill models, two commits: `cb678a1` (the repo's first commit) filled BUYs
+immediately, same-day, at `apply_slippage(close_price, "buy")` — i.e. close × 1.0005
+(`SLIPPAGE_RATE=0.0005` in `utils/costs.py`, still live today, just no longer applied
+to a close price for entries). `986ecee` (Jun 19 2026, "Fix double cash deduction")
+replaced that with the deferred AMO model live today: `queue_pending_buy()` at signal
+time, `confirm_buy_fill()` at next morning's actual open. These 4 trades were entered
+under the original model, before that commit existed.
+
+Strongest evidence (of several independently checked): the server's actual
+`portfolio_state.json` (pulled via `server_master`, a local branch fetched directly
+from the live server) stores SIEMENS's entry as the raw float `3731.5648499999998`.
+Running `3729.7 * 1.0005` in Python produces that exact value, byte-for-byte —
+IEEE-754 rounding noise no one hand-types into seeded data. A genuine dated cron log
+(`paper_trading/logs/2026-06-03.log`, real Kite auto-login/TOTP/OAuth output) and a
+repo-wide history grep turning up these prices nowhere outside the actual state/log
+files corroborate it.
+
+Unresolved, doesn't affect the verdict: `portfolio_state.json`'s `entry_date` reads
+`2026-06-02`, but the real log and every `signal_log.csv` row for these BUYs are
+dated `2026-06-03` — a one-day label offset with no confirmed root cause. Flagged,
+not solved.
+
+---
+
 #### ETF overlay capital-funding deadlock — confirmed frozen 33 days live — FIXED (Jul 27 2026)
 Root cause: `rebalance_etf()` ran AFTER Phase 2's cash gate ([signal_runner.py](paper_trading/signal_runner.py)),
 using the position count as of *yesterday*. A stock BUY could only be funded from
