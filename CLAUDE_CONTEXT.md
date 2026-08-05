@@ -1183,6 +1183,22 @@ Unresolved, doesn't affect the verdict: `portfolio_state.json`'s `entry_date` re
 dated `2026-06-03` — a one-day label offset with no confirmed root cause. Flagged,
 not solved.
 
+**Update (Aug 5 2026):** WHIRLPOOL's and TMPV's exit prices are now also confirmed
+exact, closing out this investigation. Both use the same `check_exit()` →
+`apply_slippage(close, "sell")` path, unchanged across `cb678a1`→`986ecee` — no
+exit-reason-dependent formula (STRATEGY_SIGNAL and CHANDELIER both just set
+`exit_price = current_close`). WHIRLPOOL (STRATEGY_SIGNAL): `820.00 × 0.9995 =
+819.59` exact. TMPV (CHANDELIER): `361.65 × 0.9995 = 361.469175`, rounds to
+`361.4692` exact. Both inputs are `signal_log.csv`'s own logged `close_price`, not
+external data. As further corroboration that the risk-manager logic itself (not
+just the slippage arithmetic) is genuine, TMPV's Jun 17 chandelier stop was
+independently reproduced bar-by-bar from a sliding 120-day OHLC window and matched
+the logged value exactly: `372.3770`. One residual item, not affecting the
+verdict: Kite's historical API today reports both tickers' closes ~0.18-0.19%
+below what's logged in `signal_log.csv`, consistently across two unrelated
+tickers two weeks apart — most likely a retroactive data revision. `signal_log.csv`
+is authoritative here since it's what the live system actually processed.
+
 ---
 
 #### ETF overlay capital-funding deadlock — confirmed frozen 33 days live — FIXED (Jul 27 2026)
