@@ -13,8 +13,10 @@ Dates used below are pinned to the real 2026 NSE_HOLIDAYS_2026 list so these
 tests double as a check that the hardcoded calendar and the lookup logic
 agree with each other.
 """
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import patch
+
+import pandas as pd
 
 from utils.market_calendar import (
     count_trading_days_since,
@@ -67,6 +69,27 @@ def test_is_trading_day_uses_fetched_holidays_for_non_hardcoded_year():
     with patch("utils.market_calendar.fetch_nse_holidays", return_value=fetched):
         assert is_trading_day(date(2027, 3, 10)) is False   # in fetched list
         assert is_trading_day(date(2027, 3, 11)) is True    # not in fetched list
+
+
+def test_is_trading_day_normalizes_datetime_input():
+    """
+    A datetime.datetime for a real holiday must not be silently misclassified
+    as a trading day. Without normalizing to .date() first, `d not in
+    set(year_holidays)` is always True for a datetime — Python's datetime and
+    date objects are never == to each other, even at identical midnight — so
+    every holiday would incorrectly read as open. No current caller passes a
+    datetime, but this guards the day one does. (2026-08-07)
+    """
+    assert is_trading_day(datetime(2026, 1, 26)) is False   # Republic Day, midnight
+    assert is_trading_day(datetime(2026, 1, 26, 14, 30)) is False  # same day, non-midnight time
+    assert is_trading_day(datetime(2026, 1, 27)) is True
+
+
+def test_is_trading_day_normalizes_pandas_timestamp_input():
+    """Same landmine as the datetime case, via pd.Timestamp — the type most
+    likely to actually reach this function from a pandas-heavy caller."""
+    assert is_trading_day(pd.Timestamp("2026-01-26")) is False
+    assert is_trading_day(pd.Timestamp("2026-01-27")) is True
 
 
 # ── next_trading_day() ────────────────────────────────────────────────────────

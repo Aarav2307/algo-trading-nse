@@ -201,6 +201,14 @@ def is_trading_day(d: date) -> bool:
     Returns:
         bool — True if the market is open on this date.
     """
+    # A datetime/pd.Timestamp is never == a plain date (Python considers them
+    # different types, even at identical midnight), so `d not in
+    # set(year_holidays)` below would silently return True for every actual
+    # holiday if d weren't normalized first. No current caller passes one of
+    # these, but nothing stops a future caller from doing so.
+    if isinstance(d, datetime):
+        d = d.date()
+
     # weekday() returns 0=Monday … 6=Sunday
     if d.weekday() >= 5:
         return False
