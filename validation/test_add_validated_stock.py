@@ -122,6 +122,18 @@ def test_gate_passes_file_updated(tmp_path):
     assert "extended 5/6 OOS +13.6%" in draft_text, "Draft must contain extended OOS result"
     assert _TICKER in draft_text, "Draft must name the ticker"
 
+    # Regression guard (2026-08-07): the internal test-suite invocation had
+    # gone stale, hardcoded to a subset of directories ("paper_trading/",
+    # "data/", "utils/", "screener/", "validation/") that silently missed
+    # engine/ and root-level test_*.py files — 269 tests instead of the real
+    # 301. Pin the exact command so it can never drift from the full-suite
+    # invocation used everywhere else in this project (no positional path
+    # args, just the two live-Kite ignores).
+    cmd = mock_subproc.run.call_args[0][0]
+    assert "paper_trading/" not in cmd, "must not hardcode a stale directory subset"
+    assert "--ignore=test_kite.py" in cmd
+    assert "--ignore=test_kite_fetcher.py" in cmd
+
 
 # ── Test 3: Ticker already present — no-op, exit 0 ──────────────────────────
 

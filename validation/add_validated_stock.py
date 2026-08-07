@@ -191,7 +191,8 @@ def main() -> int:
     test_result = subprocess.run(
         [
             sys.executable, "-m", "pytest",
-            "paper_trading/", "data/", "utils/", "screener/", "validation/", "-v",
+            "--ignore=test_kite.py", "--ignore=test_kite_fetcher.py",
+            "-v",
         ],
         cwd=str(_ROOT),
     )
