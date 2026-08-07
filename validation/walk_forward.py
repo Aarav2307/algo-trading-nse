@@ -249,25 +249,36 @@ def _run_one_from_df(
     df: pd.DataFrame,
     cooldown_bars: int,
     nifty_df: pd.DataFrame = None,
+    params: dict = None,
 ) -> dict:
     """
     Run one backtest window using a pre-fetched DataFrame.
 
     Unlike _run_one(), no data fetching occurs — the caller supplies df and
-    nifty_df. Used by the sensitivity analysis to avoid re-fetching the same
-    stock data for every cooldown value being tested.
+    nifty_df. Used by the sensitivity/stability analyses to avoid re-fetching
+    the same stock data for every cooldown or SMA/ATR combination being
+    tested — those parameters affect signal generation and risk logic
+    downstream of the raw price data, not the price data itself.
+
+    Args:
+        params: same flat override dict accepted by _run_one() (sma_fast,
+                sma_slow, atr_period, atr_multiplier, hard_stop_pct,
+                max_bars_held, risk_per_trade, max_position). None → bare
+                PARAMS, identical to this function's original behavior.
     """
     n_bars = len(df)
     if n_bars < MIN_BARS:
         return {"error": f"INSUFFICIENT DATA — {n_bars} bars (need ≥ {MIN_BARS})"}
 
-    cooldown_cfg = {**PARAMS["cooldown"], "cooldown_bars": cooldown_bars}
+    p = _merge_params(PARAMS, params) if params is not None else PARAMS
 
-    signals      = generate_signals(df, PARAMS["sma_fast"], PARAMS["sma_slow"])
-    risk_manager = RiskManager(PARAMS["risk_management"])
+    cooldown_cfg = {**p["cooldown"], "cooldown_bars": cooldown_bars}
+
+    signals      = generate_signals(df, p["sma_fast"], p["sma_slow"])
+    risk_manager = RiskManager(p["risk_management"])
     cooldown     = CooldownTracker(cooldown_cfg)
-    sizer        = PositionSizer(PARAMS["position_sizing"])
-    portfolio    = Portfolio(PARAMS["initial_capital"])
+    sizer        = PositionSizer(p["position_sizing"])
+    portfolio    = Portfolio(p["initial_capital"])
 
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -278,7 +289,7 @@ def _run_one_from_df(
             position_sizer=sizer,
             use_next_day_fills=True,
             nifty_regime_df=nifty_df,
-            nifty_regime_filter=PARAMS.get("nifty_regime_filter", False),
+            nifty_regime_filter=p.get("nifty_regime_filter", False),
         )
 
     return {
@@ -1713,6 +1724,67 @@ def print_rolling_live_report(live_results: dict) -> None:
     print("="*70)
 
 
+def _run_extended_wf_cached(
+    stocks: list[str],
+    cache_is: dict,
+    cache_oos: dict,
+    nifty_is: pd.DataFrame,
+    nifty_oos: pd.DataFrame,
+    cooldown_bars: int = 15,
+    params: dict = None,
+) -> dict:
+    """
+    Same computation and console output as run_extended_walk_forward(), but
+    reads IS/OOS price data from pre-fetched caches instead of calling
+    get_ohlcv() again per combination. Used by run_parameter_stability_test()
+    so its 9 SMA/ATR combinations share one Kite fetch per stock instead of
+    9 — mirrors _cooldown_sensitivity()'s existing caching pattern.
+    """
+    lines: list[str] = []
+
+    def emit(text: str = ""):
+        print(text)
+        lines.append(text)
+
+    all_results: dict[str, dict] = {}
+    for ticker in stocks:
+        is_r  = _run_one_from_df(cache_is[ticker],  cooldown_bars, nifty_df=nifty_is,  params=params)
+        oos_r = _run_one_from_df(cache_oos[ticker], cooldown_bars, nifty_df=nifty_oos, params=params)
+        all_results[ticker] = {"is": is_r, "oos": oos_r}
+
+    all_scores: list[list[bool]] = []
+    results: dict = {}
+
+    for ticker in stocks:
+        is_r  = all_results[ticker]["is"]
+        oos_r = all_results[ticker]["oos"]
+
+        scores = _print_stock(
+            ticker, is_r, oos_r, lines,
+            is_label="In-Sample (2015-2019)",
+            oos_label="Out-of-Sample (2020-2023)",
+        )
+
+        if not scores:
+            results[ticker] = {
+                "score":      "N/A",
+                "oos_return": "N/A",
+                "error":      is_r.get("error") or oos_r.get("error"),
+            }
+            continue
+
+        all_scores.append(scores)
+        oos_m = oos_r["metrics"]
+        results[ticker] = {
+            "score":      int(sum(scores)),
+            "oos_return": float(oos_m["total_ret"]),
+            "oos_trades": int(oos_m["n_trades"]),
+        }
+
+    _print_verdict(all_scores, lines)
+    return results
+
+
 def run_parameter_stability_test(
     stocks: list[str],
     cooldown_bars: int = 15,
@@ -1727,6 +1799,11 @@ def run_parameter_stability_test(
 
     Each combination runs the extended walk-forward (2015-19 IS / 2020-23 OOS)
     on all qualifying stocks to use the more conservative stress-test window.
+
+    IS/OOS price data and the NIFTY regime series are fetched once per stock
+    (not once per combination) and reused across all 9 combinations — SMA
+    pairs and ATR multiplier affect signal generation and risk logic applied
+    on top of the price data, not the price data itself, so this is safe.
 
     Returns list of dicts, one per combination, sorted by total score descending.
     """
@@ -1747,6 +1824,29 @@ def run_parameter_stability_test(
     SMA_PAIRS  = [(15, 40), (20, 50), (25, 60)]
     ATR_MULTIS = [2.5, 3.0, 3.5]
 
+    # ── Fetch each stock's IS/OOS data once, reused across all 9 combos ─────
+    print(f"\n[param_stability] Fetching data for {len(stocks)} stocks "
+          f"(once, reused across all {len(SMA_PAIRS) * len(ATR_MULTIS)} combos)...")
+    cache_is:  dict[str, pd.DataFrame] = {}
+    cache_oos: dict[str, pd.DataFrame] = {}
+    for ticker in stocks:
+        try:
+            cache_is[ticker] = get_ohlcv(ticker, EXT_IS_START, EXT_IS_END)
+        finally:
+            time.sleep(1.1)
+        try:
+            cache_oos[ticker] = get_ohlcv(ticker, EXT_OOS_START, EXT_OOS_END)
+        finally:
+            time.sleep(1.1)
+
+    if nifty_regime_filter:
+        print(f"[param_stability] Fetching NIFTY 50 for regime filter (in-sample)…")
+        nifty_is  = _fetch_nifty(EXT_IS_START, EXT_IS_END)
+        print(f"[param_stability] Fetching NIFTY 50 for regime filter (out-of-sample)…")
+        nifty_oos = _fetch_nifty(EXT_OOS_START, EXT_OOS_END)
+    else:
+        nifty_is = nifty_oos = pd.DataFrame()
+
     results = []
     total_combinations = len(SMA_PAIRS) * len(ATR_MULTIS)
     current = 0
@@ -1765,10 +1865,13 @@ def run_parameter_stability_test(
             print(f"\n[{current}/{total_combinations}] Testing {label}{'  ← BASELINE' if is_baseline else ''}...")
 
             try:
-                wf_results = run_extended_walk_forward(
+                wf_results = _run_extended_wf_cached(
                     stocks=stocks,
+                    cache_is=cache_is,
+                    cache_oos=cache_oos,
+                    nifty_is=nifty_is,
+                    nifty_oos=nifty_oos,
                     cooldown_bars=cooldown_bars,
-                    nifty_regime_filter=nifty_regime_filter,
                     params=test_params,
                 )
 
