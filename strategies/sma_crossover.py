@@ -19,6 +19,7 @@ Why SMA crossover as a first strategy?
   - Weaknesses: whipsaws in sideways/choppy markets, lags by design
 """
 
+import numpy as np
 import pandas as pd
 
 
@@ -32,12 +33,17 @@ def generate_signals(df: pd.DataFrame, fast_period: int = 50, slow_period: int =
         slow_period:  lookback for the slow (long) moving average
 
     Returns:
-        pd.Series of integers indexed like df:
+        pd.Series of floats indexed like df:
             +1  → enter long (buy)
             -1  → exit long (sell)
-             0  → no action
+             0  → no action (SMA valid, no crossover today)
+            NaN → not yet evaluable (slow SMA still warming up)
 
-    Note: The first (slow_period - 1) rows will have NaN SMAs and emit 0.
+    Note: The first (slow_period - 1) rows have NaN SMAs and emit NaN, not 0
+    — a real "no signal, valid data" HOLD is distinguishable from "can't
+    evaluate yet." This makes first_valid_index() (used by engine/backtester.py
+    to anchor the benchmark's buy-and-hold start) return the first bar the
+    strategy could actually have acted on, not always index 0.
     """
     if slow_period <= fast_period:
         raise ValueError("slow_period must be greater than fast_period")
@@ -57,7 +63,8 @@ def generate_signals(df: pd.DataFrame, fast_period: int = 50, slow_period: int =
     crossed_above = fast_above & ~fast_above.shift(1, fill_value=False)   # golden cross
     crossed_below = ~fast_above & fast_above.shift(1, fill_value=False)   # death cross
 
-    signals = pd.Series(0, index=df.index, name="signal")
+    signals = pd.Series(np.nan, index=df.index, name="signal")
+    signals[slow_sma.notna()] = 0
     signals[crossed_above] = 1
     signals[crossed_below] = -1
 
