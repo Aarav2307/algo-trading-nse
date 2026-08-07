@@ -70,6 +70,22 @@ def _sample_wf_fail(ticker="BAD.NS") -> dict:
     }
 
 
+@pytest.fixture(autouse=True)
+def _isolate_wf_gate_error_log(tmp_path, monkeypatch):
+    """
+    run_wf_gate()'s error paths (non-zero exit, timeout, malformed/missing
+    JSON) call _log_wf_gate_error(), which derives its log path from the
+    module-level _ROOT at call time. Without isolating _ROOT here, those
+    error paths append FAKE.NS/MagicMock test artifacts straight into the
+    real validation/wf_gate_errors.log — confirmed happening across
+    multiple tests in this file (2026-08-07). Applying this to every test,
+    not just the ones that opt in, is the fix.
+    """
+    import validation.post_screener_pipeline as psp
+    (tmp_path / "validation").mkdir()
+    monkeypatch.setattr(psp, "_ROOT", tmp_path)
+
+
 # =============================================================================
 # Cache tests
 # =============================================================================
@@ -204,9 +220,10 @@ def test_run_wf_gate_raises_on_timeout():
             run_wf_gate("FAKE.NS")
 
 
-def test_run_wf_gate_logs_full_error_detail(tmp_path):
+def test_run_wf_gate_logs_full_error_detail():
     """Full stderr must be written to the error log file even when the
-    raised exception message is truncated for readability."""
+    raised exception message is truncated for readability. Log isolation
+    itself is handled by the autouse _isolate_wf_gate_error_log fixture."""
     import validation.post_screener_pipeline as psp
 
     long_stderr = "x" * 2000  # longer than the 500-char truncation in exception message
@@ -215,11 +232,9 @@ def test_run_wf_gate_logs_full_error_detail(tmp_path):
     mock_result.stdout = ""
     mock_result.stderr = long_stderr
 
-    log_path = tmp_path / "validation" / "wf_gate_errors.log"
-    (tmp_path / "validation").mkdir()
+    log_path = psp._ROOT / "validation" / "wf_gate_errors.log"
 
-    with patch("subprocess.run", return_value=mock_result), \
-         patch.object(psp, "_ROOT", tmp_path):
+    with patch("subprocess.run", return_value=mock_result):
         try:
             run_wf_gate("FAKE.NS")
         except RuntimeError:
