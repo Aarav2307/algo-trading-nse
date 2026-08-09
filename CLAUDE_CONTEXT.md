@@ -99,6 +99,17 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   Jul 27 ₹53.15 → Jul 29 ₹47.45). No signal of an imminent flip;
   added on WF strength alone, per the same-treatment rule for any
   gate-passing candidate regardless of proximity to crossover.
+- Added Aug 10 2026: MOTILALOFS.NS
+  Screener flagged Aug 9 2026 (Sunday batch: JUBLPHARMA.NS,
+  BAYERCROP.NS, MOTILALOFS.NS, TATAINVEST.NS, ITC.NS — only
+  MOTILALOFS.NS passed WF gate).
+  WF validated: original 5/6 OOS +9.6%, extended 4/6 OOS +3.7%.
+  Crossover at add time: DEATH (-0.42%), but the trajectory is a
+  reversal, not an approach: was comfortably GOLDEN through Aug 3-6
+  (+1.21% -> +0.69% -> +0.51% -> +0.12%), flipped to DEATH on Aug 7
+  and kept weakening. Numerically close to zero, but trending away
+  from golden, not toward it — do not read the small gap as
+  imminent. Added on WF strength alone, same standard as SUZLON.NS.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
