@@ -110,6 +110,18 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   and kept weakening. Numerically close to zero, but trending away
   from golden, not toward it — do not read the small gap as
   imminent. Added on WF strength alone, same standard as SUZLON.NS.
+- Added Aug 13 2026: COCHINSHIP.NS
+  Screener flagged Aug 12 2026 (Wednesday batch: JUBLPHARMA.NS,
+  HINDZINC.NS, TATAINVEST.NS, WHIRLPOOL.NS, AAVAS.NS — all failed;
+  COCHINSHIP.NS was on the WATCHLIST that day, not the ADD list).
+  WF validated: original 5/6 OOS +6.7%, extended 5/6 OOS +8.7%.
+  Crossover at add time: DEATH (-0.81%), and — unlike MOTILALOFS.NS
+  — a genuine, steady approach: 8 straight trading days of
+  monotonic narrowing, Aug 3 through Aug 12 (-2.62% → -2.54% →
+  -2.32% → -1.98% → -1.63% → -1.36% → -1.09% → -0.81%), no
+  reversal. Closest true approach-trend seen for any addition to
+  date; added specifically to catch the live crossover if the
+  trend holds, not on WF strength alone.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
