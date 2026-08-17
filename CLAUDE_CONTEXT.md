@@ -122,6 +122,20 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   reversal. Closest true approach-trend seen for any addition to
   date; added specifically to catch the live crossover if the
   trend holds, not on WF strength alone.
+- Added Aug 17 2026: BEML.NS
+  Screener flagged Aug 16 2026 (Sunday batch: CEATLTD.NS,
+  DATAPATTNS.NS, TATAINVEST.NS, BEML.NS, JPPOWER.NS — only
+  BEML.NS passed WF gate; CEATLTD.NS notable near-miss, 5/6
+  original OOS +16.2% but failed extended 3/6, +2.7%).
+  WF validated: original 5/6 OOS +10.7%, extended 5/6 OOS +12.3%.
+  Crossover at add time: DEATH (-0.36%), a mixed trend — crossed
+  from GOLDEN into DEATH on Aug 6, widened to a trough of -0.46%
+  (Aug 12), then narrowed slightly the last 2 sessions (-0.38% ->
+  -0.36%). Not a clean approach like COCHINSHIP.NS, not a clear
+  ongoing reversal like MOTILALOFS.NS — stabilizing after an
+  initial widen. Underlying price rose ~12% over the same 8
+  sessions (Rs1,671.60 -> Rs1,874.40); the narrowing gap looks like
+  SMA50 catching up to a genuinely bullish move, not noise.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross

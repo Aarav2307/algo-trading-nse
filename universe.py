@@ -35,4 +35,5 @@ STOCKS: List[str] = [
     "SUZLON.NS",      # WF validated Jul 30 2026 — 5/6 original OOS +13.0%, 5/6 extended OOS +30.1%
     "MOTILALOFS.NS",  # WF validated Aug 10 2026 — 5/6 original OOS +9.6%, 4/6 extended OOS +3.7%
     "COCHINSHIP.NS",  # WF validated Aug 13 2026 — 5/6 original OOS +6.7%, 5/6 extended OOS +8.7%
+    "BEML.NS",        # WF validated Aug 17 2026 — 5/6 original OOS +10.7%, 5/6 extended OOS +12.3%
 ]
