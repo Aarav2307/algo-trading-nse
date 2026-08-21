@@ -136,6 +136,29 @@ BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAH
   initial widen. Underlying price rose ~12% over the same 8
   sessions (Rs1,671.60 -> Rs1,874.40); the narrowing gap looks like
   SMA50 catching up to a genuinely bullish move, not noise.
+- Removed Aug 22 2026: EMAMILTD.NS
+  Found via manual audit of screener/degradation_tracker.json, not
+  a screener email review — the automated REMOVE recommendation
+  (>=2 consecutive flags) has no console/log output in a real run,
+  only in the emailed HTML report (same as ADD/WATCH being
+  dry-run-console-only), so this had gone unreviewed. Tracker
+  showed consecutive_flags=4, flagged every screen since Aug 9
+  (Aug 9, 12, 16, 19) -- well past the >=2 threshold, with zero
+  open position (confirmed HOLD every day in this stretch).
+  Re-verified live rather than trusting the persisted flag alone:
+  Hurst 0.574 (healthy, not the trigger), ADX 19.5 vs the 22.0
+  ADX_DEGRADE threshold -- a genuine, current loss of trend
+  strength, not a stale/resolved flag. Recent closes choppy and
+  range-bound (Rs397-413 over 10 sessions, no sustained direction),
+  consistent with the ADX reading.
+  No automated removal script exists (mirrors add_validated_stock.py's
+  design -- manual review and action, not automatic). universe.py
+  edited directly; no corresponding WF-gate re-run needed since this
+  isn't an addition. Full test suite re-run to confirm the removal
+  broke nothing.
+  Process gap this surfaces: REMOVE recommendations need the same
+  standing review habit as ADD/WATCH lists, or they'll keep going
+  unreviewed the way this one did for 4 cycles.
 
 ### Deployment Timing Lesson (Jul 9-10 2026)
 CHOLAHLDNG.NS was validated and decided on Jul 9, but crossed to golden cross
