@@ -32,6 +32,12 @@ auth/nse_cache/
 screener/degradation_tracker.json
 screener/degradation_tracker.backup.json
 screener/degradation_tracker.corrupt*
+# Rewritten by fetch_nifty500() on every successful live fetch, i.e. by the
+# Wed/Sun screener cron. Tracking it made the server's working tree go dirty on
+# a fixed schedule — same class as the 151 runtime artifacts the Jul 19 cleanup
+# untracked, this one just was never listed here. Untracked Aug 24 2026; see
+# CLAUDE_CONTEXT.md for the fresh-clone trade-off that was accepted.
+screener/nifty500_cache.json
 
 # News monitor output — generated nightly
 utils/news_flags.json
