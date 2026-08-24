@@ -1382,7 +1382,7 @@ edit was made or is believed necessary.
 
 ---
 
-#### Dry-run ledger contract — Findings #1 / #1b — FIXED (Aug 22-24 2026, branch only, NOT merged)
+#### Dry-run ledger contract — Findings #1 / #1b — FIXED (Aug 22-24 2026, DEPLOYED Aug 24 2026)
 
 Branch: fix/dry-run-ledger-contract. From the full audit in AUDIT_REPORT_2026-08-22.md.
 
@@ -1533,9 +1533,21 @@ an AMO gets queued; NSE healthy at 9:20 AM detects the ex-date and cancels.
   duration line.
 - Live state files sha256-identical before/after every run.
 
+**Deployment (Aug 24 2026):** committed as `6e400f4` on
+fix/dry-run-ledger-contract, fast-forwarded into main, then merged with the
+collection-hygiene branch as `c4b14eb` (one conflict, CLAUDE_CONTEXT.md only,
+resolved by keeping both blocks). Pushed `6ebe151..c4b14eb`. Server pulled via
+`git merge --ff-only origin/main` after a state backup
+(portfolio_state_20260824_134036.json); server master now c4b14eb. Server suite:
+331 passed, 0 failed (313 pre-existing + 15 + 3 from the two new test files;
+the Mac's 387 adds 56 from three audit files that remain untracked and were
+never committed). portfolio_state.json byte-identical to the pre-deploy backup
+after the pull — Rs243.49 cash, 359 ETF units, 4 trades, no open positions.
+First cron run on the new code path: 9:20 AM IST Aug 25 2026.
+
 ---
 
-#### pytest collection hygiene — live Kite calls on every `pytest` run — FIXED (Aug 22-24 2026, branch only, NOT merged)
+#### pytest collection hygiene — live Kite calls on every `pytest` run — FIXED (Aug 22-24 2026, DEPLOYED Aug 24 2026)
 
 Branch: fix/kite-fetcher-collection-hygiene (separate from the dry-run fix —
 unrelated defects, independently reviewable and revertable).
@@ -1618,6 +1630,17 @@ number in this audit (313, 312, 381) was silently making live calls. That is fal
 and is corrected here. Runs performed in throwaway git worktrees never had these
 gitignored files present and were clean. Only runs in the PRIMARY checkout — the
 original 313 baseline and the 387-item run on 2026-08-22 — made live calls.
+
+**Deployment (Aug 24 2026):** committed as `4651dda` on
+fix/kite-fetcher-collection-hygiene, merged into main as `c4b14eb`, pushed and
+deployed alongside the dry-run fix (same server pull). Verified live on the
+server: the full suite ran with zero occurrences of "Fetching TMPV",
+"=== Kite Connect ===", "Current TOTP code", "kiteconnect.exceptions" or
+"ERROR collecting" — the first server-side suite run in this project's history
+confirmed to make no live API calls. test_kite.py on the server is now the
+masked version (grep 'redacted' = 1, grep 'Current TOTP code' = 0); the
+pre-deploy unmasked original is preserved there as
+test_kite.py.pre-deploy-backup.
 
 ---
 
