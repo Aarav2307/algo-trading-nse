@@ -1382,6 +1382,159 @@ edit was made or is believed necessary.
 
 ---
 
+#### Dry-run ledger contract — Findings #1 / #1b — FIXED (Aug 22-24 2026, branch only, NOT merged)
+
+Branch: fix/dry-run-ledger-contract. From the full audit in AUDIT_REPORT_2026-08-22.md.
+
+**Finding #1 (CRITICAL) — a dry run silently destroyed pending AMO fills.** The
+module docstring promises "Dry-run mode (the default): portfolio state is NOT
+modified". The portfolio write was guarded by `if apply_fills:`; the
+amo_orders.csv write was not (4 unguarded `_update_csv_row()` sites: 576, 619,
+627, 645). `_load_pending_orders()` selects on `status == "DRY_RUN"`, so a dry
+run flipped the row to FILLED/MISSED/CANCELLED_CA without updating the
+portfolio, making the order invisible to every later run including the 9:20 AM
+cron. A BUY consumed this way left pending_buy=True, cash never deducted,
+position never opened, and — since `_process_stock()` returns early on
+pending_buy — no risk management ever applied. Trigger was the exact command the
+docstring advertises, including `--date YYYY-MM-DD` for inspecting a past date.
+
+**Finding #1b (HIGH) — every GAP_EXIT was logged as MISSED.** `_update_csv_row()`
+only matches rows still at DRY_RUN. The SELL-miss path wrote "MISSED" at 645
+before the gap-exit branch ran, so the "GAP_EXIT" write at 682 matched nothing
+and no-opped. Portfolio was correct throughout (trade_log had GAP_EXIT at the
+right price) — this was audit-trail corruption, not a money error. It matters
+because amo_orders.csv is what this project reaches for during forensics: the
+Aug 4 BAJAJ-AUTO reconciliation cross-checked trade_log against "amo_orders.csv's
+SELL fill for the same date". After any gap-exit those disagree, and an
+investigator applying that method would conclude a trade was lost — the exact
+false positive that entry's own retraction warns about.
+
+**Fix — plan / report / execute split, not more guards.** Guarding a fifth call
+site relocates the problem to the sixth; that discipline is what failed. Instead:
+`plan_fill()` is read-only and contains no writer; the report loop renders
+`decision.detail` and contains no writer; `execute_decision()` is the ONLY writer,
+called from the ONLY `if apply_fills:` guard. Ledger write sites 5 -> 1.
+AST-verified: every writer lives in `execute_decision()` or `_requeue_sell_amo()`;
+the latter is called only from the former; the former only at line 831 inside the
+single guard at 829. #1b closes by the same change — each FillDecision carries
+exactly one csv_status written exactly once, and all 9 returns in `plan_fill()`
+terminate the function. Jul 18 portfolio-before-CSV ordering preserved.
+
+**CAVEAT 1 — mutual exclusivity holds; TOTALITY DOES NOT.** Stated plainly
+because an earlier write-up of this fix claimed the counters "derive from a
+partition", which implies totality and is wrong. Machine-checked over all 8
+actions:
+    MUTUAL EXCLUSIVITY: HOLDS — no action lands in 2 buckets
+    TOTALITY: sum(counters)=6 vs total_decisions=8 -> NOT TOTAL
+              uncounted: ['NO_DATA', 'REJECT']
+Audit2 Finding #4-style double-counting is now structurally impossible — that
+part is real. But NO_DATA and REJECT fall into no bucket, so the summary line can
+under-report. PRE-EXISTING at baseline (on main, `open_px is None` hits `continue`
+before any counter; the REJECTED branch increments nothing). NOT fixed here;
+separate backlog item. The in-code comment was corrected to state exactly this.
+
+**CAVEAT 2 — deliberate dry-run behaviour change.** Gap-exit/requeue
+classification now runs in both modes; previously reachable only under
+apply_fills, so a dry run showed a 3%+ gap-down SELL as a plain MISS. Measured
+(instrumented counter, mocked fetches; 5 pending SELLs = 2 fills, 2 requeue-
+eligible, 1 gap-exit):
+    baseline dry run: 10 calls | baseline --apply: 12
+    patched  dry run: 12 (+2)  | patched  --apply: 12 (unchanged)
+The +2 is one read-only close-price fetch per requeue-eligible SELL, on manual
+inspection only. The 9:20 AM cron path is unchanged.
+
+**REVIEW FINDING — `results` membership changed; one consumer, inert.** `results`
+now includes CANCEL_CA and NO_DATA entries (old code `continue`d before
+`results.append`). Checked every consumer: exactly one (the manual-attention
+section, lines 856/860, same string filter both times). `run_morning_check()`
+returns None on all paths; no external caller consumes it (utils/watchdog.py
+matches only the job-name string). Verified "CANCELLED_CA" and "UNKNOWN" do not
+match ("REJECTED","CANCELLED").
+
+**FIXED IN REVIEW — `reason` regression introduced by this patch (Aug 24 2026).**
+The split had `results` built with `"reason": d.detail.strip()`, the fully-rendered
+report line, where the old code used `_process_order()`'s short `reason`. A
+manual-attention line therefore read
+  X.NS  REJECTED: ✗ REJECTED   X.NS   BUY   10 shr | Order was cancelled
+instead of
+  X.NS  REJECTED: Order was cancelled
+Fixed by adding `reason: str = ""` to FillDecision and populating it at ALL NINE
+return sites in plan_fill(), not just the observed-broken REJECT path — AST-verified
+that no branch is left unpopulated. The four sites that already call _process_order()
+carry its value through verbatim. The rest use purpose-written strings in the same
+house style — a short factual phrase with no ticker/side/shares prefix, since the
+consumer already prints those columns:
+  CANCEL_CA      "Corporate action ex-date today — fill cancelled, open price is adjusted"
+  NO_DATA        "Open price unavailable — order left pending for the next run"
+  GAP_EXIT       "<base> — gap N% exceeds 3% breaker, exiting at open"
+  REQUEUE_SELL   "<base> — SELL AMO requeued at Rs X for tomorrow's open"
+                 "<base> — could not fetch today's close for requeue; MANUAL ACTION REQUIRED"
+  UNMANAGED_MISS "<base> — not a managed exit, no automatic follow-up"
+`results` now uses `d.reason`. Output for the REJECT case is byte-identical to
+pre-patch main.
+
+**REVIEW FINDING — REJECTED/CANCELLED is dead code under LIVE_TRADING_MODE=False.**
+`plan_fill()` calls `_process_order(..., kite=None)`; the live branch requires
+`LIVE_TRADING_MODE and order_id and kite is not None`. Empirically the only
+reachable statuses with kite=None are FILLED and MISSED. So the REJECT decision
+path, the manual-attention section, and the `reason` regression above are all
+unreachable in the current paper configuration. Fixed for correctness before live,
+not because it was observable today.
+
+**REVIEW FINDING — circuit-breaker message is now uniform.** Old code printed
+"Verify position manually in Zerodha dashboard" under FILLED and MISSED but not
+REJECTED/CANCELLED. The unified loop prints it for any decision with circuit_msg.
+This was a consequence of unifying the loop, not a considered decision. Kept
+deliberately: a >=20% move from prev close is exactly when a human should check
+the dashboard, and a rejected order during a circuit event is more alarming, not
+less. The old asymmetry looks like drift (the REJECTED branch was added later in
+Fix 9). Zero live effect today per the dead-code finding above.
+
+**SURFACED, NOT FIXED — morning_fill_check.py has no rate-limit pacing.** Unlike
+signal_runner.py:371 and screener/auto_screener.py:692 (both `time.sleep(1.1)`,
+~0.9 req/sec), this module has none. Total calls per run bound at 2xN..3xN
+(<=36 at N=12), which never accumulates 60 in a rolling minute, so the 60/min
+model this repo codes to is not breached. BUT Kite documents 3 req/sec on the
+historical-data endpoint, which an unpaced 36-call burst exceeds. Pre-existing;
+this patch adds 2 to the burst in dry-run mode. Own backlog item.
+
+**SURFACED — Finding #12: CANCELLED_CA strands a position.** Out of scope, tracked
+separately. The CANCEL_CA branch marks the ledger row terminal but performs no
+portfolio reset, in this patch AND at baseline (byte-identical results):
+  BUY  -> CANCELLED_CA, pending_buy STILL True, shares 10. Ticker frozen at
+       PENDING_BUY forever, same bricking as audit Finding #3 by another route.
+  SELL -> CANCELLED_CA, pending_rm_exit STILL True. RM keeps ratcheting but no
+       new SELL AMO is ever queued — the position can never exit. This is
+       Finding #2 (Jun 19, "Orphaned RM SELL position") resurfacing via the
+       corporate-action path, which the Jun 19 requeue fix never covered.
+Trigger: corporate_actions fails open, so NSE flaky at 3:45 PM means no skip and
+an AMO gets queued; NSE healthy at 9:20 AM detects the ex-date and cancels.
+
+**Test results (branch fix/dry-run-ledger-contract):**
+- test_dry_run_contract_audit.py: 15/15 PASS (new). Against UNPATCHED baseline:
+  14 failed, 1 passed. The one passing either way is
+  test_apply_still_performs_every_write, which guards against a "fix" that
+  disables the real write path.
+- test_morning_fill_check_audit.py: 3/3 PASS (was 3/3 FAIL).
+- Combined re-run after the comment correction and the reason fix: 18 passed.
+- Full suite, plain `python -m pytest -v`, no --ignore, with conftest.py from the
+  sibling branch also present: 387 collected, 6 failed, 381 passed, zero
+  live-call markers. All 6 failures are unrelated open audit findings:
+    4x test_position_sizer_never_returns_negative_shares  (audit Finding #3)
+    1x test_correlation_cli_default_path_is_cwd_dependent (audit Finding #4)
+    1x test_gate_estimate_and_real_unwind_must_agree      (audit Finding #2)
+  Those three test files are deliberately NOT staged on this branch — they
+  document unrelated unfixed defects. Zero pre-existing tests regressed.
+- test_state_file_is_absolute_and_cwd_independent passes in BOTH copies
+  (test_morning_fill_check.py and test_signal_runner_fetch.py). It failed only in
+  a throwaway worktree because portfolio_state.json is gitignored and absent
+  there while the test asserts .exists(). Confirmed environmental — the two
+  tracebacks were byte-identical patched vs unpatched, differing only in pytest's
+  duration line.
+- Live state files sha256-identical before/after every run.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL

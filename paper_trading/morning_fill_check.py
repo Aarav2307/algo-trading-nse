@@ -27,6 +27,7 @@ import argparse
 import csv
 import os
 import sys
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -470,6 +471,282 @@ def _update_portfolio_fill(
     print(f"  [portfolio] {STATE_FILE} updated (SELL fill confirmed for {ticker}).")
 
 
+# =============================================================================
+# Fill decisions — plan / render / execute
+# =============================================================================
+# One frozen FillDecision per pending AMO order.
+#
+#   plan_fill()         reads market data. Writes NOTHING.
+#   execute_decision()  is the ONLY writer in this module. It is called from
+#                       exactly one place, behind exactly one `if apply_fills:`.
+#
+# Why this shape instead of an `if apply_fills:` guard on each write:
+# the dry-run contract in this module's docstring ("portfolio state is NOT
+# modified") used to be enforced by guarding N call sites. Those guards
+# covered the portfolio write but not the amo_orders.csv write, so a dry run
+# flipped orders out of DRY_RUN status without ever confirming the fill.
+# _load_pending_orders() selects on status == "DRY_RUN", so the order became
+# invisible to every later run and the fill was lost silently — cash never
+# deducted, position never opened, no risk management ever applied to it.
+# Guarding the fifth call site the same way only relocates the problem to the
+# sixth. Here the report path has no writer reachable from it, so a read-only
+# mode cannot mutate state no matter what branches are added later.
+#
+# Second defect this closes structurally: _update_csv_row() only matches rows
+# still at status "DRY_RUN". The old gap-exit path wrote "MISSED" first and
+# then tried to write "GAP_EXIT", which silently no-opped because the row was
+# no longer DRY_RUN — so amo_orders.csv recorded every gap-exit as a missed
+# order with no fill price, while the portfolio correctly showed the position
+# closed. A decision now carries exactly one csv_status, written exactly once.
+
+
+@dataclass(frozen=True)
+class FillDecision:
+    """
+    Immutable description of what should happen to one pending AMO order.
+
+    Produced by plan_fill() (read-only) and consumed by execute_decision()
+    (the single write seam). `detail` is the pre-rendered report line, so the
+    reporting path needs no logic of its own.
+    """
+    order:       dict
+    action:      str                      # FILL | GAP_EXIT | MISS_CANCEL_BUY
+                                          # | REQUEUE_SELL | UNMANAGED_MISS
+                                          # | CANCEL_CA | REJECT | NO_DATA
+    open_px:     Optional[float] = None
+    close_px:    Optional[float] = None   # REQUEUE_SELL only — new limit basis
+    csv_status:  Optional[str]   = None   # None → leave the row at DRY_RUN
+    is_rm_exit:  bool            = False
+    exit_reason: str             = "STRATEGY_SIGNAL"
+    circuit_msg: str             = ""
+    notes:       str             = ""
+    status:      str             = ""     # mirrors _process_order()'s status
+    reason:      str             = ""     # short factual phrase, no ticker/side
+                                          # prefix — matches _process_order()'s
+                                          # own `reason` style so the two are
+                                          # interchangeable to consumers
+    detail:      str             = ""     # rendered report line
+
+    @property
+    def is_miss(self) -> bool:
+        """True for the three outcomes that count as a genuine missed fill."""
+        return self.action in ("MISS_CANCEL_BUY", "REQUEUE_SELL", "UNMANAGED_MISS")
+
+
+def plan_fill(order: dict, today: date, ex_today: dict) -> FillDecision:
+    """
+    Decide what should happen to one pending order. READ-ONLY: fetches market
+    data and inspects the order, but writes to no file and mutates no state.
+
+    Deliberate behaviour change vs the previous inline loop: the gap-exit /
+    requeue classification now runs in BOTH modes. It used to be reachable
+    only when apply_fills was True, so a dry run reported a 3%+ gap-down SELL
+    as a plain MISS and never showed the GAP_EXIT it would actually take. A
+    dry run that does not preview the real decision is not a useful dry run.
+    Cost: one extra read-only close-price fetch per requeued SELL in dry mode.
+    """
+    ticker     = order["ticker"]
+    order_type = order["order_type"]
+    shares     = int(order["shares"])
+    limit_px   = float(order["limit_price"])
+
+    notes      = order.get("notes", "")
+    notes_base = notes.split(" [")[0].strip() if notes else ""
+    is_rm_exit = notes_base in _RM_EXIT_NOTES
+    rm_tag     = f" [RM:{notes}]" if is_rm_exit else ""
+
+    # Ex-date today: the open already carries the corporate-action adjustment,
+    # so the limit price (set against the pre-adjustment price) is meaningless.
+    if ex_today.get(ticker, False):
+        return FillDecision(
+            order=order, action="CANCEL_CA", csv_status="CANCELLED_CA",
+            is_rm_exit=is_rm_exit, notes=notes, status="CANCELLED_CA",
+            reason="Corporate action ex-date today — fill cancelled, open price is adjusted",
+            detail=(f"  ✗ CANCELLED  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                    f"| ex-date today — fill skipped"),
+        )
+
+    open_px = _fetch_open_price(ticker, today)
+    if open_px is None:
+        return FillDecision(
+            order=order, action="NO_DATA", csv_status=None,
+            is_rm_exit=is_rm_exit, notes=notes, status="UNKNOWN",
+            reason="Open price unavailable — order left pending for the next run",
+            detail=(f"  ? UNKNOWN  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                    f"| limit ₹{limit_px:,.2f} | open price unavailable"),
+        )
+
+    prev_close = _fetch_prev_close(ticker, today)
+    result     = _process_order(order, open_px, prev_close, kite=None)
+    circuit    = result["circuit_msg"] if result["circuit_flag"] else ""
+    gap_pct    = (open_px - limit_px) / limit_px * 100
+
+    # ── Filled ───────────────────────────────────────────────────────────────
+    if result["filled"]:
+        return FillDecision(
+            order=order, action="FILL", open_px=open_px, csv_status="FILLED",
+            is_rm_exit=is_rm_exit,
+            exit_reason=notes if notes else "STRATEGY_SIGNAL",
+            circuit_msg=circuit, notes=notes, status="FILLED",
+            reason=result["reason"],
+            detail=(f"  ✓ FILLED   {ticker:<14} {order_type:<4} {shares:>3} shr "
+                    f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                    f"| FILLED at ₹{result['fill_price']:,.2f}{rm_tag}"),
+        )
+
+    # ── Rejected / cancelled by the broker (live mode) ───────────────────────
+    if result["status"] in ("REJECTED", "CANCELLED"):
+        return FillDecision(
+            order=order, action="REJECT", open_px=open_px,
+            csv_status=result["status"], is_rm_exit=is_rm_exit,
+            circuit_msg=circuit, notes=notes, status=result["status"],
+            reason=result["reason"],
+            detail=(f"  ✗ {result['status']:<10} {ticker:<14} {order_type:<4} "
+                    f"{shares:>3} shr | {result['reason']}{rm_tag}"),
+        )
+
+    # ── Missed ───────────────────────────────────────────────────────────────
+    miss_detail = (f"  ✗ MISSED   {ticker:<14} {order_type:<4} {shares:>3} shr "
+                   f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                   f"| gap {'+' if gap_pct > 0 else ''}{gap_pct:.1f}%{rm_tag}")
+
+    if order_type == "BUY":
+        return FillDecision(
+            order=order, action="MISS_CANCEL_BUY", open_px=open_px,
+            csv_status="MISSED", is_rm_exit=is_rm_exit, circuit_msg=circuit,
+            notes=notes, status="MISSED", reason=result["reason"],
+            detail=miss_detail,
+        )
+
+    # SELL miss: gap-down circuit breaker vs requeue vs unmanaged.
+    is_managed  = is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES
+    miss_class  = classify_missed_sell(limit_px, open_px, GAP_BREAKER_THRESHOLD, is_managed)
+    gap_mag     = (limit_px - open_px) / limit_px
+
+    if miss_class == "GAP_EXIT":
+        return FillDecision(
+            order=order, action="GAP_EXIT", open_px=open_px,
+            csv_status="GAP_EXIT", is_rm_exit=is_rm_exit,
+            exit_reason="GAP_EXIT", circuit_msg=circuit, notes=notes,
+            status="GAP_EXIT",
+            reason=(f"{result['reason']} — gap {gap_mag*100:.1f}% exceeds "
+                    f"{GAP_BREAKER_THRESHOLD*100:.0f}% breaker, exiting at open"),
+            detail=(f"  ⚡ GAP_EXIT  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                    f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
+                    f"| gap {gap_mag*100:.1f}% > {GAP_BREAKER_THRESHOLD*100:.0f}% threshold "
+                    f"— exiting at open{rm_tag}"),
+        )
+
+    if miss_class == "REQUEUE":
+        today_close = _fetch_close_price(ticker, today)
+        if today_close is None:
+            return FillDecision(
+                order=order, action="REQUEUE_SELL", open_px=open_px,
+                close_px=None, csv_status="MISSED", is_rm_exit=is_rm_exit,
+                circuit_msg=circuit, notes=notes, status="MISSED",
+                reason=(f"{result['reason']} — could not fetch today's close "
+                        f"for requeue; MANUAL ACTION REQUIRED"),
+                detail=(miss_detail + f"\n  ERROR [{ticker}]: RM SELL MISSED but could not "
+                        f"fetch today's close for requeue. MANUAL ACTION REQUIRED: "
+                        f"check position in Zerodha dashboard."),
+            )
+        new_limit = round(today_close * (1 - _AMO_LIMIT_BUFFER), 2)
+        return FillDecision(
+            order=order, action="REQUEUE_SELL", open_px=open_px,
+            close_px=today_close, csv_status="MISSED", is_rm_exit=is_rm_exit,
+            circuit_msg=circuit, notes=notes, status="MISSED",
+            reason=(f"{result['reason']} — SELL AMO requeued at "
+                    f"₹{new_limit:.2f} for tomorrow's open"),
+            detail=(miss_detail +
+                    f"\n  ⚠️  REQUEUED: {ticker} RM SELL → new AMO SELL limit "
+                    f"₹{new_limit:.2f} for tomorrow's open"
+                    f"\n  ⚠️  Original MISSED: open ₹{open_px:.2f} vs limit ₹{limit_px:.2f}"),
+        )
+
+    return FillDecision(
+        order=order, action="UNMANAGED_MISS", open_px=open_px,
+        csv_status="MISSED", is_rm_exit=is_rm_exit, circuit_msg=circuit,
+        notes=notes, status="MISSED",
+        reason=f"{result['reason']} — not a managed exit, no automatic follow-up",
+        detail=miss_detail,
+    )
+
+
+def _requeue_sell_amo(d: FillDecision, portfolio, today: date) -> None:
+    """Log a fresh SELL AMO at an updated limit and bump the requeue counter."""
+    ticker = d.order["ticker"]
+    shares = int(d.order["shares"])
+
+    if d.close_px is None:
+        # plan_fill already rendered the MANUAL ACTION REQUIRED line.
+        return
+
+    new_limit = round(d.close_px * (1 - _AMO_LIMIT_BUFFER), 2)
+
+    from engine.order_manager import AMOOrderManager
+    amo = AMOOrderManager({
+        "enabled":          True,
+        "dry_run":          True,
+        "limit_buffer_pct": _AMO_LIMIT_BUFFER,
+        "order_log_file":   str(_AMO_ORDER_LOG),
+    })
+    amo.place_sell_amo(
+        ticker=ticker, shares=shares, signal_price=d.close_px,
+        order_date=today, notes=d.notes + " [REQUEUED]",
+    )
+
+    portfolio.load()
+    portfolio.requeue_rm_sell(ticker, new_limit, today.isoformat())
+
+
+def execute_decision(d: FillDecision, portfolio, today: date) -> None:
+    """
+    The single write seam of this module. Never call this outside an
+    `if apply_fills:` block — doing so reintroduces the dry-run bug.
+
+    Ordering contract (Jul 18 hardening, preserved): the portfolio is updated
+    BEFORE the AMO ledger row is marked terminal. A crash between the two
+    leaves the row at DRY_RUN and therefore reprocessable, rather than
+    FILLED-with-no-portfolio-update, which was irrecoverable.
+    """
+    o      = d.order
+    ticker = o["ticker"]
+    shares = int(o["shares"])
+
+    if d.action == "FILL":
+        _update_portfolio_fill(
+            ticker, o["order_type"], shares, d.open_px, today,
+            exit_reason=d.exit_reason, is_rm_exit=d.is_rm_exit,
+            portfolio_obj=portfolio,
+        )
+    elif d.action == "GAP_EXIT":
+        _update_portfolio_fill(
+            ticker, "SELL", shares, d.open_px, today,
+            exit_reason="GAP_EXIT", is_rm_exit=d.is_rm_exit,
+            portfolio_obj=portfolio,
+        )
+    elif d.action in ("MISS_CANCEL_BUY", "REJECT"):
+        # Missed/rejected BUY AMO: reset pending_buy so the position returns to
+        # flat and the stock is eligible for signals again. Without this,
+        # signal_runner would see pending_buy=True indefinitely.
+        if o["order_type"] == "BUY":
+            portfolio.load()
+            portfolio.cancel_pending_buy(ticker)
+            portfolio.save()
+            print(f"  [{ticker}]: BUY AMO {d.status} — pending_buy cancelled, "
+                  f"position reset to flat")
+    elif d.action == "REQUEUE_SELL":
+        _requeue_sell_amo(d, portfolio, today)
+
+    # Ledger LAST, and exactly once — see the ordering contract above and the
+    # GAP_EXIT overwrite defect described at the top of this section.
+    if d.csv_status:
+        fill_px = str(round(d.open_px, 4)) if d.action in ("FILL", "GAP_EXIT") else ""
+        fill_dt = today.isoformat() if d.action in ("FILL", "GAP_EXIT") else ""
+        _update_csv_row(o["date"], ticker, o["order_type"],
+                        d.csv_status, fill_px, fill_dt)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = False) -> None:
@@ -552,187 +829,35 @@ def run_morning_check(check_date: Optional[date] = None, apply_fills: bool = Fal
         ex_today = {t: False for t in pending_tickers}
 
     print()
-    results:        list[dict] = []
-    filled_count    = 0
-    missed_count    = 0
-    cancelled_count = 0
-    gap_exit_count  = 0
+    # ── Phase A: PLAN — read-only ────────────────────────────────────────────
+    # Every decision is computed from ONE consistent market snapshot before
+    # anything is written, so a crash partway through execution can't leave
+    # some orders decided against 9:20 prices and others against 9:24 prices.
+    decisions = [plan_fill(order, today, ex_today) for order in pending]
 
-    for order in pending:
-        ticker      = order["ticker"]
-        order_type  = order["order_type"]
-        shares      = int(order["shares"])
-        signal_px   = float(order["signal_price"])
-        limit_px    = float(order["limit_price"])
-        order_date  = order["date"]   # the day the signal fired (may be Friday)
+    # ── Phase B: REPORT — read-only ──────────────────────────────────────────
+    for d in decisions:
+        print(d.detail)
+        if d.circuit_msg:
+            print(f"  ⚠️  CIRCUIT BREAKER WARNING: {d.circuit_msg}")
+            print(f"  ⚠️  Verify position manually in Zerodha dashboard")
 
-        # Skip fill if this stock has a corporate action ex-date today
-        if ex_today.get(ticker, False):
-            cancelled_count += 1
-            print(
-                f"  ✗ CANCELLED  {ticker:<14} {order_type:<4} {shares:>3} shr "
-                f"| ex-date today — fill skipped"
-            )
-            _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
-            continue
+    # ── Phase C: EXECUTE — the only writer, the only apply_fills guard ───────
+    if apply_fills:
+        for d in decisions:
+            execute_decision(d, _portfolio, today)
 
-        # Detect deferred RM exits — notes field carries the exit reason.
-        # Strip any " [REQUEUED]" suffix before matching so requeued orders
-        # are still correctly recognised on 2nd and 3rd miss attempts.
-        notes      = order.get("notes", "")
-        notes_base = notes.split(" [")[0].strip() if notes else ""
-        is_rm_exit = notes_base in _RM_EXIT_NOTES
-
-        open_px = _fetch_open_price(ticker, today)
-
-        if open_px is None:
-            print(f"  ? UNKNOWN  {ticker:<14} {order_type:<4} {shares:>3} shr "
-                  f"| limit ₹{limit_px:,.2f} | open price unavailable")
-            continue
-
-        prev_close = _fetch_prev_close(ticker, today)
-        result     = _process_order(order, open_px, prev_close, kite=None)
-        result["ticker"] = ticker
-        results.append(result)
-
-        gap_pct = (open_px - limit_px) / limit_px * 100
-        rm_tag  = f" [RM:{notes}]" if is_rm_exit else ""
-
-        if result["filled"]:
-            filled_count += 1
-            detail = (
-                f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                f"| FILLED at ₹{result['fill_price']:,.2f}{rm_tag}"
-            )
-            print(f"  ✓ FILLED   {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
-            if result["circuit_flag"]:
-                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
-                print(f"  ⚠️  Verify position manually in Zerodha dashboard")
-
-            if apply_fills:
-                _update_portfolio_fill(
-                    ticker, order_type, shares, open_px, today,
-                    exit_reason=notes if notes else "STRATEGY_SIGNAL",
-                    is_rm_exit=is_rm_exit,
-                    portfolio_obj=_portfolio,
-                )
-            _update_csv_row(order_date, ticker, order_type,
-                            "FILLED", str(round(open_px, 4)), today.isoformat())
-
-        elif result["status"] in ("REJECTED", "CANCELLED"):
-            detail = f"| {result['reason']}{rm_tag}"
-            print(f"  ✗ {result['status']:<10} {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
-            if result["circuit_flag"]:
-                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
-            _update_csv_row(order_date, ticker, order_type, result["status"], "", "")
-            # Cancelled BUY AMO: reset the pending_buy flag so position returns to flat
-            if apply_fills and order_type == "BUY":
-                _portfolio.load()
-                _portfolio.cancel_pending_buy(ticker)
-                _portfolio.save()
-                print(f"  [{ticker}]: BUY AMO {result['status']} — pending_buy cancelled")
-
-        else:
-            detail = (
-                f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                f"| gap {'+'if gap_pct>0 else ''}{gap_pct:.1f}%{rm_tag}"
-            )
-            print(f"  ✗ MISSED   {ticker:<14} {order_type:<4} {shares:>3} shr {detail}")
-            if result["circuit_flag"]:
-                print(f"  ⚠️  CIRCUIT BREAKER WARNING: {result['circuit_msg']}")
-                print(f"  ⚠️  Verify position manually in Zerodha dashboard")
-
-            _update_csv_row(order_date, ticker, order_type, "MISSED", "", "")
-
-            if apply_fills and order_type == "BUY":
-                # Missed BUY AMO: cancel pending_buy so position returns to flat.
-                # Without this, signal_runner would see pending_buy=True indefinitely.
-                _portfolio.load()
-                _portfolio.cancel_pending_buy(ticker)
-                _portfolio.save()
-                print(f"  [{ticker}]: BUY AMO MISSED — pending_buy cancelled, position reset to flat")
-                missed_count += 1   # true miss — BUY didn't fill
-
-            elif apply_fills and order_type == "SELL":
-                # Gap-down circuit breaker: if open is too far below limit, exit
-                # immediately instead of requeuing. gap_pct (already computed above)
-                # is negative for a SELL miss; compute positive magnitude for comparison.
-                _is_managed_exit = is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES
-                _miss_class = classify_missed_sell(
-                    limit_px, open_px, GAP_BREAKER_THRESHOLD, _is_managed_exit
-                )
-                gap_magnitude = (limit_px - open_px) / limit_px   # for the log lines below only
-
-                if _miss_class == "GAP_EXIT":
-                    # Large gap-down — exit immediately via circuit breaker.
-                    # Counted as GAP_EXIT, NOT as a missed order — do not increment missed_count.
-                    gap_exit_count += 1
-                    print(
-                        f"  ⚡ GAP_EXIT  {ticker:<14} {order_type:<4} {shares:>3} shr "
-                        f"| limit ₹{limit_px:,.2f} | opened ₹{open_px:,.2f} "
-                        f"| gap {gap_magnitude*100:.1f}% > {GAP_BREAKER_THRESHOLD*100:.0f}% threshold "
-                        f"— exiting at open{rm_tag}"
-                    )
-                    _update_portfolio_fill(
-                        ticker, order_type, shares, open_px, today,
-                        exit_reason="GAP_EXIT",
-                        is_rm_exit=is_rm_exit,
-                        portfolio_obj=_portfolio,
-                    )
-                    _update_csv_row(order_date, ticker, order_type,
-                                    "GAP_EXIT", str(round(open_px, 4)), today.isoformat())
-
-                elif _miss_class == "REQUEUE":
-                    # Small gap — true miss, requeue for tomorrow's open at an updated limit.
-                    # Without a requeue, signal_runner sees pending_rm_exit=True forever and
-                    # never runs the RM — the position becomes orphaned with no active stop.
-                    missed_count += 1
-                    today_close = _fetch_close_price(ticker, today)
-
-                    if today_close is not None:
-                        new_limit = round(today_close * (1 - _AMO_LIMIT_BUFFER), 2)
-
-                        # Log new SELL AMO to amo_orders.csv for tomorrow's fill check
-                        from engine.order_manager import AMOOrderManager
-                        _amo_cfg = {
-                            "enabled":          True,
-                            "dry_run":          True,
-                            "limit_buffer_pct": _AMO_LIMIT_BUFFER,
-                            "order_log_file":   str(_AMO_ORDER_LOG),
-                        }
-                        amo = AMOOrderManager(_amo_cfg)
-                        amo.place_sell_amo(
-                            ticker=ticker,
-                            shares=shares,
-                            signal_price=today_close,
-                            order_date=today,
-                            notes=notes + " [REQUEUED]",
-                        )
-
-                        # Update portfolio state: increment requeue counter, keep pending_rm_exit=True
-                        _portfolio.load()
-                        _portfolio.requeue_rm_sell(ticker, new_limit, today.isoformat())
-
-                        print(
-                            f"  ⚠️  REQUEUED: {ticker} RM SELL → new AMO SELL limit ₹{new_limit:.2f} "
-                            f"for tomorrow's open"
-                        )
-                        print(
-                            f"  ⚠️  Original MISSED: open ₹{open_px:.2f} vs limit ₹{limit_px:.2f}"
-                        )
-                    else:
-                        print(
-                            f"  ERROR [{ticker}]: RM SELL MISSED but could not fetch today's close "
-                            f"for requeue. MANUAL ACTION REQUIRED: check position in Zerodha dashboard."
-                        )
-
-                else:
-                    # SELL miss — small gap, not an exit we manage (edge case).
-                    missed_count += 1
-
-            else:
-                # Non-BUY/SELL miss, or dry-run (apply_fills=False): always a true miss.
-                missed_count += 1
+    # Counter buckets are MUTUALLY EXCLUSIVE, so a GAP_EXIT can no longer also be
+    # counted as a MISS (Audit2 Finding #4) by construction, rather than by
+    # hand-maintained increments in each branch. They are NOT total: NO_DATA and
+    # REJECT fall into no bucket, so filled+missed+gap_exit+cancelled can be less
+    # than len(decisions). Pre-existing at baseline; tracked separately.
+    results         = [{"ticker": d.order["ticker"], "status": d.status,
+                        "reason": d.reason} for d in decisions]
+    filled_count    = sum(1 for d in decisions if d.action == "FILL")
+    gap_exit_count  = sum(1 for d in decisions if d.action == "GAP_EXIT")
+    missed_count    = sum(1 for d in decisions if d.is_miss)
+    cancelled_count = sum(1 for d in decisions if d.action == "CANCEL_CA")
 
     print()
     parts = [f"{filled_count} FILLED", f"{missed_count} MISSED", f"{gap_exit_count} GAP_EXIT"]
