@@ -301,6 +301,22 @@ full suite, PATCHED         : 349 passed, 0 failed
 ```
 349 = the server's 344 baseline + 5 new. `git apply --check` clean against the real tree. Verified in a throwaway worktree; nothing applied, committed, pushed, or deployed.
 
+### Addendum (Aug 25 2026) — "unmanaged SELL" sub-case confirmed unreachable
+*Appended after the section above was reviewed and approved; the original text is unchanged.*
+
+Raised in review of the patch: the SELL-side fix only fetches a close price and requeues when the order is *managed* (`is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES`). If a SELL could ever fail both tests, `close_px` stays `None`, `_requeue_sell_amo()` silently no-ops, and — unlike the failed-close-fetch case — no `MANUAL ACTION REQUIRED` line is rendered. That would be this very defect surviving in one narrow sub-case of its own fix.
+
+Confirmed unreachable by tracing the call graph, not by inference from documentation:
+
+1. **Exactly two `place_sell_amo()` call sites exist repo-wide.** `morning_fill_check.py:755` passes `d.notes + " [REQUEUED]"`, preserving the original notes — and `notes_base` strips the suffix via `.split(" [")[0]`, so a requeued order round-trips to the same classification. The origin is `signal_runner.py:1612`, `notes=r.get("exit_reason", "STRATEGY_SIGNAL")`.
+2. **Exactly two result blocks set `needs_amo_order: "SELL"`** — `signal_runner.py:702` (`RISK_EXIT`, `exit_reason` taken from `exit_decision`) and `:743` (`SELL`, the literal `"STRATEGY_SIGNAL"`).
+3. **RiskManager emits `exit_reason` only as** `HARD_STOP` (`risk_manager.py:236`), `CHANDELIER` (`:278`), or `TIME_STOP` (`:291`).
+4. **The one `None` cannot leak.** `risk_manager.py:299` returns `exit_reason: None`, but only on the `should_exit: False` branch, and `signal_runner.py:690` reads `exit_reason` exclusively inside `if exit_decision["should_exit"]`. This mattered: a `None` *value* would have defeated `.get()`'s `"STRATEGY_SIGNAL"` default — `.get()` only substitutes a default for a *missing key*, not a present-but-`None` one — and produced exactly the unmanaged SELL in question.
+
+Union of reachable notes = `{HARD_STOP, CHANDELIER, TIME_STOP, STRATEGY_SIGNAL}`, which is precisely `_RM_EXIT_NOTES | _STRATEGY_EXIT_NOTES`. `is_managed` is therefore always `True` and the unmanaged branch is defensive only — the same status as `REJECTED`/`CANCELLED` under `LIVE_TRADING_MODE=False`.
+
+**Residual risk, stated rather than dismissed:** this is a property of the current call graph, not an invariant the code enforces. A future SELL-AMO call site passing a note outside those four strings would make the branch live and reintroduce a silent strand. `test_every_cancel_ca_decision_is_handled_by_execute_decision` does not cover this — it checks dispatch coverage, not note vocabulary. Closing it properly would mean asserting the note vocabulary at the `place_sell_amo()` seam; not done here, and not required while only two call sites exist.
+
 ---
 
 # 2. HIGH — ETF cash gate credits an unwind `rebalance_etf()` refuses to perform
