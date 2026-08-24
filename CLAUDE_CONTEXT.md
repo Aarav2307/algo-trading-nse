@@ -1706,6 +1706,65 @@ NOT merged, NOT pushed, NOT deployed.
 
 ---
 
+#### screener/nifty500_cache.json untracked — backlog item from the Aug 24 deploy — FIXED (Aug 24 2026, branch only)
+
+Branch: fix/untrack-nifty500-cache. Surfaced during the Aug 24 deploy, when the
+server's pre-pull `git status --short` showed ` M screener/nifty500_cache.json`
+and correctly triggered a STOP-and-investigate before the pull.
+
+Problem: the file is tracked, but `fetch_nifty500()` in auto_screener.py rewrites
+it on every successful live fetch — i.e. on the Wed/Sun screener cron. So the
+server's working tree went dirty on a fixed schedule, forever. Same class as the
+151 runtime artifacts the Jul 19 cleanup untracked
+(`git ls-files -ci --exclude-standard | xargs git rm --cached`); this one escaped
+that sweep because it was never in .gitignore, so it was genuinely tracked rather
+than tracked-but-ignored. The Aug 24 investigation confirmed the diff was benign
+(fetched_at 2026-07-12 -> 2026-08-23, one constituent swapped) and that the
+incoming commits did not touch the file — but the cost of that investigation is
+exactly the recurring tax being removed here.
+
+Fix: `git rm --cached screener/nifty500_cache.json` (file stays on disk
+everywhere it currently exists) plus a .gitignore entry with the reasoning inline.
+
+**Trade-off, accepted deliberately.** The file was originally committed on
+purpose: Audit2 Finding #22 (Jul 2 2026) built the cache fallback and
+"pre-populated with 500 tickers" so a fresh clone would have something to fall
+back on. Untracking removes that. The exposure is narrow: a brand-new checkout
+whose FIRST screener run ALSO hits an NSE fetch failure gets neither live data
+nor cache, and `fetch_nifty500()` returns `{}, True` after printing
+"CRITICAL: NIFTY 500 fetch failed AND no valid cache found. Screener cannot run."
+That is a loud, graceful, self-healing failure — the next successful run
+repopulates the cache permanently. Weighed against a working tree that goes dirty
+twice a week on the live server forever, the recurring cost is the larger one.
+
+**The seed-file alternative was considered and REJECTED as worse, not skipped.**
+Keeping a tracked seed at a separate path (e.g. screener/nifty500_seed.json) with
+a code change to fall back to it would need the seed to be permanently frozen in
+git. A stale-but-present seed is more dangerous than a loud absence: the screener
+would run to completion on an outdated constituent list and emit only a "results
+may be slightly stale" warning, whereas no seed at all stops the run with a
+CRITICAL. Note the tracked copy was already stale — the Mac's committed version
+read `fetched_at: 2026-07-12` while the server's live copy read `2026-08-23`, so
+a fresh clone today would already have seeded from six-week-old data. If the
+fresh-clone case ever needs covering, the correct fix is a documented one-line
+bootstrap command, not a frozen artifact in version control.
+
+**DEPLOY PROCEDURE — this one cannot be a plain `git merge --ff-only`.** The
+commit deletes the path from the tree, and the server's copy is MODIFIED, so the
+merge will refuse with "Your local changes to the following files would be
+overwritten by merge". Required sequence on the server:
+    cp screener/nifty500_cache.json /tmp/nifty500_cache.json.keep
+    git checkout -- screener/nifty500_cache.json     # clean the working tree
+    git merge --ff-only origin/main                  # removes it from tracking
+    cp /tmp/nifty500_cache.json.keep screener/nifty500_cache.json
+The final copy-back matters: without it the live cache is gone until the next
+successful Wed/Sun fetch, which reintroduces exactly the fresh-clone exposure
+described above on a machine that did not need to have it.
+
+NOT merged, NOT pushed, NOT deployed.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL
