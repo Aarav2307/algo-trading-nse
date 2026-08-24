@@ -1765,6 +1765,123 @@ NOT merged, NOT pushed, NOT deployed.
 
 ---
 
+#### CANCELLED_CA strands the position it belongs to — Finding #12 — FIXED (Aug 25 2026, branch only)
+
+Branch: fix/cancelled-ca-position-reset. Surfaced Aug 24 while reviewing
+fix_01_dry_run_contract.patch — specifically while answering why CANCELLED_CA is
+excluded from the manual-attention section. NOT caused by that patch and not
+fixed by it; verified byte-identical behaviour on baseline HEAD and patched.
+
+Problem: `plan_fill()` returns a bare CANCEL_CA decision and `execute_decision()`
+has NO branch for it. The ledger write at the bottom is unconditional on
+`d.csv_status`, but position resolution is dispatched per-action — so the order
+is marked terminal (invisible to `_load_pending_orders()`, which selects on
+status == "DRY_RUN") while the position is left exactly as it was. Every other
+terminal action resolves its position: FILL -> confirm_buy_fill/close_position,
+GAP_EXIT -> close_position, MISS_CANCEL_BUY and REJECT -> cancel_pending_buy,
+REQUEUE_SELL -> requeue_rm_sell. CANCEL_CA was the only one that resolved nothing.
+
+No documented intent exists for the position-state side and none was invented.
+The only statement anywhere is README.md:78 ("Corporate actions — cancel fills if
+ex-date today"), which covers the FILL. The standard applied is internal
+consistency with the five sibling branches above.
+
+Two failure modes, different in kind:
+  BUY  — pending_buy stays True. _process_stock() returns early on it every run,
+         so the ticker produces no signal, gets no risk management, emits no AMO.
+         Same outcome as audit Finding #3 by a different route. Bounded: no
+         capital committed, since queue_pending_buy() never deducts cash.
+  SELL — pending_rm_exit stays True with shares > 0 and NO code path can close
+         the position. Verified both sides: morning_fill_check sees no DRY_RUN
+         row, and `grep -c needs_amo_order` over signal_runner's pending_rm_exit
+         branch returns 0 while Step 13 emits orders only where that field is
+         set. The RM keeps ratcheting a chandelier stop that can never fire an
+         order. This is Finding #2 (Jun 19 2026, "Orphaned RM SELL position")
+         reappearing through the corporate-action path — the Jun 19
+         requeue_rm_sell() fix covered the missed-fill route only, because the
+         corporate-action cancel did not exist when it was written.
+
+Trigger confirmed reachable, not asserted: utils/corporate_actions.py fails open
+(`except Exception: ... return no_action` with skip=False). NSE transiently down
+at the 3:45 PM signal run -> no skip -> AMO queued; NSE healthy at 9:20 AM ->
+ex-date correctly detected -> CANCELLED_CA -> strand. Note WHY an outage is
+required: the signal-time danger window is {check_date, next_1, next_2}, so an
+ex-date on the fill day would normally be caught at 3:45 PM. The fail-open path
+is what lets it through, which makes this conditional on an NSE outage rather
+than routine.
+
+Severity HIGH, with CRITICAL considered and rejected. The SELL side is the
+strongest case for CRITICAL — a position with no path that can close it is worse
+than a frozen ticker, which at least has a cost floor. Still HIGH because (a) no
+value is silently wrong: cash, shares, entry_price, trade_log and P&L stay
+correct and internally consistent — it is a stuck state machine, not corrupted
+state, where Finding #1 had the recorded portfolio diverge from reality; and
+(b) it is not silent: the position prints as PENDING_RM_EXIT in the daily report
+every day with its chandelier level.
+WHERE THIS WOULD BE REVISED: argument (b) collapses if the daily report is not
+read day to day, in which case a recurring PENDING_RM_EXIT line is
+indistinguishable from a normal one-day pending exit and this is CRITICAL in
+practice. This file already records that exact pattern — the Aug 22 EMAMILTD.NS
+removal went unreviewed for four screener cycles because REMOVE recommendations
+have no console output in a real run.
+
+Fix — reuses both existing seams; no new machinery, no new threshold:
+  BUY  -> cancel_pending_buy(), identical to the MISS_CANCEL_BUY/REJECT handling.
+  SELL -> requeue_rm_sell() via the existing _requeue_sell_amo() helper.
+
+On whether requeue_rm_sell() is semantically valid here — checked before reusing,
+not assumed. Its two runtime guards are pending_rm_exit == True and shares > 0;
+CANCEL_CA leaves exactly that, so the STATE contract fits exactly. Its DOCSTRING
+was narrower than its guards ("Only call this after a confirmed MISSED RM SELL")
+and a cancel is not a miss. Rather than call it outside its documented contract
+or fork a near-duplicate method, the docstring was WIDENED to name both callers
+and explain why they share the counter. The 3-requeue-then-CRITICAL cap is
+preserved unchanged and is tested.
+Consequence stated plainly: a CA cancel now consumes one of the three retries.
+Slightly conservative — an ex-date is a scheduled, self-resolving, one-day event
+unlike the liquidity/circuit problems the cap was designed for — so it alerts
+marginally earlier than strictly necessary. A shared counter was judged better
+than a parallel one; a second threshold would need a new state field, a
+migration, and its own tests to guard a rarer case.
+
+Cost: one extra _fetch_close_price() call, only on an ex-date SELL, paced at 1.1s
+by the Aug 24 rate-limiting fix. Today's close is already post-adjustment, so it
+is the correct basis for tomorrow's limit — the same basis the MISSED-SELL
+requeue uses.
+
+Manual-attention section deliberately UNCHANGED. Working out which case is which:
+  - Routine cancel (BUY reset to flat, SELL requeued) is now a HANDLED outcome —
+    log line only. Adding CANCELLED_CA to the ("REJECTED","CANCELLED") filter
+    would surface every routine cancel as noise.
+  - Retry cap exhausted: requeue_rm_sell() already prints a CRITICAL block with
+    MANUAL ACTION REQUIRED, automatically, regardless of cancel reason — tested.
+  - Close fetch fails so the SELL cannot be requeued: still a genuine strand, so
+    plan_fill() renders an explicit "MANUAL ACTION REQUIRED: position is still
+    open with no exit order." line, matching the MISSED-SELL treatment of the
+    same condition.
+Both genuinely-bad cases already produce loud, distinct output.
+
+Test results:
+- paper_trading/test_corp_action_cancel_audit.py, 5 tests.
+    BASELINE HEAD : 4 failed, 1 passed
+    PATCHED       : 5 passed
+  The one baseline pass is deliberate — it is the supporting evidence that the
+  ledger row really is terminal, which is what makes the strand permanent.
+- Full suite, patched: 349 passed, 0 failed. 349 = the server's 344 baseline + 5
+  new. Zero live-call markers. Verified in a throwaway worktree.
+
+Hygiene finding, flagged not fixed: TWO pairs of duplicate test names exist
+across the suite, not one. Both pairs live in the same two files —
+test_state_file_is_absolute_and_cwd_independent and
+test_token_file_is_absolute_and_cwd_independent, each defined in both
+paper_trading/test_morning_fill_check.py and
+paper_trading/test_signal_runner_fetch.py. This already cost time once, when a
+command targeting one resolved to the other. A _mfc/_sr suffix resolves both.
+
+NOT merged, NOT pushed, NOT deployed.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL

@@ -585,13 +585,47 @@ def plan_fill(order: dict, today: date, ex_today: dict) -> FillDecision:
 
     # Ex-date today: the open already carries the corporate-action adjustment,
     # so the limit price (set against the pre-adjustment price) is meaningless.
+    #
+    # Finding #12: cancelling the FILL is correct, but the POSITION still has to
+    # be resolved or it is stranded. This branch used to return a bare
+    # CANCELLED_CA that execute_decision() had no case for, so nothing reset the
+    # position: a cancelled BUY froze the ticker on pending_buy forever, and a
+    # cancelled SELL left pending_rm_exit set with NO order that could ever close
+    # it (signal_runner's pending_rm_exit branch never sets needs_amo_order, so
+    # Step 13 emits nothing). The resolutions below reuse the two seams the
+    # MISSED paths already use — cancel_pending_buy() and requeue_rm_sell() — so
+    # no new machinery and no new retry threshold is introduced.
     if ex_today.get(ticker, False):
+        ca_reason = "Corporate action ex-date today — fill cancelled, open price is adjusted"
+        ca_detail = (f"  ✗ CANCELLED  {ticker:<14} {order_type:<4} {shares:>3} shr "
+                     f"| ex-date today — fill skipped")
+
+        # A managed SELL needs a replacement order or the position can never
+        # exit. Today's close is already post-adjustment, so it is the correct
+        # basis for tomorrow's limit — the same basis the MISSED-SELL requeue
+        # uses. Costs one extra paced Kite call, only on an ex-date SELL.
+        ca_close = None
+        if order_type == "SELL" and (is_rm_exit or notes_base in _STRATEGY_EXIT_NOTES):
+            ca_close = _fetch_close_price(ticker, today)
+            if ca_close is None:
+                ca_reason += (" — could not fetch today's close for requeue; "
+                              "MANUAL ACTION REQUIRED")
+                ca_detail += (f"\n  ERROR [{ticker}]: SELL AMO cancelled for ex-date but "
+                              f"today's close is unavailable, so it could not be re-queued. "
+                              f"MANUAL ACTION REQUIRED: position is still open with no "
+                              f"exit order.")
+            else:
+                _ca_limit = round(ca_close * (1 - _AMO_LIMIT_BUFFER), 2)
+                ca_reason += f" — SELL AMO requeued at ₹{_ca_limit:.2f} for tomorrow's open"
+                ca_detail += (f"\n  ⚠️  REQUEUED: {ticker} SELL → new AMO SELL limit "
+                              f"₹{_ca_limit:.2f} for tomorrow's open (ex-date cancel)")
+
         return FillDecision(
             order=order, action="CANCEL_CA", csv_status="CANCELLED_CA",
+            close_px=ca_close,
             is_rm_exit=is_rm_exit, notes=notes, status="CANCELLED_CA",
-            reason="Corporate action ex-date today — fill cancelled, open price is adjusted",
-            detail=(f"  ✗ CANCELLED  {ticker:<14} {order_type:<4} {shares:>3} shr "
-                    f"| ex-date today — fill skipped"),
+            reason=ca_reason,
+            detail=ca_detail,
         )
 
     open_px = _fetch_open_price(ticker, today)
@@ -765,6 +799,19 @@ def execute_decision(d: FillDecision, portfolio, today: date) -> None:
                   f"position reset to flat")
     elif d.action == "REQUEUE_SELL":
         _requeue_sell_amo(d, portfolio, today)
+    elif d.action == "CANCEL_CA":
+        # Finding #12. The fill is cancelled; the position must still be resolved.
+        if o["order_type"] == "BUY":
+            portfolio.load()
+            portfolio.cancel_pending_buy(ticker)
+            portfolio.save()
+            print(f"  [{ticker}]: BUY AMO cancelled for ex-date — pending_buy "
+                  f"cancelled, position reset to flat")
+        else:
+            # SELL. _requeue_sell_amo() self-guards on close_px is None, which
+            # covers both the unmanaged-SELL edge case and a failed close fetch
+            # (plan_fill has already rendered MANUAL ACTION REQUIRED for that).
+            _requeue_sell_amo(d, portfolio, today)
 
     # Ledger LAST, and exactly once — see the ordering contract above and the
     # GAP_EXIT overwrite defect described at the top of this section.
