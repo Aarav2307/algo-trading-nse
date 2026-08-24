@@ -1382,6 +1382,92 @@ edit was made or is believed necessary.
 
 ---
 
+#### pytest collection hygiene — live Kite calls on every `pytest` run — FIXED (Aug 22-24 2026, branch only, NOT merged)
+
+Branch: fix/kite-fetcher-collection-hygiene (separate from the dry-run fix —
+unrelated defects, independently reviewable and revertable).
+
+Root cause: `test_kite_fetcher.py` and `test_kite.py` at the repo root define
+ZERO test functions. They are manual verification scripts whose checks run at
+MODULE level. pytest imports every `test_*.py` during collection, so a plain
+`python -m pytest` executed them — firing LIVE Kite and yfinance requests, and
+printing a live TOTP code derived from ZERODHA_TOTP_SECRET into test output.
+
+On 2026-08-22 Kite began returning PermissionException for the historical-data
+call. Because that surfaced during COLLECTION, pytest aborted with "Interrupted:
+1 error during collection" and ZERO of the 387 tests ran — the entire suite
+blocked by a file contributing none of them.
+
+Both files are in .gitignore ("# Test files with sensitive output") and were
+UNTRACKED — they exist on the Mac and the Lightsail server, in no clone. That is
+why renaming was rejected: a rename is not committable, so it would fix one
+machine and silently drift from the other. Chose a committed root conftest.py
+with `collect_ignore = ["test_kite.py", "test_kite_fetcher.py"]`, which applies
+wherever the repo is checked out regardless of local file state.
+
+validation/add_validated_stock.py:194 already passed the equivalent --ignore
+flags to its own hard-gate subprocess — the project already knew about these two
+files; only the plain `python -m pytest` documented in README.md and this file
+was unprotected. Those flags are left in place as defence in depth.
+
+**conftest.py verified cwd-independent.** Given this repo's history with relative
+paths that only resolve from the project root (news_flags.json Jul 17,
+AMO_CONFIG order_log_file Jul 18, correlation_check default arg — audit Finding
+#4), the new conftest was explicitly checked from a non-root cwd. pytest resolves
+collect_ignore entries relative to the conftest file's own directory, not the
+process cwd — a structurally different mechanism from Path("relative"). Confirmed:
+  cd paper_trading && pytest -v   -> 152 passed, 2 known failures, no collection error
+  cd paper_trading && pytest ..   -> 381 passed, 6 known failures, no collection error
+  collect-only from subdir        -> 387 collected; zero live-call markers
+Not a finding. Recorded so a future audit does not have to re-derive it.
+
+**test_kite.py TOTP print masked, then un-gitignored and tracked.** The script did
+`print("\nCurrent TOTP code:", totp.now())` — a live, usable second factor echoed
+to stdout and (until conftest.py) into pytest logs on every suite run. Now prints
+"TOTP generation: OK (code redacted — ends in ****NN)", which still lets a human
+confirm the generator matches their authenticator app. Verified by direct run:
+zero 6-digit codes emitted.
+.gitignore line 28 ("test_kite.py") was then removed and the masked file tracked.
+Reason: the mask alone was a LOCAL edit to an untracked file — it would have fixed
+the Mac and left the server still printing a full live code, with no branch diff
+to review and nothing to revert. That is precisely the drift argument that ruled
+out renaming test_kite_fetcher.py two days earlier: a fix living only in one
+machine's working directory is not a fix, it is a divergence. Tracking makes the
+masked version the single source of truth, so the server converges on the next
+pull instead of needing a remembered manual edit.
+Safe to track because the file contains no secrets — it reads KITE_API_KEY,
+KITE_API_SECRET, ZERODHA_USER_ID, ZERODHA_PASSWORD and ZERODHA_TOTP_SECRET from
+.env at runtime and prints only their truthiness ("YES"/"NO"). All 7 print() calls
+audited individually: five booleans, one redacted 2-of-6 digits of an ephemeral
+code, one static string. Nothing echoes a value.
+test_kite_fetcher.py deliberately NOT un-ignored — excluded for a different reason
+(live API calls at import), already handled by collect_ignore. .gitignore lines 28
+and 29 were two separate literal entries (verified via git check-ignore before
+editing, no wildcard), so removing one could not affect the other.
+Residual: the .gitignore comment "# Test files with sensitive output" now sits
+above only test_kite_fetcher.py, which is a live-API-call exclusion rather than a
+credential one. Slightly inaccurate; left unchanged deliberately to keep the edit
+to exactly one line.
+
+**Branch verified in isolation** (existing worktree; a fresh `git worktree add`
+would have been meaningless since nothing was committed at the time — the branch
+ref still equalled main, and `git show <branch>:conftest.py` failed):
+    313 collected, 313 passed, exit 0
+    zero occurrences of "Fetching TMPV" / "=== Kite Connect ===" / "TOTP" /
+    "kiteconnect.exceptions" / "ERROR collecting" / "errors during collection"
+with test_kite.py, test_kite_fetcher.py and portfolio_state.json all present on
+disk, morning_fill_check.py verified identical to main's, and all five branch-1
+audit files absent. The 6 known audit failures cannot appear here — those three
+test files are untracked and on neither branch.
+
+**Correction to the audit record:** an earlier note claimed every full-suite
+number in this audit (313, 312, 381) was silently making live calls. That is false
+and is corrected here. Runs performed in throwaway git worktrees never had these
+gitignored files present and were clean. Only runs in the PRIMARY checkout — the
+original 313 baseline and the 387-item run on 2026-08-22 — made live calls.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL
