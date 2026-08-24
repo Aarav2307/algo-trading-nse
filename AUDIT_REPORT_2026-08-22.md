@@ -1,0 +1,860 @@
+# System Audit & Stress Test — NSE Algo Trading System
+**Date:** 2026-08-22
+**Scope:** Full Component Map per `README.md` — Data → Strategy → Risk & Execution → Paper Trading → Utilities → Validation → Auth
+**Method:** read intended behaviour from `README.md` / `CLAUDE_CONTEXT.md` / docstrings, read the implementation, then write new edge-case tests to find what the existing suite does not cover.
+
+---
+
+## Baseline
+
+```
+$ source venv/bin/activate && python -m pytest -v
+======================== 313 passed in 72.21s (0:01:12) ========================
+```
+
+313 passed, 0 failed, 0 errors, 0 skipped.
+(`CLAUDE_CONTEXT.md` last recorded 202 — the suite has grown by 111 since Jul 19.)
+
+## After adding this audit's tests
+
+```
+$ python -m pytest -q
+23 failed, 364 passed in 73.92s (0:01:13)
+```
+
+**All 313 pre-existing tests still pass.** 74 new tests added across 5 new files; 51 pass, 23 fail — every failure asserts a confirmed defect documented below.
+
+New files (no existing test was edited or overwritten):
+- `paper_trading/test_morning_fill_check_audit.py` — 3 tests, **3 fail**
+- `paper_trading/test_paper_portfolio_audit.py` — 18 tests, **1 fail**
+- `paper_trading/test_concurrency_audit.py` — 15 tests, **1 fail**
+- `data/test_data_edge_audit.py` — 23 tests, **4 fail** (one parametrized defect)
+- `paper_trading/test_dry_run_contract_audit.py` — 15 tests, **14 fail** (findings #1 and #1b; all 15 pass under the proposed patch)
+
+**Guardrails observed.** `git status --short` shows only the 4 new untracked test files. No tracked file modified; `portfolio_state.json`, `.env`, `logs/`, `state_backups/`, `amo_orders.csv`, `signal_log.csv`, `news_flags.json` all untouched. Zero live Kite or NSE network calls — every fetch is monkeypatched, every state file is a `tmp_path` copy. No fix in this report has been applied.
+
+---
+
+# PRIORITISED FINDINGS
+
+| # | Severity | Component | Finding |
+|---|----------|-----------|---------|
+| 1 | **CRITICAL** | Paper Trading | Dry-run `morning_fill_check.py` silently destroys pending AMO fills |
+| 1b | **HIGH** | Paper Trading | Every `GAP_EXIT` is recorded in `amo_orders.csv` as `MISSED` with no fill price |
+| 2 | **HIGH** | Paper Trading | ETF cash gate credits an unwind `rebalance_etf()` refuses to perform |
+| 12 | **HIGH** | Paper Trading | `CANCELLED_CA` strands a position — BUY frozen, SELL can never exit |
+| 3 | **MEDIUM** | Risk & Execution | `PositionSizer` returns −1 shares; bypasses `shares == 0` skip, bricks the ticker |
+| 4 | **MEDIUM** | Paper Trading | `correlation_check.py` CLI default path is cwd-dependent, fails open silently |
+| 5 | **MEDIUM** | Paper Trading | `validate_state_integrity()` counts un-funded `pending_buy` in the 50% floor |
+| 6 | **MEDIUM** | Paper Trading | Daily report: `cash + invested ≠ total` when a BUY is pending |
+| 7 | **MEDIUM** | Utilities | `NSE_HOLIDAYS_2027` empty — scheduled pre-warm due Nov 2026 |
+| 8 | **LOW** | Validation | `check_universe_consistency()` is tautological — cannot ever fail |
+| 9 | **LOW** | Data | No duplicate / out-of-order timestamp detection anywhere in the pipeline |
+| 10 | **LOW** | Paper Trading | `close_position()` `ZeroDivisionError` on `entry_price == 0` after crediting cash |
+| 11 | **LOW** | Paper Trading | `PaperPortfolio.state_file` default is a relative path (dead in production) |
+
+**Read items 1–3 first.** Items 4–11 are real but bounded.
+
+---
+
+# 1. CRITICAL — Dry-run `morning_fill_check.py` silently destroys pending AMO fills
+
+**Component:** Paper Trading Layer → `paper_trading/morning_fill_check.py`
+
+### Intended behaviour
+Module docstring, lines 17–18:
+> *"Dry-run mode (the default): portfolio state is NOT modified — just shows what would have happened. Set `DRY_RUN_PORTFOLIO = False` only after confirming the logic is correct on a few real sessions."*
+
+Report header, line 516, prints `MODE: DRY RUN — portfolio state will NOT be modified`.
+`--help` epilog advertises the dry-run form as the primary usage.
+
+### Actual behaviour
+The **portfolio** write is guarded by `if apply_fills:`. The **AMO ledger** write is not.
+
+```python
+612:            if apply_fills:
+613:                _update_portfolio_fill(...)                       # guarded ✅
+619:            _update_csv_row(order_date, ticker, order_type,
+620:                            "FILLED", str(round(open_px, 4)), today.isoformat())   # UNGUARDED ❌
+```
+
+Four unguarded call sites: line **576** (`CANCELLED_CA`), **619** (`FILLED`), **627** (`REJECTED`/`CANCELLED`), **645** (`MISSED`).
+
+### Root cause
+`_load_pending_orders()` (line 113) selects work by `row["status"] == "DRY_RUN"`. A dry run flips that field without updating the portfolio. The order is then **permanently invisible** to every subsequent run, including the 9:20 AM cron `--apply` pass.
+
+### Tests
+| Test | Result |
+|---|---|
+| `test_dry_run_does_not_mark_filled_order_as_filled_in_csv` | **FAIL** — status became `FILLED` |
+| `test_dry_run_does_not_mark_missed_order_as_missed_in_csv` | **FAIL** — status became `MISSED` |
+| `test_dry_run_then_apply_still_confirms_the_buy_fill` | **FAIL** — `pending_buy` still `True`, cash still ₹100,000.00 |
+
+### Failure mode
+A BUY consumed by a dry run leaves the position at `pending_buy=True`, `shares=N`, **cash never deducted**. `_process_stock()` returns early on `pending_buy` (line 610), so the stock emits `PENDING_BUY` forever and **no risk management ever runs on it** — no chandelier, no hard stop, no time stop. A SELL consumed the same way leaves `pending_rm_exit=True` with the position still open and no order left to reconcile it.
+
+### Real-world trigger
+Not an exotic input — the exact commands the module documents:
+```
+python paper_trading/morning_fill_check.py                   # dry run, yesterday's orders
+python paper_trading/morning_fill_check.py --date 2026-06-05 # check a past date
+```
+Any operator inspecting fills before the cron fires, or re-checking a past date to investigate something, destroys that date's pending fill. The `--date` form is the natural tool for auditing history, and it consumes orders for whatever date it lands on.
+
+This is the mirror image of the retracted `confirm_buy_fill()` incident: there the *state* mutated without persisting; here the *ledger* persists without the state.
+
+### Proposed fix (not applied)
+```diff
+--- a/paper_trading/morning_fill_check.py
++++ b/paper_trading/morning_fill_check.py
+@@ -573,7 +573,8 @@
+                 f"| ex-date today — fill skipped"
+             )
+-            _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
++            if apply_fills:
++                _update_csv_row(order_date, ticker, order_type, "CANCELLED_CA", "", "")
+             continue
+@@ -616,8 +617,9 @@
+                     portfolio_obj=_portfolio,
+                 )
+-            _update_csv_row(order_date, ticker, order_type,
+-                            "FILLED", str(round(open_px, 4)), today.isoformat())
++            if apply_fills:
++                _update_csv_row(order_date, ticker, order_type,
++                                "FILLED", str(round(open_px, 4)), today.isoformat())
+ 
+         elif result["status"] in ("REJECTED", "CANCELLED"):
+@@ -624,7 +626,8 @@
+-            _update_csv_row(order_date, ticker, order_type, result["status"], "", "")
++            if apply_fills:
++                _update_csv_row(order_date, ticker, order_type, result["status"], "", "")
+ 
+         else:
+@@ -643,7 +646,8 @@
+-            _update_csv_row(order_date, ticker, order_type, "MISSED", "", "")
++            if apply_fills:
++                _update_csv_row(order_date, ticker, order_type, "MISSED", "", "")
+```
+This only adds guards — it does not reorder, so the Jul 18 portfolio-before-CSV hardening is preserved.
+
+---
+
+# 1b. HIGH — Every `GAP_EXIT` is recorded in `amo_orders.csv` as `MISSED`
+
+**Component:** Paper Trading Layer → `paper_trading/morning_fill_check.py:645` + `:682`
+**Found while building the fix for #1** — same code path, independent defect.
+
+### Intended behaviour
+`CLAUDE_CONTEXT.md` (Finding #11, Jun 26):
+> *"GAP_EXIT path: closes position at open, records in trade_log, does not requeue"*
+
+The AMO ledger should record the order as `GAP_EXIT` with the actual fill price and date.
+
+### Actual behaviour
+`_update_csv_row()` only matches rows still at `DRY_RUN`:
+```python
+352:            if (row["date"] == target_date and row["ticker"] == ticker
+353:                    and row["order_type"] == order_type
+354:                    and row["status"] == "DRY_RUN"):
+```
+The SELL-miss path writes `MISSED` **first** (line 645, before the gap-exit branch is even evaluated), then the gap-exit branch attempts to write `GAP_EXIT` (line 682). By then the row is `MISSED`, not `DRY_RUN`, so **the second write silently matches nothing.**
+
+Reproduced against the live code:
+```
+final status    : MISSED
+final fill_price: (empty)
+final fill_date : (empty)
+EXPECTED: GAP_EXIT / 950.0 / 2026-08-21  (position WAS closed at the open)
+```
+
+### Root cause
+Two sequential writes to a single mutable `status` column, where the first write invalidates the matcher the second one depends on. A symptom of the same design flaw behind #1: one mutable column serving as ledger, work queue, and fill record simultaneously.
+
+### Blast radius
+The **portfolio is correct** — `trade_log` records `GAP_EXIT` with the right price, cash and P&L are right. Only the order ledger is wrong. So this is not a money error; it is **audit-trail corruption**.
+
+That still matters here specifically. `amo_orders.csv` is what this project actually reaches for during forensics — the Aug 4 BAJAJ-AUTO reconciliation explicitly cross-checked `trade_log` against *"amo_orders.csv's SELL fill for the same date"*. After any gap-exit, those two records **disagree**: the trade log says the position closed at ₹940, the order ledger says the order was missed and never filled. An investigator applying the Aug 4 method to a gap-exit would conclude a trade had been lost — the precise false-positive that file's own retraction warns about.
+
+Rated HIGH, not CRITICAL: no wrong cash, position, or P&L. Rated HIGH, not MEDIUM: a 3%+ gap-down on an NSE mid-cap is an ordinary market event, and the corruption is silent and permanent.
+
+### Test
+`test_gap_exit_is_recorded_as_gap_exit_not_missed` in `paper_trading/test_dry_run_contract_audit.py` — **FAIL** on current code, **PASS** under the proposed patch.
+
+### Fix
+Closed structurally by the Phase 1 patch for #1 (`fix_01_dry_run_contract.patch`): a `FillDecision` carries exactly one `csv_status`, written exactly once, after the portfolio update. No sequence of writes can invalidate a later matcher because there is no sequence.
+
+
+# 12. HIGH — `CANCELLED_CA` strands the position it belongs to
+
+**Component:** Paper Trading Layer → `paper_trading/morning_fill_check.py`
+**Found:** while answering why `CANCELLED_CA` is excluded from the manual-attention section during review of `fix_01_dry_run_contract.patch`. **Not caused by that patch and not fixed by it** — verified byte-identical behaviour on baseline HEAD and on the patched tree.
+
+### Intended behaviour
+**There is no documented intent for the position-state side, and I am not inventing one.** The only statement anywhere is `README.md:78` — *"Corporate actions — cancel fills if ex-date today"* — which describes cancelling the **fill**. The module docstring says nothing about cancellation at all (`grep` over lines 1–26 returns no match), and `CLAUDE_CONTEXT.md` has no entry predating this finding.
+
+The standard being applied instead is **internal consistency**: every other terminal outcome in `execute_decision()` resolves its position. `FILL` → `confirm_buy_fill`/`close_position`; `GAP_EXIT` → `close_position`; `MISS_CANCEL_BUY` and `REJECT` → `cancel_pending_buy()`; `REQUEUE_SELL` → `requeue_rm_sell()`. `CANCEL_CA` is the only terminal outcome that resolves nothing.
+
+### Actual behaviour
+`plan_fill()` returns a bare decision — [morning_fill_check.py:588-596](paper_trading/morning_fill_check.py#L588):
+```python
+588:    if ex_today.get(ticker, False):
+589:        return FillDecision(
+590:            order=order, action="CANCEL_CA", csv_status="CANCELLED_CA",
+591:            is_rm_exit=is_rm_exit, notes=notes, status="CANCELLED_CA",
+...
+```
+`execute_decision()` has **no `CANCEL_CA` branch**. It falls through every `if/elif` and reaches only the ledger write:
+```python
+744:    if d.action == "FILL":            ...
+750:    elif d.action == "GAP_EXIT":      ...
+756:    elif d.action in ("MISS_CANCEL_BUY", "REJECT"):   ...
+766:    elif d.action == "REQUEUE_SELL":  ...
+                                          # ← no CANCEL_CA case
+770:    if d.csv_status:                  # ledger marked terminal anyway
+```
+
+### Root cause
+The ledger write is unconditional on `d.csv_status`, but position resolution is dispatched per-action. An action that sets `csv_status` without appearing in the dispatch chain therefore marks the order **terminal** — invisible to `_load_pending_orders()`, which selects on `status == "DRY_RUN"` — while leaving the position exactly as it was.
+
+### Tests — `paper_trading/test_corp_action_cancel_audit.py`
+| Test | Baseline | Patched |
+|---|---|---|
+| `test_cancelled_ca_buy_resets_position_to_flat` | **FAIL** | PASS |
+| `test_cancelled_ca_buy_ledger_row_is_terminal_so_nothing_can_reprocess` | PASS | PASS |
+| `test_cancelled_ca_sell_requeues_so_the_position_can_still_exit` | **FAIL** | PASS |
+| `test_cancelled_ca_sell_preserves_the_three_attempt_cap` | **FAIL** | PASS |
+| `test_every_cancel_ca_decision_is_handled_by_execute_decision` | **FAIL** | PASS |
+
+Baseline messages, verbatim:
+```
+AssertionError: pending_buy still True after CANCELLED_CA — ticker is frozen:
+_process_stock() returns PENDING_BUY early every run, so no signal, no risk
+management, and no AMO will ever be emitted for it again
+AssertionError: no re-queued SELL AMO was written — the position is stranded
+with pending_rm_exit=True, shares=10, and no order that can ever close it
+assert 3 == 4
+AssertionError: CANCELLED_CA action(s) ['CANCEL_CA'] produce a terminal ledger
+write but are not dispatched in execute_decision()
+```
+The second test passing on baseline is deliberate — it is the supporting evidence that the ledger row really is terminal, which is what makes the strand permanent.
+
+### The two failure modes differ
+**BUY — ticker frozen.** `pending_buy` stays `True`. `_process_stock()` returns early on it every run, so the ticker produces no signal, gets no risk management, and emits no AMO. Identical outcome to Finding #3, reached by a different route. Bounded: no capital is committed, since `queue_pending_buy()` never deducts cash.
+
+**SELL — no code path can close the position.** `pending_rm_exit` stays `True` with `shares > 0`. Verified by reading both sides:
+- `morning_fill_check` sees no `DRY_RUN` row — it was marked `CANCELLED_CA`.
+- `signal_runner`'s `pending_rm_exit` branch runs `check_exit()` and `update_rm_state()`, then returns `PENDING_RM_EXIT`. A `grep -c "needs_amo_order"` over that branch returns **0**, and Step 13 emits an order only where `needs_amo_order` is set.
+
+So the risk manager keeps ratcheting a chandelier stop and incrementing `bars_held` for a position that has no mechanism to sell. This is Finding #2 (Jun 19 2026, "Orphaned RM SELL position") reappearing through the corporate-action path — the Jun 19 `requeue_rm_sell()` fix covered the *missed-fill* route only, because the corporate-action cancel did not exist yet when it was written.
+
+### Realistic trigger — confirmed reachable, not asserted
+`utils/corporate_actions.py` fails open at the source:
+```python
+    except Exception as exc:
+        print(f"  [CORP_ACTION] WARNING: NSE API unavailable for {ticker} — {exc}. "
+              f"Proceeding without corporate action check.")
+        return no_action          # skip=False
+```
+Sequence: NSE transiently unavailable at the 3:45 PM signal run → `skip=False` → AMO queued. NSE healthy at 9:20 AM → ex-date correctly detected → `CANCELLED_CA` → strand.
+
+Worth noting *why* NSE must fail for this to fire: the signal-time danger window is `{check_date, next_1, next_2}` — three dates — so an ex-date on the fill day would normally be caught at 3:45 PM and the stock skipped. The fail-open path is what lets it through. That makes this **conditional on an NSE outage**, not a routine occurrence. A second, rarer route also exists: NSE publishing or amending an ex-date between 3:45 PM and 9:20 AM.
+
+### Severity — **HIGH**, and I considered CRITICAL
+The rubric's CRITICAL band is *"silent incorrect state (wrong P&L, wrong position, wrong cash) or data corruption that wouldn't be noticed without this audit."*
+
+The SELL side is the strongest case for CRITICAL: a position with no code path that can ever close it is worse than a frozen ticker, because a frozen ticker has a floor on its cost — no capital is committed — whereas a stranded open position is fully exposed to the market with a stop that cannot fire. That is genuinely a stronger claim than Finding #3's.
+
+I am still calling it **HIGH**, for two reasons:
+
+1. **No value is silently wrong.** Cash, `shares`, `entry_price`, `trade_log` and P&L all remain correct and internally consistent. The defect is a stuck state machine, not corrupted state. Finding #1 was CRITICAL because a fill silently vanished and the recorded portfolio diverged from what actually happened; nothing diverges here.
+2. **It is not silent.** The position appears as `PENDING_RM_EXIT` in the daily report every single day, with its chandelier level printed. It is visible to anyone reading the report — unlike Finding #1, which left no trace anywhere.
+
+The trigger also requires an NSE outage to coincide with an ex-date on a stock holding an open pending order, which is materially narrower than Finding #1's "run the documented command."
+
+**Where I would revise this:** if the daily report is not actually being read day-to-day, argument 2 weakens sharply, and the recurring `PENDING_RM_EXIT` line becomes indistinguishable from a normal one-day pending exit. `CLAUDE_CONTEXT.md` already records exactly this failure pattern — the Aug 22 EMAMILTD.NS removal went unreviewed for four screener cycles because REMOVE recommendations "have no console/log output in a real run." If `PENDING_RM_EXIT` lines get the same treatment, this is CRITICAL in practice.
+
+### Fix — `fix_12_corp_action_cancel.patch`
+Reuses both existing seams; no new machinery, no new threshold.
+
+- **BUY** → `cancel_pending_buy()`, identical to the `MISS_CANCEL_BUY`/`REJECT` handling.
+- **SELL** → `requeue_rm_sell()` via the existing `_requeue_sell_amo()` helper.
+
+**On whether `requeue_rm_sell()` is semantically valid here** — checked before reusing. Its two runtime guards are `pending_rm_exit == True` and `shares > 0`; `CANCEL_CA` leaves exactly that state, so the **state contract fits exactly**. Its *docstring* was narrower than its guards ("Only call this after a confirmed MISSED RM SELL"), and a corporate-action cancel is not a miss. Rather than call it outside its documented contract or fork a near-duplicate method, the patch **widens the docstring** to name both callers and explain why they share the counter. The 3-requeue-then-CRITICAL cap is preserved unchanged and is tested.
+
+One consequence worth stating: a CA cancel now consumes one of the three retry attempts. That is slightly conservative — an ex-date is a scheduled, self-resolving, one-day event, unlike the liquidity or circuit problems the cap was designed for — so it alerts marginally earlier than strictly necessary. I judged a shared counter better than a parallel one; a second threshold would need a new state field, a migration, and its own tests to guard a rarer case.
+
+The SELL path adds **one** `_fetch_close_price()` call, only on an ex-date SELL, paced at 1.1s by the rate-limiting fix. Today's close is already post-adjustment, so it is the correct basis for tomorrow's limit — the same basis the MISSED-SELL requeue uses.
+
+### Manual-attention section — deliberately unchanged
+Working through which case is which:
+- **Routine cancel** (BUY reset to flat, SELL requeued): now a *handled* outcome. Log line only. Adding `CANCELLED_CA` to the section's `("REJECTED", "CANCELLED")` filter would surface every routine cancel as noise.
+- **Retry cap exhausted**: `requeue_rm_sell()` already prints a 🚨 CRITICAL block with `MANUAL ACTION REQUIRED`. That fires automatically regardless of cancel reason — tested.
+- **Close fetch fails**, so the SELL cannot be requeued: this is still a genuine strand. `plan_fill()` renders an explicit `MANUAL ACTION REQUIRED: position is still open with no exit order.` line, matching the existing MISSED-SELL treatment of the same condition.
+
+Both genuinely-bad cases already produce loud, distinct output. The string filter stays as-is.
+
+### Verification
+```
+strand tests, BASELINE HEAD : 4 failed, 1 passed
+strand tests, PATCHED       : 5 passed
+full suite, PATCHED         : 349 passed, 0 failed
+```
+349 = the server's 344 baseline + 5 new. `git apply --check` clean against the real tree. Verified in a throwaway worktree; nothing applied, committed, pushed, or deployed.
+
+---
+
+# 2. HIGH — ETF cash gate credits an unwind `rebalance_etf()` refuses to perform
+
+**Component:** Paper Trading Layer → `paper_trading/paper_portfolio.py`, `paper_trading/signal_runner.py`
+
+### Intended behaviour
+Stated as an invariant twice. `_etf_rebalance_delta_shares()` docstring:
+> *"This is the single source of the delta math — both the real unwind (`rebalance_etf`) and the cash-gate estimate (`projected_tier_unwind_cash`) call it, **so the check and the action can never disagree**."*
+
+`signal_runner.py:1398`:
+> *"Estimate the cash that unwind would free via the SAME plan the real unwind uses below, so the check and the action can never disagree."*
+
+### Actual behaviour
+They disagree by the full amount. Both call `_etf_rebalance_delta_shares()`, but `rebalance_etf()` applies an **additional guard the estimator does not**:
+
+```python
+790:        if new_tier == old_tier:
+791:            return            # ← projected_tier_unwind_cash() has no equivalent
+```
+
+Reproduced (1 open position, `etf_tier=0.8`, 400 NIFTYBEES @ ₹245, cash ₹1,000):
+```
+GATE  credits unwind cash : Rs 14700.0
+ACTUAL cash freed         : Rs 0.0
+ACTUAL etf shares sold    : 0
+DISAGREEMENT              : Rs 14700.0
+```
+
+### Root cause
+`_etf_rebalance_delta_shares()` derives its delta from *current ETF value vs target value*, which is non-zero whenever the ETF has drifted inside its tier. `rebalance_etf()` deliberately suppresses intra-tier drift correction ("Only rebalance on a tier CHANGE — never on intra-tier drift"). The estimator inherits the drift-driven delta but not the suppression.
+
+**The trigger is structural, not incidental.** `ETF_TIERS = {0:1.0, 1:0.8, 2:0.8, 3:0.5, 4:0.0}` — tiers 1 and 2 are *equal*. Every second same-day candidate projects `1→2`, i.e. `0.8 → 0.8`, hits the early return, and frees ₹0. Meanwhile drift accumulates permanently *because* rebalance only fires on tier change.
+
+### Test
+`test_gate_estimate_and_real_unwind_must_agree` — **FAIL**: `cash gate credited Rs14,700 but rebalance_etf() freed Rs0`
+
+### Failure mode
+The cash gate passes the candidate on phantom cash → the unwind no-ops → `_process_stock(defer_buy=False)` runs `PositionSizer` against the *real* ₹1,000 → `max_from_cash = 0` → `shares == 0` → line 826 records `signal: "HOLD"`, `reason: "Golden cross but sizing skipped — 0 shares"`.
+
+Doubly bad for observability: the **top-ranked golden cross is logged to `signal_log.csv` as HOLD**, and because it never took a `continue` branch it is **never appended to `skipped_signals`** — so it does not appear in the SKIPPED rows either. A cash shortfall is recorded as a sizing anomaly.
+
+This is the Jul 27 deadlock's signature — a correctly-ranked, correctly-gated signal silently not taken — re-entering through the estimator rather than through rebalance timing.
+
+### Proposed fix (not applied)
+```diff
+--- a/paper_trading/paper_portfolio.py
++++ b/paper_trading/paper_portfolio.py
+@@ -745,6 +745,13 @@ def projected_tier_unwind_cash(
+         projected = self.committed_open_count() + additional_positions
+         _tier, delta_shares = self._etf_rebalance_delta_shares(
+             projected, niftybees_price, current_prices
+         )
++        # rebalance_etf() no-ops unless the TIER changes (it never corrects
++        # intra-tier drift). Mirror that guard here or the gate credits cash the
++        # real unwind will refuse to free — note ETF_TIERS[1] == ETF_TIERS[2], so
++        # a 2nd same-day candidate always lands on this path.
++        if _tier == self.state["etf_tier"]:
++            return 0.0
+         if delta_shares >= 0:
+             return 0.0
+```
+
+**Secondary (decide separately):** when the sizer returns 0 shares in Phase 2, append that candidate to `skipped_signals` so it reaches `signal_log.csv` as `SKIPPED` rather than vanishing into `HOLD`.
+
+---
+
+# 3. MEDIUM — `PositionSizer` returns −1 shares, bypassing the `shares == 0` skip and bricking the ticker
+
+**Component:** Risk & Execution Engine → `engine/position_sizer.py`; consumed by `paper_trading/signal_runner.py`
+
+### Intended behaviour
+`position_sizer.py` module docstring:
+> `shares = floor(risk_amount / stop_distance)` … *capped at* `min(shares_from_risk, max_position_pct × portfolio_value / entry_price, (cash − brokerage) / entry_price)`
+
+`signal_runner.py:821`: `if shares == 0:` → skip the trade with a `HOLD` and a sizing explanation.
+
+### Actual behaviour
+```python
+100:        max_from_cash = math.floor((cash_available - buy_cost_1share) / entry_price)
+101:        while max_from_cash > 0:      # loop never entered when already negative
+```
+When `cash_available < buy_cost_1share`, the numerator is negative and `math.floor()` of a small negative fraction is **−1**, not 0. `min(...)` propagates it. `binding` correctly reports `all_constraints_zero` (it tests `shares <= 0`) but the **caller tests equality**, so −1 slips through.
+
+Measured:
+```
+price Rs   1000 cash Rs 0.00  cost_1share Rs 1.19 -> shares=-1
+price Rs   1000 cash Rs 1.00  cost_1share Rs 1.19 -> shares=-1
+price Rs   2135 cash Rs 2.00  cost_1share Rs 2.54 -> shares=-1
+price Rs    300 cash Rs 0.30  cost_1share Rs 0.36 -> shares=-1
+price Rs   1000 cash Rs 5.00  cost_1share Rs 1.19 -> shares=0    ← correct
+```
+
+### Test
+`test_position_sizer_never_returns_negative_shares` — **FAIL** on all 4 parametrizations.
+
+### Failure mode (traced end to end)
+`queue_pending_buy(shares=-1)` → `pending_buy=True`, `shares=-1`. Then:
+- `get_open_positions()` filters `shares > 0` → **excluded**
+- `committed_open_count()` → **excluded**, so the ETF tier never accounts for it
+- Step 13's AMO writer requires `shares > 0` → **no AMO order row is ever written**
+- Next day `_process_stock()` returns early on `pending_buy` → `PENDING_BUY` forever
+- `morning_fill_check` only cancels `pending_buy` when it finds a matching AMO row — there is none
+
+The ticker is **permanently frozen**: never trades again, never shows as an open position, and surfaces only as a recurring `PENDING_BUY` line. Recovery requires hand-editing `portfolio_state.json`.
+
+### Precondition
+`cash < buy_cost_1share` (≈ ₹1.19 on a ₹1,000 stock) at the moment a golden cross clears all gates. Reachable: `rebalance_etf()` at the 100% tier caps its buy with `int(cash / price)`, leaving a residual uniformly distributed in `[0, niftybees_price)` — roughly 0.5% of rebalances land under ₹1.19. **Finding #2 widens the door**: the phantom unwind credit lets a near-zero-cash candidate clear the ₹1,000 gate that would otherwise have stopped it.
+
+Classified MEDIUM on precondition rarity, not on consequence — the consequence is silent and permanent.
+
+### Proposed fix (not applied)
+```diff
+--- a/engine/position_sizer.py
++++ b/engine/position_sizer.py
+@@ -97,7 +97,9 @@
+         buy_cost_1share = transaction_costs(entry_price, 1, "buy", "delivery")
+-        max_from_cash   = math.floor((cash_available - buy_cost_1share) / entry_price)
++        # max(0, ...): floor() of a small negative fraction is -1, not 0, when
++        # cash < the cost of a single share. A negative count must never escape.
++        max_from_cash   = max(0, math.floor((cash_available - buy_cost_1share) / entry_price))
+         while max_from_cash > 0:
+@@ -107,7 +109,7 @@
+-        shares = min(shares_from_risk, max_from_pos_cap, max_from_cash)
++        shares = max(0, min(shares_from_risk, max_from_pos_cap, max_from_cash))
+```
+```diff
+--- a/paper_trading/signal_runner.py
++++ b/paper_trading/signal_runner.py
+@@ -821,7 +821,7 @@
+-        if shares == 0:
++        if shares <= 0:
+```
+Apply both: the clamp fixes the source, `<=` makes the caller robust to any future non-positive return.
+
+---
+
+# 4. MEDIUM — `correlation_check.py` CLI default path is cwd-dependent and fails open silently
+
+**Component:** Paper Trading Layer → `paper_trading/correlation_check.py:38`
+
+### Intended behaviour
+`CLAUDE_CONTEXT.md`:
+> *"correlation_check.py is a full module — checks candidate against live open positions. CLI: `python paper_trading/correlation_check.py TICKER.NS`"*
+
+### Actual behaviour
+```python
+38:    portfolio_state_path: str = "paper_trading/portfolio_state.json",
+```
+A **relative** default, resolved against process cwd. From any directory other than the repo root, `state_path.exists()` is False and the function returns:
+```
+{"safe": True, "open_positions": [], "reason": "No portfolio state file — correlation check skipped"}
+```
+A fail-open **wrong answer**, not an error.
+
+### Root cause
+Exactly the Jul 17 `news_flags.json` bug class. Note *why* it survived the hardening: `validation/system_health_check.py`'s relative-path scan matches `FOO = Path("relative")` literals. This is a **default parameter value**, so the regex never sees it — the same blind spot that let `AMO_CONFIG["order_log_file"]` (a dict value) slip through in July.
+
+### Tests
+| Test | Result |
+|---|---|
+| `test_correlation_cli_default_path_is_cwd_dependent` | **FAIL** — returns "No portfolio state file" from `/tmp` |
+| `test_news_flags_path_is_cwd_independent` | PASS — the Jul 17 fix holds |
+| `test_correlation_zero_open_positions_is_safe_and_makes_no_calls` | PASS |
+| `test_correlation_one_open_position` | PASS |
+| `test_correlation_at_max_concurrent_positions` | PASS — all 4 pairs measured |
+| `test_correlation_pending_buy_excluded_from_file_path` | PASS |
+
+### Blast radius
+**Live automated path is insulated** — `signal_runner.py:1466` passes `portfolio_state_dict=corr_state` explicitly, so the default is never used at 3:45 PM. The exposure is the human CLI decision-support path used when evaluating a candidate for universe addition: it can report "SAFE TO ENTER" having checked nothing.
+
+### Proposed fix (not applied)
+```diff
+--- a/paper_trading/correlation_check.py
++++ b/paper_trading/correlation_check.py
+@@ -35,7 +35,7 @@
+ def check_entry_correlation(
+     candidate: str,
+-    portfolio_state_path: str = "paper_trading/portfolio_state.json",
++    portfolio_state_path: str = str(_ROOT / "paper_trading" / "portfolio_state.json"),
+     portfolio_state_dict: dict = None,   # overrides file read when provided
+```
+`_ROOT` is already defined at line 31.
+
+**Related hardening worth considering:** extend `system_health_check.py`'s scan to catch relative paths in default arguments and dict values, not just `= Path("...")` literals. Both real escapes so far (July's `AMO_CONFIG`, this one) were in exactly those two shapes.
+
+---
+
+# 5. MEDIUM — `validate_state_integrity()` counts un-funded `pending_buy` shares in the 50% floor
+
+**Component:** Paper Trading Layer → `paper_trading/paper_portfolio.py:113`
+
+### Intended behaviour
+> *"Check 1: total value must be >= 50% of initial capital. Catches stale file overwrites; allows legitimate large drawdowns."*
+
+### Actual behaviour
+The validator sums `shares × entry_price` over **all** positions, including `pending_buy` rows whose cash has not been deducted. `get_portfolio_value()` deliberately **excludes** `pending_buy` for exactly that double-count reason (line 645: *"cash not yet deducted, so adding their MTM value would double-count the capital"*).
+
+The validator and the valuation function disagree, so the floor is computed on an inflated total.
+
+### Test
+`test_integrity_floor_counts_pending_buy_shares_that_have_no_cash_backing` — **PASS** (documents the exposure): with ₹30,000 cash and a 100-share `pending_buy` @ ₹400, the validator sees ₹70,000 and passes; `get_portfolio_value()` returns ₹30,000, which is **below** the ₹50,000 floor.
+
+### Severity rationale
+Fail-open, not fail-closed — it makes the guard too permissive, never too strict. It cannot corrupt state on its own, but it weakens the one check that exists against a stale-file SCP, which `CLAUDE_CONTEXT.md` records as a live-fire hazard.
+
+### Proposed fix (not applied)
+```diff
+--- a/paper_trading/paper_portfolio.py
++++ b/paper_trading/paper_portfolio.py
+@@ -113,7 +113,10 @@
+-        # Stock value using entry_price as proxy (current price unavailable at load time)
++        # Stock value using entry_price as proxy (current price unavailable at
++        # load time). Excludes pending_buy for the same reason
++        # get_portfolio_value() does: their cash has not left the pool yet, so
++        # counting their provisional value inflates the total the floor tests.
+         stock_value = sum(
+             pos.get("shares", 0) * pos.get("entry_price", 0.0)
+             for pos in self.state.get("positions", {}).values()
++            if not pos.get("pending_buy", False)
+         )
+```
+
+---
+
+# 6. MEDIUM — Daily report: `cash + invested ≠ total` when a BUY is pending
+
+**Component:** Paper Trading Layer → `paper_trading/paper_portfolio.py:632` (`summary()`)
+
+### Actual behaviour
+`summary()` mixes two conventions:
+- `invested_value` iterates `get_open_positions()` → **includes** `pending_buy`
+- `total_value` calls `get_portfolio_value()` → **excludes** `pending_buy`
+- `open_count` → **includes** `pending_buy`
+
+Measured with one 10-share pending BUY @ ₹2,000:
+```
+cash            : 60000.0
+invested_value  : 20000.0   <- includes pending_buy
+total_value     : 60000.0   <- excludes pending_buy
+cash + invested = 80000.0 vs total_value 60000.0   → inconsistency Rs 20,000
+```
+
+### Severity rationale
+Display-only — no state, cash, or P&L is wrong. But these figures go into the terminal report, the emailed daily report, the weekly summary, and `signal_log.csv`'s `portfolio_value` column. A reader reconciling them by hand on any day a BUY is queued will find ₹20,000 unaccounted for and reasonably conclude the ledger is broken. Given this system's history of investigations launched from apparently-missing money, that is worth closing.
+
+### Proposed fix (not applied)
+Report the pending capital as its own line rather than silently folding it into `invested_value`:
+```diff
+--- a/paper_trading/paper_portfolio.py
++++ b/paper_trading/paper_portfolio.py
+@@ -636,8 +636,15 @@
+         invested_value = sum(
+             pos["shares"] * current_prices.get(ticker, pos["entry_price"])
+             for ticker, pos in open_pos.items()
++            if not pos.get("pending_buy", False)
+         )
++        # Queued-but-unfilled BUYs: capital is committed but not yet deducted,
++        # so it belongs in neither cash nor invested. Surfaced separately so
++        # cash + invested == total_value always reconciles.
++        pending_value = sum(
++            pos["shares"] * current_prices.get(ticker, pos["entry_price"])
++            for ticker, pos in open_pos.items()
++            if pos.get("pending_buy", False)
++        )
+```
+and add `"pending_buy_value": pending_value` to the returned dict, rendering it as its own report row.
+
+---
+
+# 7. MEDIUM (operational) — `NSE_HOLIDAYS_2027` is empty; pre-warm due Nov 2026
+
+**Component:** Utilities → `utils/market_calendar.py:61`
+
+```python
+NSE_HOLIDAYS_2027: List[date] = []  # Populate before December 2026
+_HARDCODED_YEARS = {2026}
+```
+
+From 2027-01-01, every `is_trading_day()` call falls through to the live NSE API. On API failure **with no cache**, it fails open (line 225) and returns `True` — the system would run a full signal cycle on a market holiday, fetch a stale bar, and (per `_fetch_stock_data`'s `last_date != today` branch) *"Still use the data"*, generating signals from the previous session's close.
+
+This is **documented, scheduled work**, not a defect: `CLAUDE_CONTEXT.md` specifies pre-warming in November 2026 via
+```
+python3 -c 'from utils.market_calendar import refresh_holiday_cache; refresh_holiday_cache([2027])'
+```
+Listed here so it does not slip — it is ~10 weeks out and the failure is silent.
+
+### Tests
+`utils/test_market_calendar.py` (existing, 5 tests) all pass. The fail-open branch is intentional per `CLAUDE_CONTEXT.md` ("All network failures fail-open — never block trading on data failure") and I did not change it.
+
+---
+
+# 8. LOW — `check_universe_consistency()` is tautological
+
+**Component:** Validation → `validation/system_health_check.py:218`
+
+```python
+def _load_stocks():             return list(signal_runner.STOCKS)
+def _load_screener_universe():  return get_current_universe()
+```
+and `screener/auto_screener.py:575`:
+```python
+def get_current_universe():
+    from paper_trading.signal_runner import STOCKS as _LIVE_UNIVERSE
+    return list(_LIVE_UNIVERSE)
+```
+
+Both sides resolve to the same list. The check is `sorted(set(x)) == sorted(set(x))` — it always passes and can never detect drift. Its own docstring claims it verifies *"signal_runner.STOCKS must match screener.get_current_universe()"*, which is true by construction.
+
+This is a *consequence* of a correct earlier fix (unifying the universe into `universe.py` and routing the screener through it), not a bug — but the check now provides false assurance in the health report. Either delete it, or repoint it at something that can actually diverge, e.g. asserting `universe.py`'s STOCKS matches the tickers present in `degradation_tracker.json` and `portfolio_state.json`.
+
+**No fix proposed** — this is a design call, not a defect.
+
+---
+
+# 9. LOW — No duplicate or out-of-order timestamp detection anywhere in the pipeline
+
+**Component:** Data Layer → `data/kite_fetcher.py`; consumed everywhere
+
+`get_ohlcv()` guards zero-price rows and strips timezone, but never asserts the index is unique or monotonic. Nothing downstream does either.
+
+### Tests (both PASS — documenting exposure, not failure)
+- `test_duplicate_timestamps_are_not_detected_anywhere` — a duplicated date passes straight through; the rolling SMA silently averages it, shifting both SMA20 and SMA50.
+- `test_out_of_order_timestamps_are_not_detected_anywhere` — a descending index still produces signals. **Load-bearing consequence:** `signal_runner` reads "today's bar" as `df.iloc[-1]`, which would be the *oldest* bar.
+
+Rated LOW because Kite's `historical_data` is ordered and de-duplicated in practice — I found no evidence of either condition occurring. It is listed because it is an unguarded assumption on the single ingestion point every consumer depends on, and the cost of asserting it is two lines:
+
+```diff
+--- a/data/kite_fetcher.py
++++ b/data/kite_fetcher.py
+@@ -258,6 +258,13 @@
+     df = df.set_index("date")
+     df.index.name = "date"
++
++    # Every downstream consumer treats df.iloc[-1] as "today" and relies on
++    # rolling() windows being chronological. Kite has always returned ordered,
++    # unique daily bars — assert it rather than assume it.
++    if not df.index.is_unique:
++        df = df[~df.index.duplicated(keep="last")]
++    if not df.index.is_monotonic_increasing:
++        df = df.sort_index()
+```
+
+---
+
+# 10. LOW — `close_position()` raises `ZeroDivisionError` after crediting cash
+
+**Component:** Paper Trading Layer → `paper_trading/paper_portfolio.py:487`
+
+```python
+"return_pct": round((exec_price / entry_px - 1) * 100, 4),
+```
+No guard on `entry_px == 0`. Cash is credited at line 469 **before** this line executes, so the exception leaves cash mutated, the trade **not** appended, `total_trades` un-incremented, and `self.save()` never reached.
+
+### Test
+`test_close_position_with_zero_entry_price_divides_by_zero` — **PASS** (confirms the raise and that cash was already mutated).
+
+Rated LOW: reaching it requires `entry_price == 0`, which needs a fill confirmed at a zero open price. `kite_fetcher` nulls rows with `close <= 0`, and the documented Kite garbage rows are all-zero OHLC, so `open == 0` with `close > 0` has never been observed. In-memory-only damage — the unsaved state is discarded on process exit.
+
+```diff
+--- a/paper_trading/paper_portfolio.py
++++ b/paper_trading/paper_portfolio.py
+@@ -466,6 +466,11 @@
+         shares     = pos["shares"]
+         entry_px   = pos["entry_price"]
++
++        if entry_px <= 0:
++            raise ValueError(
++                f"close_position called for {ticker} with entry_price={entry_px} "
++                f"— cannot compute return_pct. State is corrupt; fix before closing."
++            )
+```
+Raising *before* any mutation keeps the ledger clean.
+
+---
+
+# 11. LOW — `PaperPortfolio.state_file` default is a relative path
+
+**Component:** Paper Trading Layer → `paper_trading/paper_portfolio.py:47`
+
+```python
+state_file: str = "paper_trading/portfolio_state.json",
+```
+Same class as #4. **Dead in production** — both live entry points pass an absolute path (`signal_runner.py:1178` and `morning_fill_check.py:507` both use `str(STATE_FILE)`, built from `_ROOT`). Listed for completeness and because the class docstring's own usage example (line 38) demonstrates the relative form.
+
+---
+
+# COMPONENT-BY-COMPONENT RESULTS
+
+### Data Layer — `data/kite_fetcher.py`, `data/fetcher.py`
+**Intended:** *"Returned DataFrame … Index: DatetimeIndex (timezone-naive, IST dates)"*; zero-price garbage rows nulled and dropped; 15s timeout.
+
+**Verified correct.** The Jul 19 tz fix is properly implemented — tz stripped on the `df["date"]` **column** via `.dt.tz_localize(None)` before `set_index()`, guarded by `if df["date"].dt.tz is not None`, with `pd.to_datetime()` first to guarantee `.dt` exists. Not the `.map()` form that no-ops on pandas 2.3.3.
+
+**Timezone traced end to end, as requested — not just the fixed site.** Every consumer (`signal_runner`, `morning_fill_check`, `auto_screener`, `walk_forward`, `backtester`) sources exclusively through this one `get_ohlcv()`. `utils/market_calendar.py` and `utils/corporate_actions.py` operate only on plain `datetime.date` and never receive a Kite Timestamp. `data/fetcher.py` (yfinance) uses `.tz_localize(None)` and never had the bug. `is_trading_day()` additionally normalizes a `datetime` to `.date()` (line 204) with a comment explaining exactly why. **No second tz-stripping site exists to be wrong.**
+
+**Findings:** #9 (LOW, timestamp ordering).
+**Tests:** 23 in `data/test_data_edge_audit.py` — 19 pass, 4 fail (finding #3, a sizer defect surfaced here).
+
+### Strategy Layer — `strategies/sma_crossover.py`
+**Intended:** NaN during warm-up so `first_valid_index()` is meaningful; raise below `slow_period`.
+**All pass.** Raises correctly at n = 0, 1, 2, 19, 49; at exactly 50 bars the warm-up rows are NaN (not 0) and only the last row is valid. `signal_runner.SMA_SLOW == 50` matches `generate_signals`' threshold exactly, so no ticker can slip past the fetch guard and raise inside `_process_stock`. A NaN close mid-series does not manufacture a false crossover.
+
+### Risk & Execution Engine — `risk_manager.py`, `cooldown.py`, `position_sizer.py`, `order_manager.py`, `fill_resolution.py`
+**Boundary values all correct:**
+- Hard stop at **exactly** −20.00% fires (`<=`) ✅
+- Time stop at **exactly** `bars_since_entry == 60` fires (`>=`) ✅
+- L1 takes precedence when hard stop and time stop both qualify on one bar ✅
+- ATR warm-up: chandelier is `None` and L1 still fires — matches the README's *"Fires even during ATR warm-up"* ✅
+- Gap breaker at **exactly** 3.00% → `REQUEUE`, not `GAP_EXIT` (`>`), matching the documented *">3%"* ✅
+- Circuit breaker at `>= 20.0` — the Jul 7 fix holds ✅
+
+**Backtest/live parity re-verified.** I initially suspected the paper path incremented `bars_since_entry` one bar earlier than the backtester. It does not: with `use_next_day_fills=True`, `backtester.py` fills the pending BUY at step ⓪ then calls `check_exit()` on that **same** bar (line 254), exactly as `signal_runner` does. `on_position_open` seeds `highest_high` from that bar's high; `confirm_buy_fill` seeds `0.0` and the first `check_exit` sets it to `max(0, that bar's high)` — identical. **No divergence. Claim withdrawn before reporting.**
+
+**Findings:** #3 (MEDIUM).
+
+### Paper Trading Layer — `signal_runner.py`, `morning_fill_check.py`, `paper_portfolio.py`, `correlation_check.py`
+Largest surface, most findings: **#1 (CRITICAL), #2 (HIGH), #4, #5, #6 (MEDIUM), #10, #11 (LOW)**.
+
+**Verified correct:**
+- Cold start with no state file → clean initial state ✅
+- Empty / truncated `portfolio_state.json` → raises loudly, **never** silently resets to ₹100,000 ✅
+- `total_trades` vs `trade_log` length mismatch caught ✅
+- 50% floor catches a stale low-value file ✅ (but see #5)
+- ETF tier exact at every boundary 0/1/2/3/4, clamps above 4 ✅
+- `projected_tier_unwind_cash` capped at shares actually held ✅
+- `close_position` on a flat position raises — duplicate fill cannot double-close ✅
+- **`morning_fill_check` run twice with `--apply` does not double-deduct** ✅
+- `queue_pending_sell` twice same day raises; `queue_pending_buy` on an open position raises ✅
+- `pending_buy` counts toward `MAX_CONCURRENT_POSITIONS`, so candidate #5 in one run is correctly blocked ✅
+- `load_news_flags()` fails open on empty / broken / schema-missing / wrong-type JSON, and on a missing file ✅
+- `NEWS_FLAGS_FILE` is absolute — the Jul 17 fix holds under `chdir` ✅
+
+**Universe mutation mid-run** (`test_removed_ticker_with_open_position_is_still_in_state_but_unprocessed`, PASS — documents exposure): a ticker removed from `universe.py` while a position is open survives `load()` (which backfills but never prunes — correct), and still counts toward `committed_open_count()` so the ETF tier reserves its capital. **But** `signal_runner`'s Phase 1 iterates `for ticker in STOCKS`, so the orphan is never passed to `_process_stock()`: no `check_exit`, no chandelier ratchet, no exit signal. It is also absent from `dfs`, so `get_portfolio_value()` marks it at its frozen `entry_price` forever.
+
+Not rated as a finding because `CLAUDE_CONTEXT.md` shows the operating practice is consistently to verify zero open positions before removal ("Zero open position at removal — clean exit", "Both had 0 open positions at time of removal"). It is a documented-discipline dependency with no structural enforcement — worth an assertion in any future removal script, matching the guard `add_validated_stock.py` already provides on the addition side.
+
+### Utilities — `costs.py`, `market_calendar.py`, `corporate_actions.py`, `news_monitor.py`
+**Fail-open/fail-closed audited against `CLAUDE_CONTEXT.md` rather than assumed**, per instruction:
+
+| Site | Documented intent | Actual | Match |
+|---|---|---|---|
+| `news_monitor` SURVEILLANCE | auto-block entry | `auto_block: True` → `BLOCKED` | ✅ |
+| `news_monitor` EARNINGS_RISK | warn only, entry proceeds | `auto_block: False` → warn | ✅ |
+| `news_monitor` network failure | fail-open | returns `{}` with explicit log | ✅ |
+| `corporate_actions` API failure | *"skip=False so trading is not blocked"* | `skip: False` | ✅ |
+| `market_calendar` API failure, no cache | fail-open | returns `True` + warning | ✅ |
+| NIFTY regime fetch failure | `UNKNOWN` → allow entry | `resolve_buy_gate` skips on non-BEAR | ✅ |
+| Live Hurst computation error | fail-open | `hurst=None` → check skipped | ✅ |
+| Correlation check exception | fail-open | caught, BUY proceeds | ✅ |
+
+**Every one matches its documented intent. No divergence found in this category.**
+
+`resolve_buy_gate()` deserves specific credit: it passes `hurst=None` rather than a `0.5` sentinel, with a docstring explaining that `HURST_THRESHOLD` has been as high as 0.55 — above the neutral value — so a numeric sentinel would silently flip fail-open into fail-closed. That is the correct reasoning and it is correctly implemented.
+
+`costs.py` verified against the README's stated figures: buy-side ₹11.91 / sell-side ₹25.75 / round-trip ₹37.66 per ₹10,000. `SEBI_FEE_RATE = 0.000001` correctly encodes 0.0001%. Existing `utils/test_costs.py` (7 tests) passes.
+
+**Findings:** #7 (MEDIUM, scheduled).
+
+### Validation — `walk_forward.py`, `system_health_check.py`
+**The `"N/A"` type-handling class is properly contained.** The user flagged this specifically as a recurring pattern. I grepped every `"N/A"` site in the codebase and checked each for numeric comparison:
+- `walk_forward.py:1481` — `_norm()` normalizes `"N/A" → None` before every gate comparison. The Jul 10 fix, correctly placed.
+- Lines 1502–1563, 1997–2003, 2160–2195 — display-only, all guarded by `is not None` or `isinstance(..., float)`.
+- Line 570 — `per_stock_scores` derives from `sum()` over lists of bools; `"N/A"` cannot reach it.
+- `post_screener_pipeline.py`, `add_validated_stock.py`, `emailer.py`, `universe_scan.py`, `etf_overlay_backtest.py`, `backtester.py` — all display-only with `None` guards.
+
+**No second instance of the extended-window crash pattern exists.** Existing `test_wf_gate.py::test_na_string_sentinels_normalize_to_none_not_typeerror` already pins it.
+
+**Findings:** #8 (LOW).
+
+### Auth — `auth/auto_login.py`, `auth/kite_login.py`
+**Not stress-tested by design** — every meaningful test requires either live Zerodha credentials or a live TOTP exchange, both excluded by the no-live-calls guardrail. Reviewed by reading only:
+- `_check_auth()` correctly calls `_attempt_auto_refresh()` before `sys.exit(1)` (Finding #6, Jun 19) ✅
+- The empty-`access_token.txt` `IndexError` fix is present: `lines[0].strip() if lines else ""` then an explicit `ValueError` ✅
+- `KITE_REQUEST_TIMEOUT_SECONDS = 15` is passed to the `KiteConnect` constructor ✅
+- `_auto_refresh_token()` uses `cwd=Path(__file__).parent.parent` — cwd-independent ✅
+
+**This is the one component I could not meaningfully stress-test.** Stated plainly rather than reported as clean.
+
+---
+
+# WHAT I DID NOT COVER
+
+- **Auth** beyond static review (above) — blocked by the no-live-calls guardrail.
+- **`engine/backtester.py`** end-to-end — read for RM call ordering (parity confirmed) but not stress-tested; it is offline research tooling, not live capital path.
+- **`screener/`** (`auto_screener`, `universe_scan`, `regime_classifier`, `emailer`) — read for `compute_hurst` and `get_current_universe` only. A full screener audit needs a 500-ticker fetch; existing coverage is 3 + 9 + 4 tests.
+- **`validation/etf_overlay_backtest.py`'s stale `A_current` default** — `CLAUDE_CONTEXT.md` (Jul 27) already flags this as known and deliberately deferred; I confirmed it is still present and still not wired into anything live. Nothing new to add.
+
+---
+
+# HOW TO RUN THIS AUDIT'S TESTS
+
+```bash
+cd ~/algo-trading && source venv/bin/activate
+
+# All four new files (expect 9 failures — each asserts a confirmed defect)
+python -m pytest paper_trading/test_morning_fill_check_audit.py \
+                 paper_trading/test_paper_portfolio_audit.py \
+                 paper_trading/test_concurrency_audit.py \
+                 data/test_data_edge_audit.py -v
+
+# Confirm no regression in the pre-existing suite
+python -m pytest --ignore=paper_trading/test_morning_fill_check_audit.py \
+                 --ignore=paper_trading/test_paper_portfolio_audit.py \
+                 --ignore=paper_trading/test_concurrency_audit.py \
+                 --ignore=data/test_data_edge_audit.py -q
+# → 313 passed
+```
+
+Each failing test's assertion message states the defect in full. After applying a fix, that test flips to green and becomes its regression guard.
+
+
+---
+
+# APPENDIX — Verified fix for findings #1 and #1b
+
+`fix_01_dry_run_contract.patch` at the repo root. **Not applied** — `git status` shows it as an untracked file alongside the report; `paper_trading/morning_fill_check.py` is unchanged at HEAD.
+
+```
+paper_trading/morning_fill_check.py | 468 ++++++++++++++++++-------------
+1 file changed, 287 insertions(+), 181 deletions(-)
+```
+
+### What it does
+Splits the fill loop into **plan → report → execute**:
+- `plan_fill()` — read-only; returns a frozen `FillDecision` per order
+- report — renders `decision.detail`; contains no writer
+- `execute_decision()` — the only writer in the module, called from the only `if apply_fills:` guard
+
+Dry-run safety stops being a discipline enforced at N call sites (the construct that produced #1) and becomes a property of the call graph.
+
+### Verified, not asserted
+Validated in a throwaway `git worktree` at HEAD; the working tree was never modified.
+
+| Check | Result |
+|---|---|
+| Patch applies to working tree | `git apply --check` → **clean** |
+| Property tests vs **patched** code | **15 passed** |
+| Property tests vs **unpatched** code | **14 failed, 1 passed** — the tests genuinely catch the bug |
+| Original `test_morning_fill_check_audit.py` (finding #1) vs patched | **3 passed** — flips green |
+| Full pre-existing suite vs patched | **312 passed, 1 failed** |
+| That 1 failure | `test_state_file_is_absolute_and_cwd_independent` — asserts `STATE_FILE.exists()`; `portfolio_state.json` is gitignored so absent from any worktree. **Fails identically on unpatched code in the same worktree** — environmental, not caused by the patch. |
+
+### Deliberate behaviour changes (review these)
+1. **Dry run now previews gap-exit/requeue decisions.** Previously that classification ran only under `apply_fills`, so a dry run reported a 3%+ gap-down SELL as a plain MISS and never showed the `GAP_EXIT` it would actually take. Cost: one extra read-only close-price fetch per requeued SELL in dry mode.
+2. **Counters derive from a partition of `decisions`** rather than hand-maintained `+= 1` in each branch, so Audit2 Finding #4 (GAP_EXIT double-counted as MISSED) becomes impossible by construction.
+3. `results` is rebuilt from decisions. The REJECTED/CANCELLED manual-attention section behaves identically — `CANCELLED_CA` and `UNKNOWN` are distinct strings and do not match `("REJECTED", "CANCELLED")`.
+
+The Jul 18 portfolio-before-CSV ordering contract is preserved: the ledger write is last inside `execute_decision()`, so a crash still leaves the row at `DRY_RUN` and reprocessable.
+
+### Not included, by design
+Phase 2 (append-only event journal replacing the mutable `status` column) and Phase 3 (broker-as-source-of-truth reconciliation via Zerodha `tag` as idempotency key) are separate changes. Migrating an order ledger is much cheaper while still on paper, but it should not ride along with a CRITICAL hotfix.
+
+### Separately — verify before live capital
+The fill model assumes an AMO limit order is resolved at 9:20 AM: filled if the open beat the limit, otherwise dead (BUY cancelled, SELL requeued). My understanding is that a Zerodha AMO is released into the pre-open session and, if unexecuted at the open, **remains a live order in the book for the rest of the session**, cancelled at EOD rather than at 9:20. If so, the backtest and paper P&L systematically under-report fills, and the `[REQUEUED]` machinery duplicates something the exchange already does.
+
+Flagged, not asserted — Zerodha's AMO handling has changed more than once and this repo's standard is to verify against the live system. Confirm against current Zerodha AMO documentation and one day of real `kite.orders()` output. Separate work from #1; do not bundle.
