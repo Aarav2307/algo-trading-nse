@@ -333,9 +333,18 @@ class PaperPortfolio:
 
     def requeue_rm_sell(self, ticker: str, new_limit_price: float, today_str: str) -> None:
         """
-        Re-queue an RM exit SELL AMO after a previous attempt was MISSED.
-        Keeps pending_rm_exit=True and increments the requeue counter.
-        Called by morning_fill_check when a SELL AMO is MISSED.
+        Re-queue an RM exit SELL AMO that did not fill. Keeps
+        pending_rm_exit=True and increments the requeue counter.
+
+        Two callers in morning_fill_check, both leaving identical state
+        (pending_rm_exit=True, shares > 0), which is what this method's guards
+        below actually require:
+          - a MISSED SELL AMO (the original caller, Jun 19 2026)
+          - a SELL AMO CANCELLED because a corporate-action ex-date landed on
+            the fill day (Finding #12, Aug 25 2026). A cancel is not a miss,
+            but the position is left in the same place and needs the same
+            replacement order, so it shares the counter and the 3-attempt cap
+            rather than getting a parallel threshold of its own.
 
         Does NOT clear pending_rm_exit — position remains flagged until closed.
         Does NOT touch cash — cash only changes when position actually closes.
