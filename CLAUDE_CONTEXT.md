@@ -1644,6 +1644,68 @@ test_kite.py.pre-deploy-backup.
 
 ---
 
+#### morning_fill_check.py rate limiting — backlog item from the Aug 22 audit — FIXED (Aug 24 2026, branch only)
+
+Branch: fix/morning-check-rate-limiting. Surfaced while measuring the +2-call
+cost of the dry-run contract fix; filed then as a backlog item, fixed here.
+
+Problem: `morning_fill_check.py` had NO pacing between Kite API calls, unlike
+`signal_runner.py:371` and `screener/auto_screener.py:692`, which both
+`time.sleep(1.1)` (~0.9 req/sec) after every call. Total calls per morning run
+are bounded at 2xN..3xN for N pending orders, so the ~60 req/min model this repo
+codes to was never breached — but Kite documents 3 req/sec on the
+historical-data endpoint, and an unpaced 36-call burst exceeds that.
+
+**A fourth Kite call site was found that earlier notes in this session missed.**
+Prior write-ups named three (`_fetch_open_price`, `_fetch_prev_close`,
+`_fetch_close_price`). A grep for every call — not just the three already
+believed to exist — turned up `_fetch_live_order_status()` calling
+`kite.orders()` at line 226. It is unreachable while LIVE_TRADING_MODE is False,
+but it is a real Kite call and is now paced too. Recorded because "the three
+fetch helpers" appears in earlier notes and is wrong.
+
+Fix: `time.sleep(1.1)` after each of the four call sites, matching the existing
+convention exactly — placed immediately after the call and BEFORE any result
+guards, since the API call consumed quota regardless of what happens to the
+response; an exception skips it, because a failed call consumed none. The
+kite.orders() site hits the orderbook endpoint, which Kite rate-limits more
+generously than historical-data; 1.1s there is deliberately conservative rather
+than tuned, so all four sites share one rule.
+
+**Measured cost, not estimated** (get_ohlcv patched so no network; time.sleep
+left real; 12 pending SELLs all requeue-eligible = the worst case where every
+order needs all three fetches):
+    WITHOUT pacing :   0.01s   (36 Kite calls)
+    WITH pacing    :  39.78s   (36 Kite calls)
+    ADDED          :  39.77s   (expected 36 x 1.1 = 39.6s — linear, as designed)
+Scaling is exactly linear, so the typical case is far smaller: with
+MAX_CONCURRENT_POSITIONS=4 a normal morning has <=4 pending orders, i.e. 8-12
+calls, i.e. ~9-13s. The 36-call case needs weekend/holiday carry-forward to
+stack unfilled rows. ~40s on the 9:20 AM run is harmless — the run reads an open
+price that was already established at 9:15, so there is no deadline being
+approached, and signal_runner already spends ~16.5s (1.1s x 15 stocks) on the
+same pacing at 3:45 PM.
+
+Tests: `paper_trading/test_morning_fill_rate_limit.py`, 13 tests mirroring
+test_signal_runner_fetch.py's sleep tests — one sleep per successful fetch for
+each helper, sleep still fires when a result guard returns early (empty
+DataFrame), no sleep on the exception path, all three cases for kite.orders()
+(success / no order_id early return / raises), plus a guard test that counts
+Kite call sites against sleep calls in the source so a future unpaced call site
+fails the suite.
+
+Confirmed the earlier API-call-count measurements in this session are unaffected:
+test_dry_run_contract_audit.py and test_morning_fill_check_audit.py patch at the
+HELPER level (`_fetch_open_price` etc.), so the real functions containing the
+sleeps never execute in those tests — 18 passed in 0.29s, unchanged.
+
+Full suite: 394 passed, 6 failed. The 6 are the unrelated open audit findings
+(#2 ETF gate, #3 sizer, #4 correlation CLI path), unchanged. Zero regressions.
+
+NOT merged, NOT pushed, NOT deployed.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL

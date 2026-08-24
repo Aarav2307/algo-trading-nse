@@ -27,6 +27,7 @@ import argparse
 import csv
 import os
 import sys
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -163,6 +164,13 @@ def _fetch_open_price(ticker: str, today: date) -> Optional[float]:
         start = today.isoformat()
         end   = (today + timedelta(days=1)).isoformat()
         df    = get_ohlcv(ticker, start, end)
+        # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+        # 60 req/min cap), mirroring signal_runner.py's and
+        # screener/auto_screener.py's identical pattern. Applied immediately
+        # after the call and BEFORE any result guards, since the API call itself
+        # already consumed quota regardless of what we do with the response.
+        # An exception skips it — no quota was consumed.
+        time.sleep(1.1)
         if df.empty:
             return None
         # Use the first bar's open (should be today's only bar for daily data)
@@ -181,6 +189,13 @@ def _fetch_prev_close(ticker: str, today: date) -> float:
         start = (today - timedelta(days=5)).isoformat()
         end   = today.isoformat()   # exclusive — data up to but not including today
         df    = get_ohlcv(ticker, start, end)
+        # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+        # 60 req/min cap), mirroring signal_runner.py's and
+        # screener/auto_screener.py's identical pattern. Applied immediately
+        # after the call and BEFORE any result guards, since the API call itself
+        # already consumed quota regardless of what we do with the response.
+        # An exception skips it — no quota was consumed.
+        time.sleep(1.1)
         if df is None or df.empty:
             return 0.0
         return float(df["close"].iloc[-1])
@@ -198,6 +213,13 @@ def _fetch_close_price(ticker: str, today: date) -> Optional[float]:
         start = today.isoformat()
         end   = (today + timedelta(days=1)).isoformat()
         df    = get_ohlcv(ticker, start, end)
+        # Rate limit: paces every Kite API call at ~55 req/min (safe under the
+        # 60 req/min cap), mirroring signal_runner.py's and
+        # screener/auto_screener.py's identical pattern. Applied immediately
+        # after the call and BEFORE any result guards, since the API call itself
+        # already consumed quota regardless of what we do with the response.
+        # An exception skips it — no quota was consumed.
+        time.sleep(1.1)
         if df is None or df.empty:
             return None
         return float(df["close"].iloc[-1])
@@ -224,6 +246,12 @@ def _fetch_live_order_status(order_id: str, kite) -> dict:
 
     try:
         orders = kite.orders()
+        # Same pacing as the get_ohlcv sites above. Reachable only under
+        # LIVE_TRADING_MODE=True (dead code in paper mode). It hits the orderbook
+        # endpoint rather than historical-data, which Kite rate-limits more
+        # generously — 1.1s is deliberately conservative rather than tuned, so
+        # all four Kite call sites in this module share one rule.
+        time.sleep(1.1)
         for order in orders:
             if str(order.get("order_id")) == str(order_id):
                 status        = order.get("status", "UNKNOWN").upper()
