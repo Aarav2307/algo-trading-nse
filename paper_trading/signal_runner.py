@@ -824,7 +824,12 @@ def _process_stock(
             portfolio.state["cash"],
         )
 
-        if shares == 0:
+        # `<= 0`, not `== 0`: the sizer's own binding field already classifies
+        # `shares <= 0` as "all_constraints_zero", so an equality test here
+        # disagreed with the sizer about what "no shares" means. Fixed
+        # independently of the sizer's clamp so neither depends on the other
+        # holding — the coupling was the trap, not just the negative value.
+        if shares <= 0:
             result.update({
                 "signal": "HOLD",
                 "reason": (

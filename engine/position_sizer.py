@@ -97,7 +97,16 @@ class PositionSizer:
         # ── Cash cap: exact cost check to prevent settlement shortfall ──────
         # Bootstrap with 1-share cost, then iterate down until total fits in cash.
         buy_cost_1share = transaction_costs(entry_price, 1, "buy", "delivery")
-        max_from_cash   = math.floor((cash_available - buy_cost_1share) / entry_price)
+        # max(0, ...): buy_cost_1share is the FEES on one share, not its price,
+        # so the numerator goes negative only when cash is below those fees
+        # (₹0.12 on a ₹100 share, ₹5.95 on a ₹5,000 one) — a narrow window, but
+        # math.floor() of a small negative fraction is -1, not 0.
+        # The `while max_from_cash > 0` loop below cannot correct an already
+        # negative value and min() propagates it, so a NEGATIVE share count
+        # escaped this function. Clamped at the source: the sizer's contract is
+        # "a count of shares to buy", and that is never negative regardless of
+        # what any caller does or does not guard against.
+        max_from_cash   = max(0, math.floor((cash_available - buy_cost_1share) / entry_price))
         while max_from_cash > 0:
             total_cost = (max_from_cash * entry_price) + \
                          transaction_costs(entry_price, max_from_cash, "buy", "delivery")
@@ -105,7 +114,10 @@ class PositionSizer:
                 break
             max_from_cash -= 1
 
-        shares = min(shares_from_risk, max_from_pos_cap, max_from_cash)
+        # Second clamp, deliberately redundant with the one above: min() over
+        # three caps is only non-negative if every cap is, and a future change
+        # to any of them should not be able to reintroduce a negative count.
+        shares = max(0, min(shares_from_risk, max_from_pos_cap, max_from_cash))
 
         # Identify the binding constraint for the audit log
         if shares <= 0:

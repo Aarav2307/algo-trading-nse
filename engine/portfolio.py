@@ -56,7 +56,14 @@ class Portfolio:
                 return
             shares = int(affordable_cash / exec_price)
 
-        if shares == 0:
+        # `<= 0`, not `== 0`. A negative quantity reaching here does not merely
+        # no-op: transaction_costs() returns a NEGATIVE cost, total_spent goes
+        # negative, the `total_spent > self.cash` guard passes, and the result is
+        # a short position in a long-only backtester with cash INCREASED.
+        # Measured: buy(1000.0, shares=-1) took cash 100,000.00 -> 101,001.69
+        # and shares_held to -1. Validating the input here means this holds even
+        # if a future caller computes a quantity some other way.
+        if shares <= 0:
             return
 
         cost        = transaction_costs(exec_price, shares, "buy", "delivery")

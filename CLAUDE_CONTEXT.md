@@ -2247,3 +2247,116 @@ BEAR market Hurst suppression pattern (verified Jul 7 2026):
 - Before reimplementing any function, check if it already exists in the codebase
 - grep -rn 'def function_name' ~/algo-trading/ --include='*.py'
 - Use the existing implementation — it is already tested and validated
+
+#### Sizer could return negative shares; four call sites disagreed about "no shares" — Finding #3 — FIXED (Aug 26 2026, branch only)
+
+Branch: fix/sizer-negative-shares. From AUDIT_REPORT_2026-08-22.md.
+
+PositionSizer.calculate_shares() computes the cash cap as
+math.floor((cash_available - buy_cost_1share) / entry_price). buy_cost_1share is
+the FEES on one share, not its price, so the numerator goes negative only when
+cash is below those fees — Rs0.12 on a Rs100 share, Rs5.95 on a Rs5,000 one.
+Narrow. But math.floor() of a small negative fraction is -1, not 0; the
+`while max_from_cash > 0` loop cannot correct an already-negative value; and
+min() propagates it. So the sizer could return -1 while its own `binding` field
+simultaneously reported all_constraints_zero.
+
+SEVERITY SPLIT — these are two different numbers and collapsing them into one
+rating would misrepresent both:
+
+  SEVERITY TODAY: LOW. Reaching it needs portfolio cash below the fees on a
+  single share (Rs0.12 to Rs5.95 depending on price). Server-verified live
+  state, read from ubuntu@13.205.133.169 on Aug 26 at HEAD 5e26497:
+  cash Rs243.49, 359 NIFTYBEES @ Rs272.44, etf_tier 1.0, ZERO open equity
+  positions, last run 2026-08-25 15:45. Margin to the worst-case trigger is
+  about 41x. Not currently firing, no evidence it ever fired.
+
+  But note the direction of travel: the sizer's `while` loop deliberately
+  drives leftover cash toward zero, so low-cash states are the system's normal
+  steady state rather than an anomaly. What keeps cash off the floor is the
+  ETF gate topping it up when it drops below MIN_CASH_TO_ATTEMPT_BUY
+  (Rs1,000) -- which is exactly the code path Finding #2 just repaired. Low
+  probability, but not a corner the system is structurally kept away from.
+
+  SEVERITY OF THE COUPLING: HIGH, and it is the reason this was worth fixing.
+  Four call sites across three modules each independently decided what "no
+  shares" meant, and every one of them chose `== 0` against a producer whose
+  own contract was `<= 0`. The sizer was the only component that knew the
+  right answer and it was the only one not asked.
+
+Where the -1 went:
+  - paper_trading/signal_runner.py:_process_stock — `if shares == 0:` fell
+    through to queue_pending_buy() with a negative quantity.
+  - engine/backtester.py — THREE sites, all `if shares == 0:`, each routing
+    calculate_shares() straight into portfolio.buy(shares=...).
+  - engine/portfolio.py:buy() — `if shares == 0:` did not stop a negative
+    quantity, and a negative quantity there does not merely no-op:
+    transaction_costs() returns a NEGATIVE cost, total_spent goes negative, the
+    `total_spent > self.cash` guard passes, and the result is a short position
+    in a long-only backtester with cash INCREASED.
+
+Measured on the unpatched code:
+    Portfolio.buy(close_price=1000.0, shares=-1)
+    cash 100,000.00 -> 101,001.69      shares_held 0 -> -1
+    BUY | -1 shares @ Rs1000.50 | cost Rs-1.19 | cash left Rs101001.69
+
+That is the part that matters. The backtester does not crash on this, it
+reports. A backtest that hit this would have produced a better result than the
+strategy earned — a bug that produces a result that looks better than it
+should. This file already records exactly that failure mode from Jun 17
+(Hurst computed on prices not returns, STT set to the intraday rate) and from
+Jun 20 (trade P&L inflated by buy-side costs). Same trap, different module.
+
+FIXED AT EVERY LAYER, DELIBERATELY REDUNDANTLY. The coupling was the trap, not
+just the negative value, so no layer is allowed to depend on another holding:
+  1. sizer clamps max_from_cash with max(0, ...) at the source
+  2. sizer clamps the final min() with max(0, ...) again
+  3. signal_runner guard `== 0` -> `<= 0`
+  4. backtester's three guards `== 0` -> `<= 0`
+  5. portfolio.buy() validates its own input `== 0` -> `<= 0`
+
+TWO CORRECTIONS MADE WHILE WRITING THIS ENTRY, recorded as corrections rather
+than silently folded into a clean-looking final version:
+
+  CORRECTION 1 — the fix was incomplete when first staged. engine/backtester.py
+  was not in the original four-file patch. Its three `if shares == 0:` guards
+  were found only when re-deriving the write-up against the actual code instead
+  of trusting the earlier read — the same instruction that caught two wrong
+  claims in Finding #2. The module most exposed to this bug was the module the
+  patch had missed.
+
+  CORRECTION 2 — the first version of the regression test was a false positive.
+  It asserted re.search(r"^\s*if shares <= 0:", src) against source text. Shown
+  by direct test to PASS when that line appears only in a DOCSTRING while the
+  real guard stays `== 0` in another function. Replaced with an AST walk that
+  locates the actual `if` node and asserts its operator is LtE, not Eq. This is
+  the same false-positive class as the Aug 25 health-check scanner that matched
+  its own docstring, which was also fixed by parsing rather than pattern
+  matching. Twice now. A string being present is not the same claim as it being
+  the operative guard.
+
+  CORRECTION 3 -- the severity number in the first draft of this entry was
+  read off the WRONG FILE. paper_trading/portfolio_state.json in the local
+  checkout reports cash Rs29,106.13 and looks entirely plausible, but its
+  mtime is Jun 25, its last_run_date is 2026-06-24, and it has no etf_shares
+  or etf_tier keys at all because it predates the ETF overlay. It was
+  reported as live state, and the 9-key positions dict was reported as 9 open
+  positions when only one held shares. The real figure is Rs243.49 on the
+  server. Both numbers support LOW, but Rs29,106.13 implies a 4,900x margin
+  to the trigger and the truth is about 41x -- "comfortably impossible" and
+  "two orders of magnitude closer than documented" are different claims for
+  anyone later deciding how urgently to care. Filed separately as a finding
+  in its own right; see the stale-local-state entry.
+
+Tests: engine/test_sizer_negative_shares.py, 15 tests in 5 groups (contract,
+caller, money seam, backtester guards, decoupling). Against unpatched code
+11 fail; the backtester test reports operators found: ['Eq', 'Eq', 'Eq'].
+Full suite, measured in a FRESH WORKTREE: 399 -> 414 passed, with one
+pre-existing environmental failure in both runs
+(test_signal_runner_fetch.py::test_state_file_is_absolute_and_cwd_independent
+asserts STATE_FILE.exists(); portfolio_state.json is gitignored so it is absent
+from any worktree -- verified pre-existing by stashing to clean main). An
+earlier draft of this entry recorded "400 -> 415", measured in a worktree that
+happened to contain a stray portfolio_state.json, which made that test pass.
+Both totals are internally consistent; only the fresh-worktree pair is
+reproducible from a clean checkout.

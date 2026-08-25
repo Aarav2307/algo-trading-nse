@@ -201,7 +201,10 @@ def run(
                         f"₹{_chan_pf:.2f}" if _chan_pf is not None else "N/A"
                     )
 
-                    if shares == 0:
+                    # `<= 0`, not `== 0`: agrees with the sizer's own `binding` field,
+                    # which classifies `shares <= 0` as all_constraints_zero. An equality
+                    # test here fell through to portfolio.buy(shares=-1).
+                    if shares <= 0:
                         position_sizer.skipped_count += 1
                         print(
                             f"  [SIZING] {date.date()} | SKIPPED_SIZING (AMO next-day) "
@@ -321,7 +324,10 @@ def run(
                             shares, sz = position_sizer.calculate_shares(
                                 exec_price, port_value, chandelier_for_sizing, portfolio.cash
                             )
-                            if shares == 0:
+                            # `<= 0`, not `== 0`: agrees with the sizer's own `binding` field,
+                            # which classifies `shares <= 0` as all_constraints_zero. An equality
+                            # test here fell through to portfolio.buy(shares=-1).
+                            if shares <= 0:
                                 position_sizer.skipped_count += 1
                                 if risk_manager is not None:
                                     risk_manager.on_position_close()
@@ -429,7 +435,10 @@ def run(
                                 if chandelier_for_sizing is not None else "N/A"
                             )
 
-                            if shares == 0:
+                            # `<= 0`, not `== 0`: agrees with the sizer's own `binding` field,
+                            # which classifies `shares <= 0` as all_constraints_zero. An equality
+                            # test here fell through to portfolio.buy(shares=-1).
+                            if shares <= 0:
                                 position_sizer.skipped_count += 1
                                 print(
                                     f"  [SIZING] {date.date()} | SKIPPED_SIZING "
