@@ -1,8 +1,8 @@
 # Claude Context — NSE Algo Trading System
 Last updated: 2026-07-19
 
-## Current Trading Universe (10 stocks)
-BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS, EMAMILTD.NS
+## Current Trading Universe (15 stocks)
+BAJAJ-AUTO.NS, HCLTECH.NS, COLPAL.NS, ANURAS.NS, BSOFT.NS, PERSISTENT.NS, CHOLAHLDNG.NS, COHANCE.NS, MAPMYINDIA.NS, ENGINERSIN.NS, NAVA.NS, SUZLON.NS, MOTILALOFS.NS, COCHINSHIP.NS, BEML.NS
 
 ## Universe History
 - Original (Jun 2): TMPV, WHIRLPOOL, SIEMENS, BAJAJ-AUTO
@@ -1877,6 +1877,89 @@ test_token_file_is_absolute_and_cwd_independent, each defined in both
 paper_trading/test_morning_fill_check.py and
 paper_trading/test_signal_runner_fetch.py. This already cost time once, when a
 command targeting one resolved to the other. A _mfc/_sr suffix resolves both.
+
+NOT merged, NOT pushed, NOT deployed.
+
+---
+
+#### auth/auto_login.py leaked secrets into persisted logs — FIXED (Aug 25 2026, branch only)
+
+Branch: fix/mask-totp-in-auto-login. Found during the Aug 25 post-deploy health
+check while reading paper_trading/logs/2026-08-25_morning.log.
+
+Surveyed BOTH auth files rather than only the line that prompted this, because
+this session had already made the opposite mistake once — masking test_kite.py's
+TOTP print on Aug 24 without checking whether a larger instance existed. It did.
+21 print statements audited in auth/auto_login.py (244 lines) and 7 in
+auth/kite_login.py (43 lines). Five secret-adjacent sites found, not one:
+
+  auto_login.py:140  full 6-digit TOTP                          every run   FIXED
+  auto_login.py:191  location[:80] of the OAuth redirect         every run   FIXED
+  auto_login.py:204  same URL again on the no-token failure path failure     FIXED
+  auto_login.py:68   dict(resp.headers) — includes Set-Cookie    failure     NOT fixed
+  auto_login.py:70   resp.text[:600]                             failure     NOT fixed
+  kite_login.py:20   login_url containing api_key                manual      NOT fixed
+
+**The redirect line was worse than the TOTP.** Measured against a real log line:
+`api_key=7g9gybqj3woxntss` — the actual KITE_API_KEY from .env — printed IN FULL
+on every run, because the `[:80]` cut happened to land after it. request_token
+was clipped to 8 of 32 chars by the same accident. That is truncation, not
+redaction: reorder Zerodha's query string and the whole token prints. Scope on
+the server: 108 of 173 log files contain a live TOTP, and every one of those
+also contains the api_key.
+
+Severity LOW and stated honestly rather than inflated: TOTP codes expire in ~30s
+so every logged one is long dead, the TOTP *secret* is never printed, logs are
+gitignored (.gitignore:15) with 0 tracked, and anyone able to read these logs
+already has .env on the same box. What makes it worth fixing anyway is that logs
+travel — they get catted into conversations, copied to the Mac, pasted into
+investigations. This one was found by exactly that.
+
+**Design decision — the unattended path prints NO digits at all**, deliberately
+differing from test_kite.py's masked-last-2-digits approach. That mask exists so
+a human running the script by hand can compare against their authenticator app.
+auto_login.py runs under cron twice daily with nobody watching, so the affordance
+has zero value and any digits printed are pure downside. `seconds_remaining` IS
+kept — it is the diagnostic the surrounding wait-for-fresh-window logic exists to
+support. The two files intentionally do not match; uniformity here would be
+cargo-culting.
+
+_redact_url() replaces the truncation: sensitive query VALUES become
+`<redacted:N>` (length preserved for diagnosis) while scheme, host, path and all
+non-sensitive params survive, so a redirect hop is still debuggable. It fails
+CLOSED — an unparseable URL returns the path plus a redaction marker, never the
+raw URL.
+
+NOT fixed, flagged for a separate decision: _die()'s `dict(resp.headers)` and
+`resp.text[:600]` fire only on a login failure and are the primary debugging aid
+when auth breaks unattended. Sanitizing them trades away exactly the diagnostic
+value they exist for. Set-Cookie is the specific concern (a live session cookie,
+unlike the expired TOTP). kite_login.py:20 must print the full login URL —
+including api_key — because a human has to paste it into a browser; that one is
+inherent to the script's function, not a defect.
+
+Tests: auth/test_auto_login_redaction.py, 19 tests. Two claims kept separate on
+purpose, since conflating them would let either hide the other's failure:
+  FUNCTIONAL     — the value POSTed as twofa_value is still the genuine
+                   unmodified code from pyotp, asserted equal to
+                   pyotp.TOTP(secret).now(). Redaction changes what is PRINTED,
+                   never what is SENT.
+  LOG CLEANLINESS — no 6-digit sequence and no credential value appears in
+                   captured stdout, asserted over the SAME run that proved the
+                   functional claim, so a clean log cannot pass by login simply
+                   not happening. Both assert `"twofa" in captured` first for
+                   exactly that reason.
+Plus a parametrized test over every member of _SENSITIVE_QUERY_KEYS (8 keys), a
+fail-closed test, and a test that non-sensitive params survive.
+
+Bug caught while writing these: the first harness called al.main(), which does
+not exist — the entry point is login(). The second sent a /api/login response
+without `status: "success"`, so the run bailed at Step 2 and never reached the
+code under test. Both would have produced vacuous passes on the log-cleanliness
+test had the `"twofa" in captured` guard not been there.
+
+Full suite: 418 passed, 6 failed — the 6 being the unrelated open findings
+(#2 ETF gate, #3 sizer, #4 correlation CLI). Zero regressions.
 
 NOT merged, NOT pushed, NOT deployed.
 

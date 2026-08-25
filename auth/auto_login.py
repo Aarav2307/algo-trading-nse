@@ -20,11 +20,12 @@ Requirements:
 """
 
 import os
+import re
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 
 import pyotp
 import requests
@@ -60,14 +61,112 @@ def _require_env(key: str) -> str:
     return val
 
 
+# Query-parameter names whose VALUES must never reach stdout or a log file.
+# This runs unattended twice a day via cron and its output is persisted to
+# paper_trading/logs/, so anything printed here is written to disk permanently.
+_SENSITIVE_QUERY_KEYS = frozenset({
+    "api_key", "api_secret", "request_token", "access_token",
+    "sess_id", "session_id", "twofa_value", "password",
+})
+
+
+def _redact_url(url: str, max_len: int = 120) -> str:
+    """
+    Return `url` with every sensitive query-parameter VALUE replaced by a
+    length-preserving placeholder, keeping scheme/host/path so a redirect hop
+    is still diagnosable.
+
+    Replaces a bare `location[:80]` truncation that only ever protected these
+    values by accident: the cut landed after api_key but before sess_id purely
+    because of how long Zerodha's URL happens to be. Verified against a real
+    log line — `api_key=7g9gy...` (16 chars) printed IN FULL every run, while
+    request_token was clipped to 8 of its 32 characters. Reorder that query
+    string upstream and the whole token prints. Truncation is not redaction.
+    """
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url)
+        if not parts.query:
+            return url[:max_len]
+        pairs = parse_qsl(parts.query, keep_blank_values=True)
+        safe = [
+            (k, f"<redacted:{len(v)}>") if k.lower() in _SENSITIVE_QUERY_KEYS else (k, v)
+            for k, v in pairs
+        ]
+        rebuilt = urlunsplit(
+            (parts.scheme, parts.netloc, parts.path,
+             urlencode(safe, safe="<>:"), parts.fragment)
+        )
+        return rebuilt[:max_len]
+    except Exception:
+        # Never fall back to the raw URL — a redaction failure must fail closed.
+        return f"{url.split('?', 1)[0]}?<unparseable — redacted>"
+
+
+# Response headers whose VALUES are credentials. Set-Cookie is the sharp one:
+# unlike a TOTP (dead in 30s), a session cookie dumped on a FAILED login can
+# still be live.
+_SENSITIVE_HEADERS = frozenset({
+    "set-cookie", "cookie", "authorization", "proxy-authorization",
+    "x-csrf-token", "x-auth-token",
+})
+
+# `key=value` or `"key": "value"` for any _SENSITIVE_QUERY_KEYS name, so the
+# same vocabulary covers URLs, form bodies and JSON error payloads.
+_SENSITIVE_BLOB_RE = re.compile(
+    r'("?)(' + "|".join(sorted(_SENSITIVE_QUERY_KEYS)) + r')\1\s*[:=]\s*"?([^"&,\s}]+)"?',
+    re.IGNORECASE,
+)
+
+
+def _redact_headers(headers) -> dict:
+    """Mask credential-bearing header VALUES, keeping every header NAME."""
+    out = {}
+    for k, v in dict(headers).items():
+        out[k] = f"<redacted:{len(str(v))}>" if k.lower() in _SENSITIVE_HEADERS else v
+    return out
+
+
+def _redact_blob(text: str, limit: int = 600) -> str:
+    """
+    Mask credential values inside a free-form response body, preserving the
+    surrounding text so the actual error message stays readable.
+    """
+    if not text:
+        return ""
+    try:
+        scrubbed = _SENSITIVE_BLOB_RE.sub(
+            lambda m: f"{m.group(1)}{m.group(2)}{m.group(1)}: <redacted:{len(m.group(3))}>",
+            text[:limit],
+        )
+        return scrubbed
+    except Exception:
+        return "<body suppressed — redaction failed>"
+
+
 def _die(message: str, resp: requests.Response = None) -> None:
-    """Print an error with optional response diagnostics, then exit."""
+    """
+    Print an error with optional response diagnostics, then exit.
+
+    Diagnostics are REDACTED, not omitted. Reconsidered 2026-08-25: the first
+    pass left this path raw on the grounds that it only fires on failure. That
+    reasoning confused frequency with risk. Failure-path output is MORE likely
+    to be copied into a debugging thread than success-path output, so the same
+    "logs travel" argument that justified masking the TOTP applies at least as
+    strongly here — and Set-Cookie is a worse leak than an expired TOTP.
+    Header names, status code and the error message body all survive, so the
+    diagnostic value this block exists for is intact.
+    """
     print(f"\nERROR: {message}")
     if resp is not None:
         print(f"  HTTP status : {resp.status_code}")
-        print(f"  Headers     : {dict(resp.headers)}")
         try:
-            print(f"  Body        : {resp.text[:600]}")
+            print(f"  Headers     : {_redact_headers(resp.headers)}")
+        except Exception:
+            print("  Headers     : <unavailable — redaction failed>")
+        try:
+            print(f"  Body        : {_redact_blob(resp.text)}")
         except Exception:
             pass
     sys.exit(1)
@@ -137,7 +236,13 @@ def login() -> None:
 
     totp_code = totp.now()   # generated immediately before the POST below
     seconds_remaining = totp.interval - (int(time.time()) % totp.interval)
-    print(f"[auto_login] Step 3: Submitting TOTP {totp_code}  ({seconds_remaining}s remaining)…")
+    # The code itself is NOT printed. test_kite.py shows its last 2 digits so a
+    # human can compare against their authenticator app while running it by
+    # hand; that affordance is worthless here, because this path runs unattended
+    # under cron with nobody watching. Any digits printed would be pure downside.
+    # seconds_remaining IS kept — it is the diagnostic the surrounding
+    # wait-for-fresh-window logic exists to support.
+    print(f"[auto_login] Step 3: Submitting TOTP  ({seconds_remaining}s remaining)…")
 
     try:
         r = session.post(
@@ -188,7 +293,8 @@ def login() -> None:
             _die(f"Network error on redirect hop {hop}: {exc}")
 
         location = resp.headers.get("Location", "")
-        print(f"[auto_login]   hop {hop}: {resp.status_code}  →  {location[:80] or '(no redirect)'}")
+        print(f"[auto_login]   hop {hop}: {resp.status_code}  →  "
+              f"{_redact_url(location) or '(no redirect)'}")
 
         if "request_token=" in location:
             params        = parse_qs(urlparse(location).query)
@@ -199,9 +305,9 @@ def login() -> None:
             # No more redirects — request_token never appeared
             _die(
                 f"Redirect chain ended at hop {hop} without a request_token.\n"
-                f"  Final URL    : {url}\n"
+                f"  Final URL    : {_redact_url(url)}\n"
                 f"  Final status : {resp.status_code}\n"
-                f"  Final body   : {resp.text[:400]}",
+                f"  Final body   : {_redact_blob(resp.text, limit=400)}",
             )
 
         # Resolve relative redirects (e.g. /connect/finish) against the base URL
