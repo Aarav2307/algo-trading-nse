@@ -1882,6 +1882,89 @@ NOT merged, NOT pushed, NOT deployed.
 
 ---
 
+#### system_health_check.py trustworthiness — FIXED (Aug 25 2026, branch only)
+
+Branch: fix/health-check-trustworthiness. Three issues found running the tool
+during the Aug 25 post-deploy check. Common theme: a check nobody trusts is
+worse than no check.
+
+**1. The permanently-red FAIL — FIXED.** check_run_completion() globbed every
+log with no date filter, and log files are immutable, so it could never go
+green again. It was red on screen_2026-07-12 (a NameError fixed weeks earlier)
+and 2026-06-08 (a ModuleNotFoundError from an incomplete deploy) — both long
+resolved, both permanent. Added _RUN_COMPLETION_WINDOW_DAYS = 30 with
+_log_date()/_within_window() helpers.
+30 days rather than this repo's shorter precedents (degradation tracker's 5-day
+consecutive-gap reset, candidates file's 1-day staleness ceiling) because those
+measure STALENESS of one latest artifact while this measures FAILURE HISTORY and
+needs samples: 30 days covers ~8 screener runs and ~22 each weekday job.
+Out-of-window logs are COUNTED AND REPORTED ("N log(s) older than 30d not
+scanned"), never silently dropped — a window that hid history would be a worse
+failure than the one being fixed. Undated filenames are KEPT, not discarded.
+
+**2. The self-referential WARN — FIXED at source.** The scanner ran a
+line-by-line regex whose only skip was `stripped.startswith("#")`, so any
+Path("relative") inside a DOCSTRING was reported as real code. The permanent
+WARN was this module flagging its OWN _discover_scan_files() docstring, which
+cites `write_text('FOO = Path("relative")')` as an example of a false positive.
+Fixed by tokenising: _masked_spans() records STRING and COMMENT token spans, and
+a match is suppressed only when its START column falls inside one. Deliberately
+NOT a filename exclusion — this generalises to any docstring in any file. Real
+code still matches because the regex anchors on the `=`, an OP token outside the
+string; verified on a line containing both real code and a string. Falls back to
+the old behaviour on an unparseable file rather than going silent.
+Result: the scan now reports PASS, 0 hits in 49 files.
+
+**3. The tautological universe PASS — NOT fixed, registered as backlog.**
+Audit Finding #8: _load_stocks() and _load_screener_universe() both resolve to
+signal_runner.STOCKS, so the check is x == x and cannot fail. Investigated what
+an independent source would be; every candidate has a disqualifying property:
+signal_log.csv is machine-dependent (the Mac's copy ends 2026-06-12 with 4
+tickers while the server's is current, so the check would give different answers
+on different machines); degradation_tracker.json is a gitignored runtime artifact
+with the same problem; CLAUDE_CONTEXT.md's declared list is git-tracked and
+genuinely independent but is prose, and parsing a prose header for a ticker list
+is fragile. Choosing among them means deciding what "authoritative" means and
+what tolerance is right for legitimate transient divergence (the day a stock is
+added, before the first run). That is a design question, not a patch, so it is
+NOT being forced into this batch.
+
+**Found while investigating #3, fixed immediately and separately:**
+CLAUDE_CONTEXT.md's own header read "## Current Trading Universe (10 stocks)"
+while universe.py had 15 — six additions (ENGINERSIN, NAVA, SUZLON, MOTILALOFS,
+COCHINSHIP, BEML) and one removal (EMAMILTD) out of date. This is exactly the
+drift the tautological check was supposed to catch and structurally cannot.
+Corrected on the fix/mask-totp-in-auto-login branch, which already touches this
+file.
+
+**Pre-existing tests updated, with the reason recorded.** Eight
+check_run_completion tests pinned the literal date "2026-07-15". That was
+incidental to what they assert (does a missing completion marker produce FAIL?),
+but once the window existed the fixed date aged out and they began passing
+VACUOUSLY against zero logs — the failure mode the window itself was meant to
+prevent, reproduced in the test suite. Replaced with a _recent() helper. Zero
+assertions were altered; only the call lines changed.
+
+Bug caught during this work, worth recording because it nearly shipped: a
+blanket string replace of `r.detail` -> `r.message` also matched
+`in r.details["issues"]` inside six PRE-EXISTING tests, silently corrupting them
+to `r.message["issues"]`. Caught because those tests then failed. The file was
+reset and the edit redone surgically per-call-site. CheckResult's fields are
+name/status/message/details — `detail` and `data` do not exist.
+
+Tests: 11 added to validation/test_system_health_check.py (31 -> 42). Against
+UNPATCHED system_health_check.py, 6 of the 11 fail; all 11 pass patched. Suite
+total 349 -> 360, consistent with +11.
+
+NOT merged, NOT pushed, NOT deployed.
+
+##### Backlog — registered, not built
+- **Universe-consistency check redesign (audit Finding #8).** Needs a genuinely
+  independent comparison source plus the tooling to make it machine-independent.
+  See item 3 above for why each obvious candidate fails.
+
+---
+
 ## Key Implementation Notes
 
 ### Hurst Exponent — CRITICAL

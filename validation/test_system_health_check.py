@@ -61,6 +61,19 @@ _TRACKER_CLEAN = {
 
 # ── Check 1: Screener cadence ─────────────────────────────────────────────────
 
+def _recent(days_ago: int = 2) -> str:
+    """
+    A date inside check_run_completion's rolling window.
+
+    The run-completion tests previously pinned "2026-07-15". That was incidental
+    to what they assert (does a missing completion marker produce FAIL?), but
+    once _RUN_COMPLETION_WINDOW_DAYS was introduced the fixed date aged out of
+    the window and they began passing vacuously against zero logs. Relative
+    dates keep the original intent testable indefinitely. No assertion changed.
+    """
+    return (date.today() - timedelta(days=days_ago)).isoformat()
+
+
 def test_screener_cadence_pass_no_gaps(tmp_path):
     log_dir = tmp_path / "logs"
     # Jun 17 (Wed) and Jun 21 (Sun) 2026 — no expected dates missing between them
@@ -110,9 +123,9 @@ def test_screener_cadence_off_schedule_noted_not_failed(tmp_path):
 
 def test_run_completion_pass_all_clean(tmp_path):
     log_dir = tmp_path / "logs"
-    _screen_log(log_dir, "2026-07-15")
-    _runner_log(log_dir, "2026-07-15")
-    _news_log(log_dir,   "2026-07-15")
+    _screen_log(log_dir, _recent())
+    _runner_log(log_dir, _recent())
+    _news_log(log_dir,   _recent())
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "PASS"
@@ -121,7 +134,7 @@ def test_run_completion_pass_all_clean(tmp_path):
 
 def test_run_completion_fail_screener_nonzero_exit(tmp_path):
     log_dir = tmp_path / "logs"
-    _screen_log(log_dir, "2026-07-15", exit_code=1)
+    _screen_log(log_dir, _recent(), exit_code=1)
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "FAIL"
@@ -130,7 +143,7 @@ def test_run_completion_fail_screener_nonzero_exit(tmp_path):
 
 def test_run_completion_fail_runner_no_marker(tmp_path):
     log_dir = tmp_path / "logs"
-    _runner_log(log_dir, "2026-07-15", completed=False)
+    _runner_log(log_dir, _recent(), completed=False)
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "FAIL"
@@ -139,7 +152,7 @@ def test_run_completion_fail_runner_no_marker(tmp_path):
 
 def test_run_completion_fail_news_no_marker(tmp_path):
     log_dir = tmp_path / "logs"
-    _news_log(log_dir, "2026-07-15", completed=False)
+    _news_log(log_dir, _recent(), completed=False)
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "FAIL"
@@ -161,7 +174,7 @@ def test_run_completion_excludes_morning_logs_from_runner_check(tmp_path):
 def test_run_completion_pass_morning_check_clean(tmp_path):
     """Morning fill check logs with a valid completion marker must count as clean."""
     log_dir = tmp_path / "logs"
-    _morning_log(log_dir, "2026-07-15")
+    _morning_log(log_dir, _recent())
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "PASS"
@@ -172,7 +185,7 @@ def test_run_completion_fail_morning_no_marker(tmp_path):
     """Previously untracked entirely: a morning log missing its completion marker
     must now surface as a FAIL, the same way the other three log types already do."""
     log_dir = tmp_path / "logs"
-    _morning_log(log_dir, "2026-07-15", completed=False)
+    _morning_log(log_dir, _recent(), completed=False)
     with patch.object(shc, "LOGS_DIR", log_dir):
         r = shc.check_run_completion()
     assert r.status == "FAIL"
@@ -405,9 +418,9 @@ def test_discover_scan_files_returns_nonempty_sorted_list():
 def test_exception_in_one_check_does_not_crash_others(tmp_path):
     """An exception in check_universe_consistency must not prevent other checks from running."""
     log_dir = tmp_path / "logs"
-    _screen_log(log_dir, "2026-07-15")
-    _runner_log(log_dir, "2026-07-15")
-    _news_log(log_dir,   "2026-07-15")
+    _screen_log(log_dir, _recent())
+    _runner_log(log_dir, _recent())
+    _news_log(log_dir,   _recent())
 
     tracker_file = tmp_path / "degradation_tracker.json"
     tracker_file.write_text(json.dumps(_TRACKER_CLEAN))
@@ -448,3 +461,133 @@ def test_exception_in_one_check_does_not_crash_others(tmp_path):
     assert by_name["Degradation tracker"].status == "PASS"
     assert by_name["Candidates file"].status == "WARN"
     assert by_name["Relative-path scan"].status == "PASS"
+
+
+# =============================================================================
+# Rolling window for check_run_completion  (added 2026-08-25)
+# =============================================================================
+# Log files are immutable, so an all-time scan can never go green again. On
+# 2026-08-25 this check was permanently RED on two long-resolved incidents
+# (screen_2026-07-12's NameError, 2026-06-08's ModuleNotFoundError). A check
+# that can never clear is one people stop reading.
+
+def _days_ago(n: int) -> str:
+    return (date.today() - timedelta(days=n)).isoformat()
+
+
+def test_run_completion_ignores_failures_older_than_the_window(tmp_path):
+    """An ancient, already-resolved failure must not hold the check red forever."""
+    log_dir = tmp_path / "logs"; log_dir.mkdir()
+    _runner_log(log_dir, _days_ago(shc._RUN_COMPLETION_WINDOW_DAYS + 10), completed=False)
+    _runner_log(log_dir, _days_ago(1), completed=True)
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert r.status == "PASS", f"stale failure still red: {r.message}"
+
+
+def test_run_completion_still_catches_failures_inside_the_window(tmp_path):
+    """Narrowing the window must not blind the check to recent breakage."""
+    log_dir = tmp_path / "logs"; log_dir.mkdir()
+    _runner_log(log_dir, _days_ago(2), completed=False)
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert r.status == "FAIL"
+
+
+def test_run_completion_reports_how_many_logs_it_skipped(tmp_path):
+    """
+    Out-of-window logs must be COUNTED AND REPORTED. A window that silently
+    dropped history could hide a real failure without a trace.
+    """
+    log_dir = tmp_path / "logs"; log_dir.mkdir()
+    for n in (200, 150, 120):
+        _runner_log(log_dir, _days_ago(n), completed=True)
+    _runner_log(log_dir, _days_ago(1), completed=True)
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert "3 log(s) older than" in r.message, r.message
+    assert str(shc._RUN_COMPLETION_WINDOW_DAYS) in r.message
+
+
+def test_run_completion_says_nothing_about_skips_when_none(tmp_path):
+    log_dir = tmp_path / "logs"; log_dir.mkdir()
+    _runner_log(log_dir, _days_ago(1), completed=True)
+    with patch.object(shc, "LOGS_DIR", log_dir):
+        r = shc.check_run_completion()
+    assert "not scanned" not in r.message
+
+
+def test_undated_log_filenames_are_kept_not_dropped():
+    """A log whose name carries no date must never be silently discarded."""
+    assert shc._log_date(Path("weird-name.log")) is None
+    keep, skipped = shc._within_window([Path("weird-name.log")])
+    assert keep and skipped == 0
+
+
+def test_log_date_parses_every_log_naming_convention():
+    for name, expected in [
+        ("2026-08-25.log", date(2026, 8, 25)),
+        ("2026-08-25_morning.log", date(2026, 8, 25)),
+        ("2026-08-25_news.log", date(2026, 8, 25)),
+        ("screen_2026-08-23.log", date(2026, 8, 23)),
+    ]:
+        assert shc._log_date(Path(name)) == expected, name
+
+
+# =============================================================================
+# Relative-path scanner must not flag its own docstring  (added 2026-08-25)
+# =============================================================================
+
+def test_relative_path_scan_skips_matches_inside_a_docstring(tmp_path):
+    """
+    The exact self-referential WARN: this module's own _discover_scan_files()
+    docstring cites Path("relative") as an example of a false positive, and the
+    line-based scanner then flagged it — the tool warning about itself, forever.
+    """
+    f = tmp_path / "mod.py"
+    f.write_text(
+        'def g():\n'
+        '    """Doc.\n\n'
+        '    Example of a false positive: FOO = Path("relative/path")\n'
+        '    """\n'
+        '    return 1\n'
+    )
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
+        r = shc.check_relative_path_constants()
+    assert r.status == "PASS", f"docstring flagged as code: {r.details.get('hits')}"
+
+
+def test_relative_path_scan_skips_matches_inside_a_single_line_string(tmp_path):
+    f = tmp_path / "mod.py"
+    f.write_text('EXAMPLE = "FOO = Path(\'relative\')"\n')
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
+        r = shc.check_relative_path_constants()
+    assert r.status == "PASS", r.details.get("hits")
+
+
+def test_relative_path_scan_still_flags_real_code(tmp_path):
+    """The masking must not blind the scanner to the bug it exists to find."""
+    f = tmp_path / "mod.py"
+    f.write_text('import pathlib\nFOO = Path("relative/path")\n')
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
+        r = shc.check_relative_path_constants()
+    assert r.status == "WARN", "real relative-path constant was missed"
+    assert any("relative/path" in h for h in r.details["hits"])
+
+
+def test_relative_path_scan_flags_real_code_on_a_line_that_also_has_a_string(tmp_path):
+    """Masking is per-match-position, not per-line — a line can contain both."""
+    f = tmp_path / "mod.py"
+    f.write_text('FOO = Path("relative/x")  # note: "Path(\'y\')" in a comment\n')
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
+        r = shc.check_relative_path_constants()
+    assert r.status == "WARN", "real code suppressed by a string elsewhere on the line"
+
+
+def test_relative_path_scan_degrades_gracefully_on_unparseable_file(tmp_path):
+    """A syntax error must not crash the check or silence it entirely."""
+    f = tmp_path / "broken.py"
+    f.write_text('def (((: \nFOO = Path("relative")\n')
+    with patch.object(shc, "_discover_scan_files", return_value=[f]):
+        r = shc.check_relative_path_constants()
+    assert r.status in ("WARN", "PASS")   # must not FAIL/raise

@@ -35,6 +35,46 @@ _CANDIDATES_STALE_DAYS   = 4   # normal Wed→Sun or Sun→Wed gap
 # Directories excluded from the relative-path constant scan (Check 6).
 _SCAN_EXCLUDE_DIRS = {"venv", "__pycache__", ".git", ".pytest_cache", "node_modules"}
 
+# How far back check_run_completion() looks. Log files are immutable, so an
+# all-time scan can never go green again once any run has failed: on 2026-08-25
+# this check was permanently RED on screen_2026-07-12 (a NameError fixed weeks
+# earlier) and 2026-06-08 (a ModuleNotFoundError from an incomplete deploy).
+# A check that can never clear is one people stop reading -- the same dynamic
+# that let EMAMILTD.NS sit unreviewed for four screener cycles.
+#
+# 30 days rather than this repo's shorter precedents (the degradation tracker's
+# 5-day consecutive-gap reset, the candidates file's 1-day staleness ceiling)
+# because those measure STALENESS of a single latest artifact, whereas this
+# measures FAILURE HISTORY and needs enough samples to show a pattern. At the
+# current cadence 30 days covers ~8 screener runs and ~22 each of the three
+# weekday jobs. Out-of-window logs are COUNTED AND REPORTED, never silently
+# dropped, so narrowing the window cannot hide a failure without saying so.
+_RUN_COMPLETION_WINDOW_DAYS = 30
+
+
+def _log_date(path: Path):
+    """Extract the YYYY-MM-DD embedded in a log filename, or None."""
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
+    if not m:
+        return None
+    try:
+        return date.fromisoformat(m.group(1))
+    except ValueError:
+        return None
+
+
+def _within_window(paths, window_days: int = _RUN_COMPLETION_WINDOW_DAYS):
+    """Split paths into (in_window, skipped_count) by their filename date."""
+    cutoff = date.today() - timedelta(days=window_days)
+    keep, skipped = [], 0
+    for p in paths:
+        d = _log_date(p)
+        if d is None or d >= cutoff:
+            keep.append(p)          # undated logs kept -- never silently dropped
+        else:
+            skipped += 1
+    return keep, skipped
+
 
 def _discover_scan_files() -> list[Path]:
     """All .py source files in the repo, excluding venv/caches/test files.
@@ -149,7 +189,7 @@ def check_run_completion() -> CheckResult:
         parts  = []
 
         # Screener logs — last line must contain "Exit code: 0"
-        screen_logs = sorted(LOGS_DIR.glob("screen_*.log"))
+        screen_logs, _sk_screen = _within_window(sorted(LOGS_DIR.glob("screen_*.log")))
         screen_bad  = []
         for f in screen_logs:
             ll = _last_nonempty_line(f)
@@ -162,10 +202,10 @@ def check_run_completion() -> CheckResult:
         parts.append(f"Screener {len(screen_logs) - len(screen_bad)}/{len(screen_logs)} clean")
 
         # Signal-runner daily logs — YYYY-MM-DD.log (no suffix)
-        runner_logs = sorted(
+        runner_logs, _sk_runner = _within_window(sorted(
             f for f in LOGS_DIR.glob("*.log")
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}\.log", f.name)
-        )
+        ))
         runner_bad = []
         for f in runner_logs:
             if "[run_daily] Completed:" not in _last_nonempty_line(f):
@@ -177,7 +217,7 @@ def check_run_completion() -> CheckResult:
         )
 
         # News-monitor logs — YYYY-MM-DD_news.log
-        news_logs = sorted(LOGS_DIR.glob("*_news.log"))
+        news_logs, _sk_news = _within_window(sorted(LOGS_DIR.glob("*_news.log")))
         news_bad  = []
         for f in news_logs:
             if "News monitor completed:" not in _last_nonempty_line(f):
@@ -190,7 +230,7 @@ def check_run_completion() -> CheckResult:
 
         # Morning fill check logs — YYYY-MM-DD_morning.log
         # Previously untracked by this check entirely.
-        morning_logs = sorted(LOGS_DIR.glob("*_morning.log"))
+        morning_logs, _sk_morning = _within_window(sorted(LOGS_DIR.glob("*_morning.log")))
         morning_bad  = []
         for f in morning_logs:
             if "Morning fill check completed:" not in _last_nonempty_line(f):
@@ -200,6 +240,12 @@ def check_run_completion() -> CheckResult:
         parts.append(
             f"Morning fill check {len(morning_logs) - len(morning_bad)}/{len(morning_logs)} clean"
         )
+
+        _skipped = _sk_screen + _sk_runner + _sk_news + _sk_morning
+        if _skipped:
+            parts.append(
+                f"{_skipped} log(s) older than {_RUN_COMPLETION_WINDOW_DAYS}d not scanned"
+            )
 
         summary = " | ".join(parts)
         if issues:
@@ -348,6 +394,45 @@ def check_candidates_freshness() -> CheckResult:
 _REL_PATH_RE = re.compile(r"=\s*Path\(['\"](?!/|__)")
 
 
+def _masked_spans(src: str) -> dict:
+    """
+    Map line number -> list of (start_col, end_col) spans occupied by STRING or
+    COMMENT tokens.
+
+    The scanner below previously skipped only lines starting with "#", so any
+    `Path("relative")` appearing inside a DOCSTRING was reported as real code.
+    That produced a permanent self-referential WARN: this module's own
+    _discover_scan_files() docstring cites `write_text('FOO = Path("relative")')`
+    as an example of a false positive, and the scanner then flagged it — the
+    tool warning about itself, forever.
+
+    Fixed at the source by tokenising rather than by excluding this filename,
+    so it generalises to any docstring in any file. A match is suppressed only
+    when its START lies inside a string/comment token; a genuine
+    `FOO = Path("x")` still matches, because the regex anchors on the `=` sign,
+    which is an OP token outside the string.
+    """
+    import io
+    import tokenize
+
+    spans: dict = {}
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+            if tok.type not in (tokenize.STRING, tokenize.COMMENT):
+                continue
+            (srow, scol), (erow, ecol) = tok.start, tok.end
+            for row in range(srow, erow + 1):
+                lo = scol if row == srow else 0
+                hi = ecol if row == erow else 10 ** 9
+                spans.setdefault(row, []).append((lo, hi))
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        # Unparseable file: fall back to no masking. The old "#"-prefix skip
+        # below still applies, so behaviour degrades to the previous scanner
+        # rather than to silence.
+        return {}
+    return spans
+
+
 def check_relative_path_constants() -> CheckResult:
     """Scan source files for module-level relative-path Path() constants."""
     name = "Relative-path scan"
@@ -358,11 +443,16 @@ def check_relative_path_constants() -> CheckResult:
             if not fpath.exists():
                 continue
             scanned += 1
-            for lineno, line in enumerate(fpath.read_text().splitlines(), 1):
+            _src   = fpath.read_text()
+            _spans = _masked_spans(_src)
+            for lineno, line in enumerate(_src.splitlines(), 1):
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     continue
-                if _REL_PATH_RE.search(stripped):
+                _m = _REL_PATH_RE.search(line)
+                if _m and not any(
+                    lo <= _m.start() < hi for lo, hi in _spans.get(lineno, ())
+                ):
                     try:
                         rel = fpath.relative_to(_ROOT)
                     except ValueError:
