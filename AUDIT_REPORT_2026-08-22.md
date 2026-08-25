@@ -384,6 +384,83 @@ This is the Jul 27 deadlock's signature — a correctly-ranked, correctly-gated 
 
 ---
 
+### Addendum (Aug 26 2026) — re-derived, fixed, and one earlier claim corrected
+*Appended after the section above was reviewed; the original text is unchanged.*
+
+Re-derived against the current code (`a3c11c9`) rather than trusting the original read. The mechanism holds, but two things in the earlier description were wrong.
+
+**The claim, quoted from where it actually lives.** `_etf_rebalance_delta_shares()`'s docstring, [paper_portfolio.py:701](paper_trading/paper_portfolio.py#L701):
+> *"This is the single source of the delta math — both the real unwind (rebalance_etf) and the cash-gate estimate (projected_tier_unwind_cash) call it, so the check and the action can never disagree."*
+
+**Where they diverge.** Both do share the delta math. They do not share the **decision**. `rebalance_etf()` adds a guard the estimator has no equivalent of:
+```
+40:        if new_tier == old_tier:
+41:            return                     # never corrects intra-tier drift
+```
+`projected_tier_unwind_cash()` ([:747](paper_trading/paper_portfolio.py#L747)) goes straight from the shared delta to `if delta_shares >= 0: return 0.0`. Where the tier is unchanged but the ETF has drifted off target, the estimator credits drift-derived cash the action will never free.
+
+**Root cause — confirmed, and it is the only disagreeing boundary.** Measured across every boundary (`ETF_TIERS = {0:1.0, 1:0.8, 2:0.8, 3:0.5, 4:0.0}`):
+```
+ N   cur  proj   GATE credits   ACTION frees   verdict
+ 0  1.00  0.80         17,885         17,885   AGREE
+ 1  0.80  0.80         10,045              0   DISAGREE by Rs10,045
+ 2  0.80  0.50         36,505         36,505   AGREE
+ 3  0.50  0.00         93,835         93,835   AGREE
+```
+Only `1 → 2` disagrees, because those two tiers are numerically equal. The coincidence is the *trigger*; the missing guard is the *cause*.
+
+**Realistic trigger — narrower than first described.** Four conditions, all required:
+1. Exactly **one** committed position (the sole equal-tier boundary).
+2. **Cash below ₹1,000.** This one was missed originally and it matters most: the gate only *acts* on the credit when `cash < MIN_CASH_TO_ATTEMPT_BUY`. At or above ₹1,000 the gate passes regardless and the phantom credit is inert.
+3. The ETF drifted off its 80% target — no drift, no phantom credit.
+4. A second same-day candidate clearing rank, position-limit, news and correlation gates.
+
+**Consequence — the earlier description was WRONG and is corrected here.** It was recorded as "silently drops a profitable signal." It does not. Traced end to end with cash ₹900:
+```
+gate credit (phantom)        : Rs10,045.00
+gate: 10,945.00 < 1000 -> False  => PASSES
+without the phantom credit   : would SKIP
+rebalance_etf actually freed : Rs0.00
+sizer -> shares = 0 (all_constraints_zero)  => HOLD "sizing skipped"
+```
+The trade was **never fundable** — the tier genuinely does not change at 1→2, so no correct behaviour funds it from the ETF. What the bug changes is the *record*: an accurate `SKIPPED — Insufficient cash ₹900` row in `signal_log.csv` becomes a misleading `HOLD — sizing skipped 0 shares`, and because no `continue` branch is taken it never reaches `skipped_signals` either. **No trade is lost; the reason is misreported.**
+
+**The real teeth: this is the sole enabler of Finding #3.** Finding #3 (`PositionSizer` returning −1) needs `cash < buy_cost_1share`, roughly ₹1–3. The cash gate would normally skip long before that. Measured:
+```
+    cash   price  gate WITH bug  gate if FIXED  sizer shares
+  900.00    1500           PASS           skip             0
+    2.00    1500           PASS           skip             0
+    1.00    1000           PASS           skip            -1
+    0.50     300           PASS           skip             0
+```
+With the estimator fixed the gate skips first and the sizer never runs on sub-₹3 cash. **Fixing #2 closes #3's only reachable path**, without touching the sizer.
+
+**Severity — MEDIUM, deliberately *not* matched to #12's HIGH.** Weighing the two failure shapes as asked:
+- **#12** leaves an open position with **no code path that can close it** — real market exposure, a stop that cannot fire, unbounded downside while it persists.
+- **#2** loses no money, corrupts no state, and drops no fundable trade. Cash, shares, ETF units and P&L all stay correct. It produces one misleading log line.
+
+A misreported reason is strictly less severe than an un-exitable position, so matching #12's HIGH would be rating-by-association. MEDIUM also fits the rubric's own wording: "possible but requires an unusual sequence of events" — four conditions including sub-₹1,000 cash.
+
+**Where I would revise upward:** the #3 linkage. If #3 is *not* fixed, #2 is the live precondition for permanently bricking a ticker, and the pair together behave like a HIGH. They are being fixed in order for that reason.
+
+**Fix.** Mirror the action's guard in the estimator — no new tier logic, no duplicated math:
+```python
+        tier, delta_shares = self._etf_rebalance_delta_shares(...)
+        if tier == self.state["etf_tier"]:
+            return 0.0          # rebalance_etf() will no-op; promise nothing
+        if delta_shares >= 0:
+            return 0.0
+```
+Written against the **tier**, not against `n == 1`, so it survives a future retuning of `ETF_TIERS`: any new pair of equal adjacent tiers is covered, and a table with no equal pairs simply never takes the branch.
+
+**Not changed, and worth a separate decision:** whether intra-tier drift *should* be corrected at all. An ETF that has drifted to ~94% while its tier says 80% is genuinely over-allocated. The current design deliberately rebalances only on tier change, and this fix makes the estimator agree with that design rather than quietly overriding it. If the drift policy is wrong, that is a strategy question for the overlay, not a consistency bug — filed separately rather than smuggled in here.
+
+**Tests** — `paper_trading/test_etf_gate_agreement.py`, 9 tests, parametrized across all four boundaries so the fix is shown general rather than a patch for the 0.8/0.8 case. Baseline: 2 fail. Patched: 9 pass. The original `test_gate_estimate_and_real_unwind_must_agree` also flips, taking `test_paper_portfolio_audit.py` from 17-pass/1-fail to 18 passed. Full suite 391 → **400 passed, 0 failed**.
+
+One fixture bug caught while writing them, recorded because it is the same class as two earlier ones this session: `etf_fraction=0.80` does not put the ETF at its 80% target, because the tier is a fraction of the *live* portfolio (cash + stock + ETF), not of the nominal ₹100,000. The at-target share count has to be solved: `etf = t·(cash + stock)/(1 − t)`. The first version failed at ₹7,105 — the fixture was wrong, not the code.
+
+---
+
 # 3. MEDIUM — `PositionSizer` returns −1 shares, bypassing the `shares == 0` skip and bricking the ticker
 
 **Component:** Risk & Execution Engine → `engine/position_sizer.py`; consumed by `paper_trading/signal_runner.py`

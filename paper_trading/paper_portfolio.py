@@ -755,11 +755,26 @@ class PaperPortfolio:
         cash; returns 0.0 if the projected tier would need to BUY ETF or hold.
         The sell is capped at ETF shares actually held, so the estimate matches
         what rebalance_etf() would really free.
+
+        Finding #2: sharing _etf_rebalance_delta_shares() makes the DELTA math
+        common, but rebalance_etf() also applies a `new_tier == old_tier` early
+        return -- it deliberately never corrects intra-tier drift. Without the
+        same guard here, a drifted ETF whose tier is unchanged produced a
+        drift-derived credit the action would never free. Because
+        ETF_TIERS[1] == ETF_TIERS[2] == 0.8, every second same-day candidate
+        projects an unchanged tier and hit exactly that path.
+
+        The guard is expressed against the tier rather than against the
+        n==1 coincidence, so it stays correct if the tier table is ever
+        rebalanced: any future pair of equal adjacent tiers is covered, and a
+        table with no equal pairs simply never takes this branch.
         """
         projected = self.committed_open_count() + additional_positions
-        _tier, delta_shares = self._etf_rebalance_delta_shares(
+        tier, delta_shares = self._etf_rebalance_delta_shares(
             projected, niftybees_price, current_prices
         )
+        if tier == self.state["etf_tier"]:
+            return 0.0          # rebalance_etf() will no-op; promise nothing
         if delta_shares >= 0:
             return 0.0
         sell_shares = min(abs(delta_shares), self.state["etf_shares"])
