@@ -227,6 +227,36 @@ timing gap).
 - Venv on server: ~/algo-trading/venv
 
 ## Key Workflow Notes
+
+### READING PORTFOLIO STATE — read this before you look at any state file
+To see live state, run:
+
+    python paper_trading/show_live_state.py
+
+That is the only correct way. It reads the server and FAILS LOUD if the server
+is unreachable — it will not fall back to a local file, by design.
+
+DO NOT read paper_trading/portfolio_state.json from a local checkout, and do not
+`json.load()` it to "just check something". A local copy is NEVER AUTHORITATIVE,
+REGARDLESS OF AGE. This is not a staleness rule. The local machine never runs the
+trading system — cron runs it on the Lightsail server — so a local copy synced an
+hour ago is exactly as wrong as one synced in June. There is no age at which a
+local copy becomes correct.
+
+The local file gives no signal that it is wrong. It sits at the documented path,
+parses cleanly, and returns plausible numbers. On 2026-08-26 it was read as live
+state during an audit and reported Rs29,106.13 against a true value of Rs243.49,
+and its 9-key positions dict was reported as 9 open positions when only one held
+shares. Note also: len(state["positions"]) is NOT the open-position count — the
+dict retains a key per universe ticker. Count entries where shares is non-zero.
+
+Two defences existed at the time and both were bypassed: PaperPortfolio's
+validate_state_integrity() fires correctly on that file but only via load(), which
+an ad-hoc json.load() skips; and a written warning about that exact file existed
+further down this document, was read, and did not prevent the mistake. Hence the
+command above — the fix is a path that cannot return the wrong file, not another
+warning. See Finding #14.
+
 - Always SCP files from server before git push (server is source of truth)
 - CRITICAL: Before SCP-ing ANY file to the server that touches paper_trading/,
   ALWAYS run the backup script first:
@@ -1193,7 +1223,9 @@ may differ from what portfolio_state.json and signal_log.csv show as a result. T
 gap is not reconstructable from existing records; no attempt has been made to guess
 what the position "would have" done, and none should be.
 
-Note for anyone reading this from the local dev checkout: as of this writing, the
+Note for anyone reading this from the local dev checkout (the general rule this
+note is a specific instance of now lives in Key Workflow Notes -> READING
+PORTFOLIO STATE; use paper_trading/show_live_state.py): as of this writing, the
 local portfolio_state.json (last synced ~Jun 24 2026, an older schema without
 pending_buy/entry_cost fields) still shows BAJAJ-AUTO.NS as an open position with the
 correct entry price — apparently contradicting the above. This is a stale, disconnected
@@ -2360,3 +2392,93 @@ earlier draft of this entry recorded "400 -> 415", measured in a worktree that
 happened to contain a stray portfolio_state.json, which made that test pass.
 Both totals are internally consistent; only the fresh-worktree pair is
 reproducible from a clean checkout.
+#### A stale local state file reads as live — Finding #14 — FIXED (Aug 26 2026, branch only)
+
+Branch: fix/state-provenance. This is a PROCESS defect, not a code defect.
+Nothing in the trading system is wrong. The defect is that the working tree can
+mislead whoever reads it, with no signal that it is doing so.
+
+Trigger condition, stated plainly: READ A FILE THAT EXISTS, AT THE PATH
+DOCUMENTED TO BE CORRECT. That is the whole exploit. Same failure shape as
+everything else this audit has hunted — a thing existing where it is expected is
+not the same claim as it being the real one — but aimed at a reader rather than
+at code.
+
+What happened: during the Finding #3 write-up, paper_trading/portfolio_state.json
+in the LOCAL checkout was read and reported as live state. It reports cash
+Rs29,106.13 and a 9-key positions dict. The true live values, read from the
+server: Rs243.49, 359 NIFTYBEES @ Rs272.44, etf_tier 1.0, zero open equity
+positions. Two further errors compounded it: the 9 dict keys were reported as 9
+open positions when only ONE held shares, and the gap against a remembered
+server figure was narrated as days of unobserved trading that never happened.
+
+Cost: Finding #3's severity margin was documented as ~4,900x when it is ~41x.
+Both support LOW, so the conclusion held, but those are different claims to
+anyone later deciding how urgently to care. Caught before push; corrected in
+commit c821900 (the Finding #3 commit).
+
+THE REAL FINDING IS THAT TWO EXISTING DEFENCES BOTH MISSED IT.
+
+  1. PaperPortfolio.validate_state_integrity() was written for exactly this
+     ("a stale local portfolio_state.json accidentally SCP'd over the live
+     server file"). It WORKS. Verified against a temp copy of the actual file:
+       STATE INTEGRITY FAIL: computed total value Rs39,392 is below 50% floor
+       Rs50,000. Possible stale portfolio_state.json loaded.
+     But it runs from load(). Every production consumer goes through load(), so
+     the trading system was never at risk. The unguarded consumer is ad-hoc
+     inspection: json.load(open(path)) bypasses it completely, and that is what
+     anyone inspecting state actually types.
+
+  2. A written warning about THAT EXACT FILE already existed in this document —
+     naming the same Jun 24 sync date and the same BAJAJ-AUTO.NS position, and
+     closing with "this note exists so the discrepancy isn't mistaken for a
+     correction later." It was read in full at the start of the audit and did
+     not prevent the mistake.
+
+Point 2 is load-bearing and it is why the fix is not another note. A note is the
+mitigation that had ALREADY BEEN TRIED AND HAD ALREADY FAILED. A passive warning
+must be recalled at the moment of temptation; an instruction is found when you
+go looking for how to do the thing. The old note was also buried at line ~1195
+inside an incident write-up rather than in Key Workflow Notes where operating
+rules live, which plausibly explains why it did not stick.
+
+FIX, two parts:
+  1. paper_trading/show_live_state.py — a named read-only command. Reads server
+     state over ssh with a single `cat` and FAILS LOUD: on any failure it raises
+     LiveStateUnavailable rather than falling back to a local read, returning a
+     sentinel, or printing a warning and continuing. A fallback would reintroduce
+     the precise failure it exists to prevent. No answer beats a confident wrong
+     one. Same move as Finding #1's plan/report/execute split: stop relying on
+     discipline, make the safe path the only path.
+  2. The provenance rule moved into Key Workflow Notes, reframed. NOT "the local
+     file is stale" but "a local copy is never authoritative regardless of age" —
+     the local machine never runs the system, so a copy synced an hour ago is
+     exactly as wrong as one synced in June. There is no age at which it becomes
+     correct. The old buried note keeps its incident context and now points up to
+     the general rule. The section also records that len(positions) is not the
+     open-position count.
+
+Deliberately NOT built: a general staleness checker. Detection already exists and
+already works; adding a second detector would not close the seam, which is the
+bypassed read path.
+
+Tests: paper_trading/test_show_live_state_audit.py, 15 tests, no network (a fake
+runner is injected at the subprocess seam). The load-bearing no-fallback test is
+BEHAVIOURAL — it records every path passed to open() and asserts none is a state
+file — not a source-text scan, because this audit has been bitten twice by
+text-matching assertions that passed in the wrong context. Mutation-tested: adding
+a local-fallback branch to the module makes it fail with
+"fell back to a local state read: ['paper_trading/portfolio_state.json']".
+
+VERIFIED LIVE, both paths, not only against the fake runner:
+  success  -> exit 0, printed cash Rs243.49, 359 NIFTYBEES @ Rs272.44, tier 1.0,
+              total_trades 4, "open positions 0 (positions dict has 17 keys)".
+              Matches the manual server read exactly.
+  failure  -> pointed at 192.0.2.1 (TEST-NET-1, unroutable), real subprocess:
+              exit 1, "LIVE STATE UNAVAILABLE: ssh ... exited 255", plus the
+              explicit "NOT falling back to the local ..." line. No hang, no
+              fallback, no partial output.
+
+Severity: MEDIUM. Zero trading risk — the production path is guarded and verified
+so. But it put a wrong number into an audit document, and it defeated two
+existing mitigations without either of them making a sound.
