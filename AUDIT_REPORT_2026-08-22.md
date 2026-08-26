@@ -951,3 +951,109 @@ Phase 2 (append-only event journal replacing the mutable `status` column) and Ph
 The fill model assumes an AMO limit order is resolved at 9:20 AM: filled if the open beat the limit, otherwise dead (BUY cancelled, SELL requeued). My understanding is that a Zerodha AMO is released into the pre-open session and, if unexecuted at the open, **remains a live order in the book for the rest of the session**, cancelled at EOD rather than at 9:20. If so, the backtest and paper P&L systematically under-report fills, and the `[REQUEUED]` machinery duplicates something the exchange already does.
 
 Flagged, not asserted — Zerodha's AMO handling has changed more than once and this repo's standard is to verify against the live system. Confirm against current Zerodha AMO documentation and one day of real `kite.orders()` output. Separate work from #1; do not bundle.
+
+---
+
+## Finding #14 — A stale local state file reads as live (Aug 26 2026)
+
+**Severity: MEDIUM.** **Class: process defect, not code defect.** Nothing in the
+trading system is wrong. The defect is in how confidently the working tree
+misleads whoever reads it.
+
+### Trigger condition
+
+**Read a file that exists, at the path documented to be correct.**
+
+That is the entire exploit. It is the same failure shape this audit has been
+hunting throughout — *a thing existing where it is expected is not the same claim
+as it being the real one* — aimed at a reader instead of at code. Third instance
+in two days, after the regex-vs-AST false positive twice.
+
+### What happened
+
+During the Finding #3 write-up, `paper_trading/portfolio_state.json` in the local
+checkout was read and reported as live state.
+
+| | Local file (reported as live) | Server (actual) |
+|---|---|---|
+| cash | ₹29,106.13 | **₹243.49** |
+| ETF | *no `etf_shares` key at all* | 359 NIFTYBEES @ ₹272.44 |
+| `etf_tier` | *absent — predates the overlay* | 1.0 |
+| open positions | reported as 9 | **0** |
+| `last_run_date` | 2026-06-24 | 2026-08-25 |
+
+Three errors compounded: the file was two months stale, its 9-key `positions`
+dict was miscounted as 9 open positions when only one held shares, and the gap
+against a remembered server figure was narrated as days of unobserved trading
+that never occurred.
+
+The only signals that expose it are ones you must think to check — `mtime`, and
+an **absent required key** (`etf_shares`/`etf_tier`, missing because the file
+predates the ETF overlay). Nothing surfaces on its own. The file sits at the
+documented path, parses cleanly, and returns plausible numbers.
+
+**Cost:** Finding #3's severity margin was documented as ~4,900× when it is ~41×.
+Both support LOW, so the conclusion held — but those are different claims to
+anyone later deciding how urgently to care. Caught pre-push; corrected in
+`c821900` (the Finding #3 commit).
+
+### The real finding: two existing defences both missed it
+
+**1. The integrity guard works — via a path nobody inspecting state takes.**
+`validate_state_integrity()` ([paper_portfolio.py:102](paper_trading/paper_portfolio.py#L102))
+was written for exactly this scenario. Verified against a temp copy of the actual
+file:
+
+```
+STATE INTEGRITY FAIL: computed total value ₹39,392 is below 50% floor ₹50,000.
+Possible stale portfolio_state.json loaded. Cash=₹29,106 | Stock=₹10,286 | ETF=₹0.
+```
+
+It fires correctly. But it runs from `load()`, and **every production consumer
+goes through `load()`** — so the trading system was never at risk. The unguarded
+consumer is ad-hoc inspection: `json.load(open(path))` bypasses it completely,
+and that is what an auditor actually types.
+
+**2. The written warning already existed — and already failed.**
+`CLAUDE_CONTEXT.md:1195` warned about *that specific file*, naming the same Jun 24
+sync date and the same BAJAJ-AUTO.NS position, closing with "this note exists so
+the discrepancy isn't mistaken for a correction later." It was read in full at the
+start of this audit and did not prevent the mistake.
+
+That second point is load-bearing: **a note is the mitigation that had already
+been tried and had already failed.** A passive warning must be recalled at the
+moment of temptation; an instruction is found when you go looking for how to do
+the thing. The note was also buried inside an incident write-up rather than in
+Key Workflow Notes where operating rules live.
+
+### Fix
+
+1. **`paper_trading/show_live_state.py`** — a named read-only command. Reads
+   server state over `ssh` with a single `cat`, and **fails loud**: any failure
+   raises `LiveStateUnavailable` rather than falling back to a local read,
+   returning a sentinel, or warning and continuing. A fallback would reintroduce
+   the exact failure it exists to prevent. Same move as Finding #1's
+   plan/report/execute split — stop relying on discipline, make the safe path the
+   only path.
+2. **Provenance rule moved into Key Workflow Notes**, reframed as **"never
+   authoritative regardless of age"** rather than "stale." The local machine never
+   runs the system, so a copy synced an hour ago is exactly as wrong as one synced
+   in June; there is no age at which it becomes correct. The section also records
+   that `len(positions)` is not the open-position count. The old note keeps its
+   incident context and points up to the general rule.
+
+**Deliberately not built:** a general staleness checker. Detection already exists
+and already works — a second detector would not close the seam, which is the
+bypassed read path.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `test_show_live_state_audit.py` | **15 passed**, no network (fake runner injected at the subprocess seam) |
+| No-fallback test is behavioural | records every path passed to `open()`; not a source-text scan |
+| Mutation test — add a local fallback | **fails**: `fell back to a local state read: ['paper_trading/portfolio_state.json']` |
+| Module parses **and imports** | both checked (per the `import re` lesson) |
+| **Live run — success path** | exit 0; printed ₹243.49, 359 NIFTYBEES @ ₹272.44, tier 1.0, `open positions  0  (positions dict has 17 keys)` — matches the manual server read exactly |
+| **Live run — failure path** | pointed at 192.0.2.1 (TEST-NET-1, unroutable), real subprocess: exit 1, `LIVE STATE UNAVAILABLE: ssh ... exited 255`, plus the explicit "NOT falling back" line. No hang, no fallback, no partial output |
+| Full suite | **414 passed, 1 failed** — the failure is `test_state_file_is_absolute_and_cwd_independent`, which asserts `STATE_FILE.exists()`; the state file is gitignored and therefore absent from any fresh worktree. Verified pre-existing: `git stash -u` → clean `main` → same single failure |
