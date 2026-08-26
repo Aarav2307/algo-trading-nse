@@ -2482,3 +2482,32 @@ VERIFIED LIVE, both paths, not only against the fake runner:
 Severity: MEDIUM. Zero trading risk — the production path is guarded and verified
 so. But it put a wrong number into an audit document, and it defeated two
 existing mitigations without either of them making a sound.
+
+#### Audit closing note — recurring failure shapes (Aug 26 2026)
+
+The Aug 22-26 audit closed with 14 findings. The synthesis lives in
+AUDIT_REPORT_2026-08-22.md, section "Closing note — what the fourteen findings
+had in common". Not duplicated here; this is a pointer.
+
+The headline, because it is the part worth carrying forward: FIVE OF THE
+FOURTEEN WERE FIXED NOT BY CORRECTING A VALUE, BUT BY REMOVING THE OPPORTUNITY
+TO GET IT WRONG.
+
+The five recurring shapes, each documented with instances in the audit report:
+  1. Text-matching where structure-matching was needed (health-check scanner
+     matching its own docstring; the Finding #3 guard test passing on a
+     docstring) — parse, don't scan.
+  2. Plausible-but-wrong data at the expected path (Finding #14; the
+     nifty500_cache divergence) — establish provenance before content.
+  3. Permanently-green checks — a check that has never failed may not be able to.
+  4. Guards that disagree about the same contract (Finding #3's four sites;
+     Finding #2's gate vs unwind) — every duplicated decision is a future
+     disagreement.
+  5. Discipline where structure was available (Finding #1's plan/report/execute
+     split; Finding #14's fail-loud command chosen over another note BECAUSE the
+     note had already been written, read, and failed).
+
+Process note worth keeping: several findings were caught only when a write-up was
+RE-DERIVED AGAINST THE ACTUAL CODE rather than against the previous session's
+description of it. That found backtester.py's three missed guards in Finding #3
+and corrected two wrong claims in Finding #2. Descriptions drift; code does not.

@@ -1188,3 +1188,99 @@ bypassed read path.
 | **Live run — success path** | exit 0; printed ₹243.49, 359 NIFTYBEES @ ₹272.44, tier 1.0, `open positions  0  (positions dict has 17 keys)` — matches the manual server read exactly |
 | **Live run — failure path** | pointed at 192.0.2.1 (TEST-NET-1, unroutable), real subprocess: exit 1, `LIVE STATE UNAVAILABLE: ssh ... exited 255`, plus the explicit "NOT falling back" line. No hang, no fallback, no partial output |
 | Full suite | **414 passed, 1 failed** — the failure is `test_state_file_is_absolute_and_cwd_independent`, which asserts `STATE_FILE.exists()`; the state file is gitignored and therefore absent from any fresh worktree. Verified pre-existing: `git stash -u` → clean `main` → same single failure |
+
+---
+
+## Closing note — what the fourteen findings had in common (Aug 26 2026)
+
+Fourteen findings is the uninteresting number. The useful one: **five of the
+fourteen were fixed not by correcting a value, but by removing the opportunity
+to get it wrong.** That is a claim about what kind of engineering this was, and
+it is worth more than the count.
+
+The findings were not fourteen unrelated bugs. They were a handful of failure
+shapes, recurring in unrelated files, several of them appearing more than once
+*within this audit* — including twice in the audit's own instruments.
+
+### 1. Text-matching where structure-matching was needed
+
+*A string being present is not the same claim as it being the operative code.*
+
+- `system_health_check.py`'s scanner matched **its own docstring** and reported a
+  problem that did not exist (Aug 25). Fixed by tokenizing and skipping STRING
+  and COMMENT spans.
+- The first regression test for Finding #3 asserted
+  `re.search(r"^\s*if shares <= 0:", src)` and was **demonstrated to pass on a
+  docstring** while the real guard stayed `== 0` in another function. Fixed by an
+  AST walk asserting the operative `if` node's operator.
+
+Twice in two days, in unrelated files. Parsing structure is not a stylistic
+preference over pattern-matching text; it is a different and stronger claim.
+
+### 2. Plausible-but-wrong data at the expected path
+
+*A thing existing where it is expected is not the same claim as it being the
+real one.*
+
+- Finding #14: the local `portfolio_state.json`, read as live state, reporting
+  ₹29,106.13 against a true ₹243.49.
+- The `nifty500_cache.json` divergence found during the Aug 24 deploy — the
+  local copy read `fetched_at: 2026-07-12`, the server's `2026-08-23`.
+
+Neither file announced anything. Both sat at the documented path and parsed
+cleanly.
+
+### 3. Permanently-green checks
+
+*The dangerous failure is the one nothing complains about.* A permanently-red
+check is annoying and gets fixed. A permanently-green one is trusted.
+
+- The health check that scanned a window in which no logs existed, and passed.
+- Counters maintained by hand in each branch, which could not disagree with
+  themselves — Audit2 Finding #4's double-counted `GAP_EXIT` was invisible until
+  the counters were rederived from the decision set.
+
+### 4. Guards that disagree about the same contract
+
+*Every duplicated decision is a future disagreement.*
+
+- Finding #3: four call sites across three modules each independently deciding
+  what "no shares" meant, all four choosing `== 0` against a producer whose own
+  contract was `<= 0`.
+- Finding #2: the ETF cash-gate estimator and the real unwind sharing the delta
+  math but not the *decision*, so they disagreed at exactly one tier boundary.
+
+### 5. Discipline where structure was available
+
+This is the throughline, and it is where the five fixes above sit.
+
+- Finding #1: dry-run safety enforced by `if apply_fills:` at N call sites,
+  replaced by a plan/report/execute split in which only one function writes.
+  Safety stopped being a discipline and became a property of the call graph.
+- Finding #3: fixed at all five layers deliberately redundantly, so no layer
+  depends on another holding.
+- Finding #14: fixed with a fail-loud command rather than another warning —
+  **specifically because the warning had already been written, had already been
+  read, and had already failed.** That is not an abstract argument about
+  documentation versus tooling; it is an experimental result.
+
+### What follows from this
+
+The recurring shapes are worth more than the individual fixes, because the fixes
+are done and the shapes are not. When reviewing anything in this repo:
+
+- If a check asserts something about **which code path is real**, parse it. Do
+  not scan for text.
+- If a file is being read as authoritative, establish **provenance** before
+  content. Existence at the right path proves nothing.
+- If a check has never failed, find out whether it *can*.
+- If two places decide the same thing, they will eventually decide differently.
+- Prefer the fix that removes the opportunity over the fix that corrects the
+  value — and when a mitigation has already been tried and failed, that is
+  evidence, not a reason to try it again more emphatically.
+
+One process note, recorded because it is part of the result: several findings in
+this audit were caught only when a write-up was **re-derived against the actual
+code** rather than against the previous session's description of it. That step
+found `engine/backtester.py`'s three missed guards in Finding #3, and corrected
+two wrong claims in Finding #2. Descriptions drift; code does not.
