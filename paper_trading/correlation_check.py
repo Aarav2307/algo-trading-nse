@@ -32,10 +32,16 @@ import pandas as pd
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
+# Resolved against _ROOT, never the process cwd. A bare relative default here
+# does not raise when the cwd is wrong — it makes state_path.exists() False and
+# returns safe=True with zero positions checked, i.e. a fail-OPEN wrong answer.
+# Same convention as morning_fill_check.STATE_FILE and signal_runner.STATE_FILE.
+_STATE_FILE = _ROOT / "paper_trading" / "portfolio_state.json"
+
 
 def check_entry_correlation(
     candidate: str,
-    portfolio_state_path: str = "paper_trading/portfolio_state.json",
+    portfolio_state_path: str = str(_STATE_FILE),
     portfolio_state_dict: dict = None,   # overrides file read when provided
     lookback_days: int = 120,
     max_correlation: float = 0.60,

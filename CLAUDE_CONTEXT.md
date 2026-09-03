@@ -2482,3 +2482,89 @@ VERIFIED LIVE, both paths, not only against the fake runner:
 Severity: MEDIUM. Zero trading risk — the production path is guarded and verified
 so. But it put a wrong number into an audit document, and it defeated two
 existing mitigations without either of them making a sound.
+
+#### Relative-path default parameters resolve against the cwd — Finding #4 — FIXED (Aug 26 2026, branch only)
+
+Branch: fix/correlation-cli-path. The last open finding from
+AUDIT_REPORT_2026-08-22.md; its test had been red since the original audit.
+
+check_entry_correlation's portfolio_state_path defaulted to the bare relative
+string "paper_trading/portfolio_state.json" (correlation_check.py:38) — six
+lines below a perfectly good _ROOT at line 32. Path() + .exists() against that
+string resolves from the process cwd, so from any directory but the repo root it
+takes the missing-file branch and returns safe=True over ZERO positions.
+
+TWO SITES, NOT ONE. An AST scan for the SHAPE of the bug (a default parameter
+whose value is a relative path string) found a second instance the original test
+never named:
+
+  correlation_check.py:38  portfolio_state_path=  — documented CLI only
+  paper_portfolio.py:44    state_file=            — no caller uses the default
+
+The second is the more dangerous. Its failure mode is not a loud error: load()
+treats the missing file as "first run" and fabricates a fresh initial_capital
+portfolio, and a later save() would write real state to the wrong directory.
+Dormant only because signal_runner.py:1183 and morning_fill_check.py:859 both
+pass str(STATE_FILE) explicitly — and its own class docstring at line 38
+RECOMMENDED the buggy relative form as the usage example. Fixed all three.
+
+Third consecutive finding that began as one instance and turned out to be
+several once actually scanned for (Finding #3's four sites, the TOTP masking's
+five). Grep for the shape, not the instance.
+
+REACHABILITY, ANSWERED WITH EVIDENCE. signal_runner.py:1469 — the only automated
+caller — passes portfolio_state_dict=corr_state explicitly, taking the branch at
+correlation_check.py:82 and never evaluating portfolio_state_path. Production is
+untouched.
+
+CORRECTION TO THE ORIGINAL AUDIT TEXT. The existing test's docstring calls this
+"a fail-open wrong answer, not an error." True of the FUNCTION; overstated for
+the CLI, which is the only thing that reaches it. Measured, unpatched, from /tmp:
+
+    Correlation Check — PERSISTENT.NS
+    Open positions checked: []
+      No portfolio state file — correlation check skipped
+
+The CLI prints the skip. Its "Verdict: SAFE TO ENTER" line requires a non-empty
+open_positions and is never reached, so no false green verdict is ever displayed.
+Patched, same wrong cwd: Open positions checked: ['BAJAJ-AUTO.NS'], corr 0.164.
+
+Severity: LOW, rated on its own evidence rather than matched to a prior finding.
+Production unreachable, CLI surfaces the skip, second site has no caller. No
+wrong trade and no wrong number ever came from this. What made it worth fixing is
+the class, not the instance.
+
+THE DETECTOR GAP IS WORSE THAN THE BUG. system_health_check.py Check 6 exists to
+catch exactly this class and does not cover it:
+
+    _REL_PATH_RE = re.compile(r"=\s*Path\(['\"](?!/|__)")
+
+That matches `FOO = Path("relative/path")` — an assignment wrapping Path(). A
+default parameter is a bare string with no Path() wrapper, so both sites were
+invisible. Measured: "Check 6 today: PASS — 0 relative-path constants found in 50
+scanned files", while missing both.
+
+This is the permanently-green shape from the Aug 26 closing note, reproducing
+itself INSIDE the check built from that thesis, one week after that check was
+rebuilt to be trustworthy. The Aug 25 fix made Check 6 stop lying about what it
+saw; it never made it see everything. Trustworthy and complete are different
+properties and this repo has now confused them once.
+
+The regression test closes the class structurally instead of widening the regex:
+test_no_bare_relative_path_defaults_remain_in_production_code walks the AST of
+every production file. Whether Check 6 itself should also be extended is left as
+a SEPARATE decision, deliberately not bundled here.
+
+Tests: paper_trading/test_correlation_path_audit.py, 5 tests. Deliberate
+deviation from the test_*_is_absolute_and_cwd_independent convention: those also
+assert .exists() from the project root, and this file does NOT. portfolio_state
+.json is gitignored, so that assertion fails in any fresh worktree — it is why
+test_state_file_is_absolute_and_cwd_independent has been red in every worktree run
+of this audit. Absoluteness and cwd-independence are code properties; existence is
+an environment fact, and asserting it makes a test that fails for reasons
+unrelated to the bug.
+
+Also recorded: one guardrail slip during verification. Running the PATCHED CLI
+end-to-end made a live yfinance fetch to compute the 0.164 correlation. Not Kite
+or NSE, but an external network call that should have been anticipated before
+running the CLI rather than only a function.

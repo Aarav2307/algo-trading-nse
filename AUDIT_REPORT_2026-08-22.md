@@ -1188,3 +1188,142 @@ bypassed read path.
 | **Live run — success path** | exit 0; printed ₹243.49, 359 NIFTYBEES @ ₹272.44, tier 1.0, `open positions  0  (positions dict has 17 keys)` — matches the manual server read exactly |
 | **Live run — failure path** | pointed at 192.0.2.1 (TEST-NET-1, unroutable), real subprocess: exit 1, `LIVE STATE UNAVAILABLE: ssh ... exited 255`, plus the explicit "NOT falling back" line. No hang, no fallback, no partial output |
 | Full suite | **414 passed, 1 failed** — the failure is `test_state_file_is_absolute_and_cwd_independent`, which asserts `STATE_FILE.exists()`; the state file is gitignored and therefore absent from any fresh worktree. Verified pre-existing: `git stash -u` → clean `main` → same single failure |
+
+---
+
+## Finding #4 — Relative-path default parameters resolve against the cwd (Aug 26 2026)
+
+**Severity: LOW** for the live defect. **The more durable problem is the
+detector gap it exposes** — see the last section.
+
+### Intended vs actual
+
+`check_entry_correlation()` is documented to check a candidate against current
+open positions. Its `portfolio_state_path` parameter defaulted to the bare
+relative string `"paper_trading/portfolio_state.json"`
+([correlation_check.py:38](paper_trading/correlation_check.py#L38)) — six lines
+below a perfectly good `_ROOT` at line 32.
+
+At [correlation_check.py:85-94](paper_trading/correlation_check.py#L85) that
+string is wrapped in `Path()` and tested with `.exists()`. Resolved against the
+process cwd, so from any directory but the repo root it takes the missing-file
+branch and returns:
+
+```python
+"open_positions":  [],
+"safe":            True,
+"reason":          "No portfolio state file — correlation check skipped",
+```
+
+Not an exception. A `safe=True` computed over zero positions.
+
+### Root cause
+
+Confirmed against current code, not the prior description. The repo's convention
+is to resolve every path against the module's own location — `_ROOT / "dir" /
+"file"`, or `Path(__file__).parent / "file"` — used at `morning_fill_check.py:50-52`,
+`signal_runner.py:112`, `auto_screener.py:42`, `news_monitor.py:28`, and a dozen
+other sites. These two defaults simply never adopted it.
+
+### Reachability — answered with evidence, not the docstring's qualifier
+
+**Production never touches the defective path.** `signal_runner.py:1469` — the
+only automated caller — passes `portfolio_state_dict=corr_state` explicitly,
+which takes the `if portfolio_state_dict is not None:` branch at line 82 and
+never evaluates `portfolio_state_path` at all. Verified by reading the call site.
+
+**And the CLI is not silent, contrary to the existing test's docstring.** That
+docstring calls this "a fail-open wrong answer, not an error." True of the
+*function*; overstated for the *CLI*, which is the only thing that reaches it.
+Run from `/tmp` against unpatched code:
+
+```
+Correlation Check — PERSISTENT.NS
+Open positions checked: []
+Threshold: 0.6
+
+  No portfolio state file — correlation check skipped
+```
+
+The CLI prints the skip and never reaches its `Verdict: ✅ SAFE TO ENTER` line —
+that branch requires a non-empty `open_positions`. A human running the documented
+command sees that nothing was checked. Patched, from the same wrong cwd:
+
+```
+Open positions checked: ['BAJAJ-AUTO.NS']
+  vs BAJAJ-AUTO.NS: 0.164  ✅ safe
+```
+
+### A second site, not named by the existing test
+
+An AST scan for the *shape* of the bug — a default parameter whose value is a
+relative path string — found **two** instances, not one:
+
+| Site | Reachable? | Failure mode |
+|---|---|---|
+| `correlation_check.py:38` `portfolio_state_path=` | documented CLI only | returns `safe=True` over zero positions; CLI displays the skip |
+| **`paper_portfolio.py:44` `state_file=`** | **no caller uses the default** | **`load()` treats the missing file as first-run and fabricates a fresh `initial_capital` portfolio; a later `save()` writes real state to the wrong directory** |
+
+The second is latent — `signal_runner.py:1183` and `morning_fill_check.py:859`
+both pass `str(STATE_FILE)` explicitly — but it is the more dangerous of the two
+if ever reached, and its own class docstring at line 38 *recommended the
+buggy form* as the usage example. Fixed both, and the docstring.
+
+Consistent with every prior finding this session that began as one instance:
+Finding #3's four sites, the TOTP masking's five.
+
+### Severity
+
+**LOW.** Production is unaffected (the automated caller bypasses the parameter
+entirely), the CLI surfaces the skip rather than printing a false verdict, and
+the second site has no caller. There is no path by which this produced a wrong
+trade or a wrong number in any report.
+
+Rated on its own evidence rather than matched to a prior finding: this is
+genuinely smaller than #3 (which reached a money seam) or #14 (which put a wrong
+figure into this document). What keeps it worth fixing is the class, not the
+instance.
+
+### The detector gap — the part worth carrying forward
+
+`system_health_check.py`'s Check 6 exists to catch exactly this bug class. It
+does not cover it. Its `_REL_PATH_RE` is:
+
+```python
+_REL_PATH_RE = re.compile(r"=\s*Path\(['\"](?!/|__)")
+```
+
+That matches `FOO = Path("relative/path")` — an assignment wrapping `Path()`. A
+default parameter is a bare string with no `Path()` around it, so both Finding #4
+sites were invisible. Measured:
+
+```
+Check 6 today: PASS — 0 relative-path constants found in 50 scanned files
+
+   miss   portfolio_state_path: str = "paper_trading/portfolio_state.json",
+   miss   state_file: str = "paper_trading/portfolio_state.json",
+   MATCH  _ROOT = Path("relative/path")
+```
+
+This is the **permanently-green** shape from the closing note, in the check
+built to prevent it: a green PASS over a class it cannot see. The check was made
+*trustworthy* in the Aug 25 fix (it stopped matching its own docstring); it was
+never made *complete*.
+
+The regression test added here closes the gap structurally rather than by
+widening the regex — `test_no_bare_relative_path_defaults_remain_in_production_code`
+walks the AST of every production file and fails on any relative-path default,
+which is a stronger claim than any pattern could make. **Whether Check 6 itself
+should also be extended is left as a separate decision**, deliberately not
+bundled into this fix.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| New tests vs patched | **5 passed** |
+| vs unpatched | fails on both sites: `portfolio_state_path default is not absolute`, `state_file default is not absolute` |
+| Pre-existing `test_correlation_cli_default_path_is_cwd_dependent` | **flips green** — patched **1 passed**, unpatched **1 failed**, same environment |
+| CLI, wrong cwd, unpatched | prints `Open positions checked: []` + skip reason |
+| CLI, wrong cwd, patched | prints `['BAJAJ-AUTO.NS']`, correlation 0.164 |
+| Full suite | **435 passed, 0 failed** |

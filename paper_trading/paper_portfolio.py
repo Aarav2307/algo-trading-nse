@@ -26,6 +26,15 @@ from typing import Dict, List, Optional
 
 from utils.costs import transaction_costs
 
+_ROOT = Path(__file__).parent.parent
+
+# Resolved against _ROOT, never the process cwd. This default is not currently
+# exercised — signal_runner and morning_fill_check both pass str(STATE_FILE)
+# explicitly — but its failure mode is worse than a crash: load() treats a
+# missing file as "first run" and fabricates a fresh initial_capital portfolio,
+# and a subsequent save() would write real state to the wrong directory.
+_STATE_FILE = _ROOT / "paper_trading" / "portfolio_state.json"
+
 ETF_TIERS: dict = {0: 1.0, 1: 0.8, 2: 0.8, 3: 0.5, 4: 0.0}
 
 
@@ -35,7 +44,7 @@ class PaperPortfolio:
     save state at end. Never modify state after save (signal_runner enforces this).
 
     Example usage:
-        portfolio = PaperPortfolio(STOCKS, "paper_trading/portfolio_state.json", 100_000)
+        portfolio = PaperPortfolio(STOCKS, str(_STATE_FILE), 100_000)
         portfolio.load()
         # ... process signals, call open_position / close_position ...
         portfolio.save()
@@ -44,7 +53,7 @@ class PaperPortfolio:
     def __init__(
         self,
         tickers: List[str],
-        state_file: str = "paper_trading/portfolio_state.json",
+        state_file: str = str(_STATE_FILE),
         initial_capital: float = 100_000.0,
     ):
         self.tickers       = tickers
