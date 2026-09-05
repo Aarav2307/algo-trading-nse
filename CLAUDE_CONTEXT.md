@@ -2596,3 +2596,84 @@ Process note worth keeping: several findings were caught only when a write-up wa
 RE-DERIVED AGAINST THE ACTUAL CODE rather than against the previous session's
 description of it. That found backtester.py's three missed guards in Finding #3
 and corrected two wrong claims in Finding #2. Descriptions drift; code does not.
+
+#### Audit regression tests tracked; three were green-by-construction (Aug 26 2026)
+
+Branch: test/track-audit-regression-tests. The three audit stress-test files had
+sat untracked since the original audit because they encoded then-unfixed defects.
+With #2, #3 and #4 all shipped they are 56 passed / 0 failed, so they are now
+ordinary regression tests and are tracked:
+
+  paper_trading/test_concurrency_audit.py
+  paper_trading/test_paper_portfolio_audit.py
+  data/test_data_edge_audit.py
+
+THREE OF THE 56 WERE GREEN FOR THE WRONG REASON and were rewritten first.
+
+The tests marked "CONFIRMED DEFECT" are fine — they assert the CORRECT behaviour
+(`shares >= 0`, `must_agree`), so they were red before their fixes and green
+after. The label names the finding, not the assertion direction, the same way
+test_correlation_cli_default_path_is_cwd_dependent has a defect-shaped name and a
+correct assertion. Three UNMARKED ones were the problem:
+
+  1. test_duplicate_timestamps_are_not_detected_anywhere asserted
+     `len(sig) == 120` with the message "duplicates pass through untouched" — it
+     asserted the DEFECT'S CONTINUED EXISTENCE. Adding a dedupe guard would have
+     turned it RED.
+  2. test_out_of_order_timestamps_are_not_detected_anywhere, same inversion. Its
+     assertion commented "This is the load-bearing consequence" was
+     `rev.index[-1] < rev.index[0]` — a fact about the test's own reversed
+     fixture, true whatever the code does.
+  3. test_tz_aware_index_breaks_last_bar_date_comparison asserted that comparing
+     a tz-aware and a tz-naive Timestamp raises TypeError — a property of PANDAS.
+     It passed identically whether _fetch_stock_data did anything right or not,
+     while its docstring claimed to "pin the invariant that the fetcher must
+     return tz-naive" without ever calling the fetcher.
+
+This is the permanently-green shape a THIRD time (after the health-check scanner
+matching its own docstring, and Check 6's blind spot in Finding #4) — this time
+in the audit's own test suite, the artifact built to demonstrate the audit was
+rigorous. A regression suite that goes red when someone fixes the bug punishes
+the correct change, which is worse than having no test.
+
+Rewritten to assert the property that SHOULD hold, under
+@pytest.mark.xfail(strict=True). Strict matters more than the marker: the moment
+someone adds the guard the test XPASSes and FAILS loudly, prompting removal of
+the marker. The gap stays visible and self-clearing rather than silently green.
+Verified by simulating the fix — the duplicate test went XPASS -> FAILED.
+
+The tz one was RETARGETED at _fetch_stock_data() rather than deleted; the
+underlying concern is real. Measured: the fetcher passes a tz-aware index through
+unchanged, trusting get_ohlcv to have stripped tz and never verifying. So the
+rewritten test is correctly oriented and currently xfails for a real reason.
+
+A FOURTH problem surfaced during verification, after the three rewrites were
+already approved. test_correlation_cli_default_path_is_cwd_dependent calls the
+CLI with the default path and needs the REAL portfolio_state.json to exist:
+
+    fresh clone / worktree (gitignored file absent):  1 failed
+    dev machine / server (file present):              1 passed
+
+So the three files were never unconditionally green; the 56-passed figure was
+measured in a worktree where that file had been copied in. This is the same
+.exists() environmental coupling deliberately designed OUT of
+test_correlation_path_audit.py earlier the same day — then not checked for in the
+older files before proposing to track them. Caught before commit, not after.
+
+Resolved with skipif rather than xfail or deletion, because the reasoning
+differs: the cwd-independence PROPERTY is already covered without any coupling by
+test_correlation_state_path_default_is_absolute_and_cwd_independent. What this
+older test uniquely adds is the CLI end-to-end path, which genuinely cannot be
+evaluated without a real state file. Skipping where a test cannot be meaningful
+is honest; failing there is a false signal dressed as one.
+
+Rule this leaves behind: a test whose name or message describes what the system
+FAILS to do is a characterization test, not a regression test. Assert the
+guarantee and xfail it.
+
+Second rule, from the fourth problem: separate the code property from the
+environment fact. "The default path is absolute" is a property and belongs in an
+unconditional test; "the real state file exists here" is a fact about the machine
+and belongs behind skipif. Conflating them is what has kept
+test_state_file_is_absolute_and_cwd_independent red in every worktree run of this
+audit.
