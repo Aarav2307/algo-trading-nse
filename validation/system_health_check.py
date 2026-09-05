@@ -11,6 +11,7 @@ Exit code: 0 if no FAILs, 1 if any FAIL (WARNs do not trigger non-zero exit).
 This script is READ-ONLY: it never modifies any state file.
 """
 
+import ast
 import json
 import re
 import sys
@@ -389,48 +390,116 @@ def check_candidates_freshness() -> CheckResult:
 
 # ── Check 6: Relative-path constant scan ─────────────────────────────────────
 
-# Matches lines like `FOO = Path("relative/path")` or `FOO = Path('relative/path')`.
-# Does NOT match: Path("/absolute"), Path(__file__...), _ROOT / "something"
-_REL_PATH_RE = re.compile(r"=\s*Path\(['\"](?!/|__)")
+# Check 6 scans the AST, not the source text — see _relative_path_hits().
+#
+# It used to be a line regex, `=\s*Path\(['\"](?!/|__)`, which matched only an
+# ASSIGNMENT wrapping Path(). Finding #4 (Aug 26 2026) found two relative-path
+# DEFAULT PARAMETERS — correlation_check.check_entry_correlation(
+# portfolio_state_path=...) and PaperPortfolio.__init__(state_file=...) — that
+# the regex could not see, because a default is a bare string with no Path()
+# around it. The check reported "PASS — 0 relative-path constants found in 50
+# scanned files" while both sat in front of it.
+#
+# That is the permanently-green shape this check exists to prevent, occurring
+# inside the check itself. The Aug 25 fix made it TRUSTWORTHY (it stopped
+# matching its own docstring); it was never made COMPLETE. Different properties.
+#
+# The rewrite closes the class rather than adding one more pattern: it filters by
+# WHERE a string appears (a Path()/open() argument, a parameter default, or a
+# dict value under a path-naming key) not
+# by what the string looks like. That inversion is why _masked_spans() is gone —
+# a docstring can never BE a default parameter, so there is nothing to mask.
+# Measured: a "looks like a path" test over every string constant in the repo
+# matches 309 strings (docstrings, HTML, prose); applied to those two structural
+# contexts it matches 0, and caught both Finding #4 sites in the pre-fix tree.
+
+# Suffixes that mark a bare string as a data-file path even without a separator.
+_PATH_SUFFIXES = (".json", ".csv", ".txt", ".log", ".pem", ".db")
+
+# Dict-literal values are only treated as paths when the KEY names one. Without
+# this gate the dict scan is unusable: measured on the repo, "any dict value that
+# looks like a path" produced 25 hits, ALL noise -- HTTP headers
+# ('User-Agent': 'Mozilla/5.0 …'), MIME types ('Content-Type': 'application/json',
+# 'type': 'text/html') and UI strings. Key-gated, the same scan produces 0.
+# AMO_CONFIG's "order_log_file" -- the case that motivated Check 6 existing --
+# sits well inside the gate.
+_PATHISH_KEY_TOKENS = ("file", "path", "dir", "csv", "log", "json")
 
 
-def _masked_spans(src: str) -> dict:
+def _is_pathish_key(node) -> bool:
+    """True if a dict key names something that would hold a filesystem path."""
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and any(tok in node.value.lower() for tok in _PATHISH_KEY_TOKENS)
+    )
+
+
+def _is_relative_path_literal(value) -> bool:
+    """True if `value` is a string literal that looks like a relative filesystem path."""
+    if not isinstance(value, str) or not value:
+        return False
+    if value.startswith("/"):        # already absolute — the thing we want
+        return False
+    if "://" in value:               # URL, not a path (16 such constants in-repo)
+        return False
+    if "%" in value or "{" in value:  # format template, not a literal path
+        return False
+    if "\n" in value:                # prose / HTML block
+        return False
+    return "/" in value or value.endswith(_PATH_SUFFIXES)
+
+
+def _relative_path_hits(src: str, rel) -> list:
     """
-    Map line number -> list of (start_col, end_col) spans occupied by STRING or
-    COMMENT tokens.
+    AST scan for relative paths in the two contexts where one is load-bearing:
+    a Path()/open() argument, and a function parameter's default value.
 
-    The scanner below previously skipped only lines starting with "#", so any
-    `Path("relative")` appearing inside a DOCSTRING was reported as real code.
-    That produced a permanent self-referential WARN: this module's own
-    _discover_scan_files() docstring cites `write_text('FOO = Path("relative")')`
-    as an example of a false positive, and the scanner then flagged it — the
-    tool warning about itself, forever.
+    Structural, not textual. Comments, docstrings and string test-data cannot
+    match, because none of them IS one of those contexts — which is why this
+    needs no docstring masking, unlike the regex it replaced.
 
-    Fixed at the source by tokenising rather than by excluding this filename,
-    so it generalises to any docstring in any file. A match is suppressed only
-    when its START lies inside a string/comment token; a genuine
-    `FOO = Path("x")` still matches, because the regex anchors on the `=` sign,
-    which is an OP token outside the string.
+    Raises SyntaxError on an unparseable file; the caller counts and REPORTS
+    those rather than skipping them silently.
     """
-    import io
-    import tokenize
+    tree = ast.parse(src)
+    hits = []
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id in ("Path", "open") and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and _is_relative_path_literal(node.args[0].value)):
+            hits.append(f"{rel}:{node.lineno}: {node.func.id}({node.args[0].value!r})")
 
-    spans: dict = {}
-    try:
-        for tok in tokenize.generate_tokens(io.StringIO(src).readline):
-            if tok.type not in (tokenize.STRING, tokenize.COMMENT):
-                continue
-            (srow, scol), (erow, ecol) = tok.start, tok.end
-            for row in range(srow, erow + 1):
-                lo = scol if row == srow else 0
-                hi = ecol if row == erow else 10 ** 9
-                spans.setdefault(row, []).append((lo, hi))
-    except (tokenize.TokenError, IndentationError, SyntaxError):
-        # Unparseable file: fall back to no masking. The old "#"-prefix skip
-        # below still applies, so behaviour degrades to the previous scanner
-        # rather than to silence.
-        return {}
-    return spans
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            a = node.args
+            pairs = []
+            if a.defaults:
+                pairs += list(zip(a.args[-len(a.defaults):], a.defaults))
+            # keyword-only defaults too — the first draft of this scan missed them
+            pairs += [(k, d) for k, d in zip(a.kwonlyargs, a.kw_defaults) if d is not None]
+            for arg, dflt in pairs:
+                if isinstance(dflt, ast.Constant) and _is_relative_path_literal(dflt.value):
+                    hits.append(
+                        f"{rel}:{node.lineno}: {node.name}({arg.arg}={dflt.value!r})"
+                    )
+
+        # Dict-literal values under a path-naming key. This is the shape of
+        # AMO_CONFIG["order_log_file"] = "paper_trading/amo_orders.csv", the
+        # ORIGINAL motivating case for this check -- and the one it never
+        # covered, because a dict value is neither an assignment wrapping
+        # Path() nor a parameter default. At commit c6ec08a the module's
+        # Path() constants had already been fixed to _ROOT / "…" while this
+        # one was still relative: it outlived the others precisely because
+        # nothing could see it.
+        if isinstance(node, ast.Dict):
+            for key, val in zip(node.keys, node.values):
+                if (isinstance(val, ast.Constant)
+                        and _is_relative_path_literal(val.value)
+                        and _is_pathish_key(key)):
+                    hits.append(f"{rel}:{val.lineno}: {key.value!r}: {val.value!r}")
+    return sorted(set(hits))
+
 
 
 def check_relative_path_constants() -> CheckResult:
@@ -439,32 +508,46 @@ def check_relative_path_constants() -> CheckResult:
     try:
         hits = []
         scanned = 0
+        unparseable = []
         for fpath in _discover_scan_files():
             if not fpath.exists():
                 continue
             scanned += 1
-            _src   = fpath.read_text()
-            _spans = _masked_spans(_src)
-            for lineno, line in enumerate(_src.splitlines(), 1):
-                stripped = line.strip()
-                if stripped.startswith("#"):
-                    continue
-                _m = _REL_PATH_RE.search(line)
-                if _m and not any(
-                    lo <= _m.start() < hi for lo, hi in _spans.get(lineno, ())
-                ):
-                    try:
-                        rel = fpath.relative_to(_ROOT)
-                    except ValueError:
-                        rel = fpath
-                    hits.append(f"{rel}:{lineno}: {stripped}")
+            try:
+                rel = fpath.relative_to(_ROOT)
+            except ValueError:
+                rel = fpath
+            try:
+                hits.extend(_relative_path_hits(fpath.read_text(), rel))
+            except (SyntaxError, UnicodeDecodeError) as exc:
+                # An AST scan cannot read a file that does not parse. The regex
+                # this replaced would still have scanned it line-by-line, so
+                # skipping silently would trade one blind spot for another.
+                # Counted and reported, never dropped — same rule as
+                # check_run_completion()'s out-of-window logs.
+                unparseable.append(f"{rel}: {type(exc).__name__}")
+
+        _suffix = (
+            f"; {len(unparseable)} file(s) could not be parsed and were NOT scanned"
+            if unparseable else ""
+        )
+        _details = {"hits": hits}
+        if unparseable:
+            _details["unparseable"] = unparseable
 
         if hits:
             return CheckResult(
                 name, "WARN",
                 f"{len(hits)} relative-path constant(s) found in {scanned} files "
-                f"— review for cwd-dependency risk",
-                {"hits": hits},
+                f"— review for cwd-dependency risk{_suffix}",
+                _details,
+            )
+        if unparseable:
+            return CheckResult(
+                name, "WARN",
+                f"0 relative-path constants found in {scanned} scanned files"
+                f"{_suffix}",
+                _details,
             )
         return CheckResult(
             name, "PASS",
@@ -487,6 +570,8 @@ def _render(results: list[CheckResult]) -> None:
         print(f"[{r.status}] {r.name}: {r.message}")
         for line in r.details.get("hits", []):      # Check 6 — relative-path hits
             print(f"       {line}")
+        for line in r.details.get("unparseable", []):   # Check 6 — not scanned
+            print(f"       NOT SCANNED (unparseable): {line}")
         for issue in r.details.get("issues", []):   # Check 2 — completion failures
             print(f"       {issue}")
 

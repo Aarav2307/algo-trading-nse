@@ -1327,16 +1327,188 @@ bundled into this fix.
 | CLI, wrong cwd, unpatched | prints `Open positions checked: []` + skip reason |
 | CLI, wrong cwd, patched | prints `['BAJAJ-AUTO.NS']`, correlation 0.164 |
 | Full suite | **435 passed, 0 failed** |
-## Closing note — what the fourteen findings had in common (Aug 26 2026)
 
-Fourteen findings is the uninteresting number. The useful one: **five of the
-fourteen were fixed not by correcting a value, but by removing the opportunity
-to get it wrong.** That is a claim about what kind of engineering this was, and
-it is worth more than the count.
+---
 
-The findings were not fourteen unrelated bugs. They were a handful of failure
+## Finding #15 — Check 6 was green over a class it could not see (Aug 26 2026)
+
+**Severity: MEDIUM.** A detector that reports PASS over a defect class it cannot
+detect is worse than no detector, because the PASS is read as evidence.
+
+### The defect
+
+Check 6 exists to catch cwd-dependent paths. It was a line regex matching an
+**assignment wrapping `Path()`**. A default parameter is a bare string with no
+`Path()` around it, so Finding #4's two sites were invisible. Measured before
+the fix:
+
+```
+Check 6: PASS — 0 relative-path constants found in 50 scanned files
+
+   miss   portfolio_state_path: str = "paper_trading/portfolio_state.json",
+   miss   state_file: str = "paper_trading/portfolio_state.json",
+   MATCH  _ROOT = Path("relative/path")
+```
+
+The Aug 25 trustworthiness fix made this check stop lying about what it saw — it
+had been matching its own docstring. It never made it see everything.
+**Trustworthy and complete are different properties**, and conflating them left
+this gap open for a week.
+
+### The fix — filter by context, not by content
+
+The rewrite scans the AST for the **three** contexts where a relative path is
+load-bearing:
+
+1. a `Path()` / `open()` argument — what the regex covered
+2. a **parameter default**, including keyword-only defaults (the first draft of
+   the oracle missed those; one function in the repo uses them)
+3. a **dict-literal value under a path-naming key** — the shape of
+   `AMO_CONFIG["order_log_file"]`, which is the **original motivating case for
+   Check 6 existing at all**, and the one it never covered: a dict value is
+   neither an assignment wrapping `Path()` nor a parameter default
+
+### The heuristic, stated explicitly
+
+A string literal is treated as a relative path when it is non-empty, does not
+start with `/`, contains no `://` (URL), no `%` or `{` (format template), no
+newline (prose/HTML), and either contains `/` or ends in
+`.json .csv .txt .log .pem .db`.
+
+For **dict values only**, an additional gate: the key must contain one of
+`file path dir csv log json`. That gate is load-bearing, not cosmetic. Measured
+on the real repo:
+
+```
+BROAD  (any dict value that looks like a path): 25 hits — ALL noise
+    auth/auto_login.py:48   'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) …'
+    screener/emailer.py:372 'Content-Type': 'application/json'
+    screener/emailer.py:367 'type': 'text/html'
+    utils/market_calendar.py:114 'Accept': 'application/json'
+KEY-GATED: 0 hits
+```
+
+Ungated, this shape is undetectable — HTTP headers and MIME types look exactly
+like relative paths. `"order_log_file"` sits well inside the gate.
+
+The inversion is the point. The regex filtered on **what the string looks like**,
+which is why it needed `_masked_spans()` to stop matching prose. The AST filters
+on **where the string appears** — and a docstring can never *be* a parameter
+default. Measured: a "looks like a path" test over every string constant in the
+repo matches **309** strings (docstrings, HTML, prose); applied to those two
+structural contexts it matches **0**, while catching both Finding #4 sites in the
+pre-fix tree.
+
+So `_masked_spans()` is deleted, not ported. The machinery added in August to
+suppress false positives becomes unnecessary once the filter is structural.
+
+### One coverage regression, handled rather than hidden
+
+An AST scan cannot read a file that does not parse; the regex would still have
+scanned it line-by-line. The existing test
+`test_relative_path_scan_degrades_gracefully_on_unparseable_file` asserts only
+`status in ("WARN", "PASS")`, so a silent skip would have passed it — trading one
+blind spot for another, inside the fix for a blind spot.
+
+Unparseable files are therefore **counted and reported**, never dropped:
+
+```
+WARN — 1 relative-path constant(s) found in 2 files — review for cwd-dependency
+       risk; 1 file(s) could not be parsed and were NOT scanned
+       NOT SCANNED (unparseable): broken.py: SyntaxError
+```
+
+Same rule as `check_run_completion()`'s out-of-window logs.
+
+### Backtest against real history
+
+Every relative-path bug this audit and its predecessors found, replayed against
+the **actual pre-fix source from git** — not synthetic fixtures — with the old
+regex run alongside:
+
+| Commit / file | Bug | OLD regex | NEW AST |
+|---|---|---|---|
+| `cb678a1:signal_runner.py` | `AMO_CONFIG["order_log_file"]` + 4 `Path()` constants | 4 | **5** |
+| `3ed2966:signal_runner.py` | `NEWS_FLAGS_FILE` (Jul 17) + `order_log_file` (Jul 18) | 6 | **7** |
+| `c6ec08a:signal_runner.py` | `Path()`s already fixed; `order_log_file` still relative | **0** | **1** |
+| `90fd7fa:correlation_check.py` | Finding #4 `portfolio_state_path` default | **0** | **1** |
+| `90fd7fa:paper_portfolio.py` | Finding #4 `state_file` default | **0** | **1** |
+
+The third row is the sharpest. At `c6ec08a` the module's `Path()` constants had
+already been fixed to `_ROOT / "…"` — so Check 6 reported **completely clean**
+while `"order_log_file": "paper_trading/amo_orders.csv"` sat relative in the same
+file. It outlived the constants it shipped alongside precisely because nothing
+could see it. That is the entire finding in one commit.
+
+The new scan is a strict superset on every case.
+
+### Real-repo run (not a scratch copy)
+
+```
+STATUS : PASS
+MESSAGE: 0 relative-path constants found in 50 scanned files
+HITS   : []
+UNPARSEABLE: []
+```
+
+No new hits, no noise. The tree is genuinely clean now that #4 is fixed.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| **All 42 pre-existing Check 6 tests, unchanged** | **42 passed** — including the three docstring-masking tests, which now pass structurally rather than via `_masked_spans` |
+| New tests | **28 passed** |
+| Mutation — restore the old regex | **15 of 28 fail** |
+| Backtest vs real pre-fix source | all 6 historical cases caught (table above) |
+| False positives | 0 on absolute paths, `Path(__file__)`, URLs, `%`/`{}` templates, HTTP headers, MIME types |
+| Check 6 on the real tree | `PASS — 0 relative-path constants found in 50 scanned files` |
+| Full suite | **462 passed**, 1 pre-existing environmental failure |
+
+### Severity — a tooling-completeness finding
+
+**MEDIUM**, and the reasoning differs from a trading-logic finding. Nothing here
+moved money or produced a wrong number; measured directly, the current tree is
+clean, so there is no live defect behind the gap.
+
+What it costs is *epistemic*. Check 6 runs post-deploy and its PASS is read as
+evidence that the repo has no cwd-dependent paths. For a week it certified a
+property it could not evaluate, and Finding #4 shipped underneath that PASS.
+A detector that reports clean over a class it cannot see is worse than no
+detector, because no detector prompts a manual look and a false PASS ends the
+inquiry. That is why this rates above a cosmetic issue despite zero trading
+impact — and below the findings that reached real state or real reports.
+
+`import ast` was missing on the first attempt. The check caught it itself —
+`FAIL — Exception: name 'ast' is not defined` — because it wraps its body in a
+try/except that degrades to FAIL rather than crashing the run. Same class as the
+`import re` slip earlier in this audit, caught faster because the surrounding
+code was built to surface it.
+
+---
+
+## Closing note — what the fifteen findings had in common (Aug 26 2026)
+
+Fifteen findings is the uninteresting number. The useful one: **five of the
+fifteen were fixed not by correcting a value, but by removing the opportunity to
+get it wrong.** That is a claim about what kind of engineering this was, and it
+is worth more than the count.
+
+Those five, named so the claim is checkable rather than asserted — an earlier
+draft of this note gave the figure without listing them, which is exactly the
+kind of unverifiable number this audit spent two days catching elsewhere:
+
+| # | What was removed |
+|---|---|
+| **#1** | dry-run safety stopped being an `if apply_fills:` repeated at N call sites and became a plan/report/execute split in which only one function writes |
+| **#3** | fixed at all five layers deliberately redundantly, so no layer depends on another holding |
+| **#4** | regression test walks the AST of every production file, closing the class rather than the two instances |
+| **#14** | a fail-loud command replaced a written warning — chosen *because* the warning had already been written, read, and failed |
+| **#15** | detection filters on where a node appears in the syntax tree, not on what a string looks like |
+
+The findings were not fifteen unrelated bugs. They were a handful of failure
 shapes, recurring in unrelated files, several of them appearing more than once
-*within this audit* — including twice in the audit's own instruments.
+*within this audit* — including three times in the audit's own instruments.
 
 ### 1. Text-matching where structure-matching was needed
 
@@ -1400,6 +1572,31 @@ This is the throughline, and it is where the five fixes above sit.
   read, and had already failed.** That is not an abstract argument about
   documentation versus tooling; it is an experimental result.
 
+### 6. A detector whose blind spot is shaped exactly like what it was built to catch
+
+*Trustworthy and complete are different properties.*
+
+This is the sharpest shape because it hides inside the fix for the others.
+
+- **Finding #15.** `system_health_check.py`'s Check 6 exists to catch
+  cwd-dependent paths. It matched an assignment wrapping `Path()`. The case that
+  motivated building it — `AMO_CONFIG["order_log_file"]` — is a dict value, and
+  was never covered. At commit `c6ec08a` the module's `Path()` constants had
+  already been fixed to `_ROOT / "…"`, so the check reported **completely clean**
+  while `"order_log_file": "paper_trading/amo_orders.csv"` sat relative in the
+  same file. It outlived the constants it shipped alongside precisely because
+  nothing could see it. Finding #4 then shipped underneath that same PASS.
+- The Aug 25 fix had made that check *trustworthy* — it stopped matching its own
+  docstring. Nobody asked whether it was *complete*. Those are different
+  properties, and a check that has been repaired once reads as reliable.
+- **The audit's own regression suite**, where three tests asserted the defect's
+  continued existence and went green by construction — a suite that would have
+  turned red the moment someone fixed duplicate handling.
+
+A false negative from a detector is worse than having no detector, because no
+detector prompts a manual look and a PASS ends the inquiry. Every instance here
+was found by asking what a green check *cannot see*, never by the check itself.
+
 ### What follows from this
 
 The recurring shapes are worth more than the individual fixes, because the fixes
@@ -1410,6 +1607,9 @@ are done and the shapes are not. When reviewing anything in this repo:
 - If a file is being read as authoritative, establish **provenance** before
   content. Existence at the right path proves nothing.
 - If a check has never failed, find out whether it *can*.
+- Ask what a passing check **cannot see**, not just whether it passes. A check
+  repaired once reads as reliable; trustworthy and complete are different
+  properties, and Check 6 was the former for a week while being neither.
 - If two places decide the same thing, they will eventually decide differently.
 - Prefer the fix that removes the opportunity over the fix that corrects the
   value — and when a mitigation has already been tried and failed, that is
