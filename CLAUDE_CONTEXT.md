@@ -2568,15 +2568,17 @@ Also recorded: one guardrail slip during verification. Running the PATCHED CLI
 end-to-end made a live yfinance fetch to compute the 0.164 correlation. Not Kite
 or NSE, but an external network call that should have been anticipated before
 running the CLI rather than only a function.
-#### Audit closing note — recurring failure shapes (Aug 26 2026)
+#### Audit closing note — recurring failure shapes (Aug 26 2026, updated for #15)
 
-The Aug 22-26 audit closed with 14 findings. The synthesis lives in
-AUDIT_REPORT_2026-08-22.md, section "Closing note — what the fourteen findings
+The Aug 22-26 audit closed with 15 findings. The synthesis lives in
+AUDIT_REPORT_2026-08-22.md, section "Closing note — what the fifteen findings
 had in common". Not duplicated here; this is a pointer.
 
-The headline, because it is the part worth carrying forward: FIVE OF THE
-FOURTEEN WERE FIXED NOT BY CORRECTING A VALUE, BUT BY REMOVING THE OPPORTUNITY
-TO GET IT WRONG.
+The headline, because it is the part worth carrying forward: FIVE OF THE FIFTEEN
+WERE FIXED NOT BY CORRECTING A VALUE, BUT BY REMOVING THE OPPORTUNITY TO GET IT
+WRONG — findings #1, #3, #4, #14 and #15, now NAMED in the report rather than
+counted. An earlier draft gave the figure without listing them, which is the
+same unverifiable-number problem this audit spent two days catching elsewhere.
 
 The five recurring shapes, each documented with instances in the audit report:
   1. Text-matching where structure-matching was needed (health-check scanner
@@ -2591,8 +2593,116 @@ The five recurring shapes, each documented with instances in the audit report:
   5. Discipline where structure was available (Finding #1's plan/report/execute
      split; Finding #14's fail-loud command chosen over another note BECAUSE the
      note had already been written, read, and failed).
+  6. A DETECTOR WHOSE BLIND SPOT IS SHAPED EXACTLY LIKE WHAT IT WAS BUILT TO
+     CATCH — added Aug 26 after Finding #15. Check 6 reported clean at c6ec08a
+     while order_log_file sat relative in the same file it had just certified;
+     the Aug 25 fix had made it TRUSTWORTHY and nobody asked whether it was
+     COMPLETE. Also the audit's own regression suite, where three tests asserted
+     the defect's continued existence and went green by construction. Ask what a
+     passing check CANNOT SEE, not just whether it passes.
 
 Process note worth keeping: several findings were caught only when a write-up was
 RE-DERIVED AGAINST THE ACTUAL CODE rather than against the previous session's
 description of it. That found backtester.py's three missed guards in Finding #3
 and corrected two wrong claims in Finding #2. Descriptions drift; code does not.
+
+#### Check 6 was green over a class it could not see — Finding #15 — FIXED (Aug 26 2026, branch only)
+
+Branch: fix/health-check-ast-scan. Raised by Finding #4, fixed separately.
+
+system_health_check.py's Check 6 exists to catch cwd-dependent paths. It was a
+line regex matching an ASSIGNMENT wrapping Path(). A default parameter is a bare
+string with no Path() around it, so Finding #4's two sites were invisible while
+the check reported PASS. A detector that reports PASS over a class it cannot
+detect is worse than no detector, because the PASS is read as evidence.
+
+The Aug 25 trustworthiness fix made this check stop lying about what it saw (it
+had been matching its own docstring). It never made it see everything.
+TRUSTWORTHY AND COMPLETE ARE DIFFERENT PROPERTIES. That distinction is the whole
+finding, and conflating them left the gap open for a week.
+
+FIX — FILTER BY CONTEXT, NOT BY CONTENT. The rewrite walks the AST for the THREE
+contexts where a relative path is load-bearing:
+  1. a Path()/open() argument — what the regex covered
+  2. a parameter default, incl. KEYWORD-ONLY defaults (the first draft of the
+     oracle missed those; one function in the repo uses them)
+  3. a DICT-LITERAL VALUE under a path-naming key — the shape of
+     AMO_CONFIG["order_log_file"], which is the ORIGINAL motivating case for
+     Check 6 existing at all, and the one it never covered
+
+THE HEURISTIC, STATED EXPLICITLY: a string literal counts as a relative path when
+it is non-empty, does not start with "/", contains no "://" (URL), no "%" or "{"
+(format template), no newline (prose/HTML), and either contains "/" or ends in
+.json .csv .txt .log .pem .db. For DICT VALUES ONLY there is an extra gate: the
+key must contain one of file/path/dir/csv/log/json. That gate is load-bearing.
+Measured on the repo, ungated "any dict value that looks like a path" gives 25
+hits, ALL noise — HTTP headers ('User-Agent': 'Mozilla/5.0 …'), MIME types
+('Content-Type': 'application/json', 'type': 'text/html'). Key-gated: 0.
+
+BACKTEST AGAINST REAL HISTORY, not synthetic fixtures. Every relative-path bug
+this audit and its predecessors found, replayed against the actual pre-fix source
+from git, old regex vs new AST:
+
+  cb678a1 signal_runner.py  order_log_file + 4 Path() constants   4 -> 5
+  3ed2966 signal_runner.py  NEWS_FLAGS_FILE (Jul 17) + Jul 18     6 -> 7
+  c6ec08a signal_runner.py  Path()s FIXED, order_log_file relative 0 -> 1
+  90fd7fa correlation_check.py  Finding #4 default                0 -> 1
+  90fd7fa paper_portfolio.py    Finding #4 default                0 -> 1
+
+The c6ec08a row is the whole finding in one commit: the module's Path() constants
+had already been fixed to _ROOT / "…", so Check 6 reported COMPLETELY CLEAN while
+"order_log_file": "paper_trading/amo_orders.csv" sat relative in the same file.
+It outlived the constants it shipped alongside precisely because nothing could
+see it. Strict superset on every case.
+
+REAL-REPO RUN (not a scratch copy): PASS — 0 relative-path constants found in 50
+scanned files, 0 hits, 0 unparseable. No new noise.
+
+The inversion is the point. The regex filtered on WHAT THE STRING LOOKS LIKE,
+which is why it needed _masked_spans() to stop matching prose. The AST filters on
+WHERE THE STRING APPEARS, and a docstring can never BE a parameter default.
+Measured: a "looks like a path" test over every string constant in the repo
+matches 309 strings (docstrings, HTML, prose); applied to those two structural
+contexts it matches 0, while catching both Finding #4 sites in the pre-fix tree.
+
+So _masked_spans() is DELETED, not ported. The machinery added in August to
+suppress false positives is unnecessary once the filter is structural. This is
+worth remembering as a general result: when a scanner needs elaborate masking to
+avoid false positives, that is evidence it is matching in the wrong dimension.
+
+ONE COVERAGE REGRESSION, HANDLED RATHER THAN HIDDEN. An AST scan cannot read a
+file that does not parse, where the regex would still have scanned it
+line-by-line. The existing test
+test_relative_path_scan_degrades_gracefully_on_unparseable_file asserts only
+`status in ("WARN", "PASS")`, so a SILENT SKIP WOULD HAVE PASSED IT — trading one
+blind spot for another, inside the fix for a blind spot. Unparseable files are
+counted and reported instead, same rule as check_run_completion()'s
+out-of-window logs.
+
+Verification worth noting: ALL 42 PRE-EXISTING CHECK 6 TESTS PASS UNCHANGED,
+including the three docstring-masking ones, which now pass structurally rather
+than via the function that was deleted. That is the strongest available evidence
+the AST scan is a superset of the regex rather than a replacement with different
+edges. Plus 15 new tests; against the old regex 8 of them fail, including two
+that scan the REAL pre-fix source of both Finding #4 sites out of git history
+(90fd7fa) rather than a synthetic sample.
+
+import ast was missing on the first attempt and the check caught it itself —
+"FAIL — Exception: name 'ast' is not defined" — because its body is wrapped in a
+try/except that degrades to FAIL rather than crashing the run. Same class as the
+auto_login.py `import re` slip, caught faster because the surrounding code was
+built to surface it. Worth noting the check's own error handling did the work.
+
+SEVERITY: MEDIUM — a tooling-completeness finding, reasoned as such rather than
+scored like a trading-logic one. Nothing moved money and the current tree is
+measurably clean, so there is no live defect behind the gap. The cost is
+epistemic: Check 6 runs post-deploy and its PASS is read as evidence the repo has
+no cwd-dependent paths. For a week it certified a property it could not evaluate,
+and Finding #4 shipped underneath that PASS. A detector reporting clean over a
+class it cannot see is worse than no detector — no detector prompts a manual
+look, a false PASS ends the inquiry. Above cosmetic, below the findings that
+reached real state or real reports.
+
+Tests: validation/test_health_check_ast_scan_audit.py, 28 tests. Against the old
+regex 15 of 28 fail. All 42 pre-existing Check 6 tests pass UNCHANGED. Full suite
+462 passed.
